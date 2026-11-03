@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="pad">20dp</dimen>
+    <dimen name="gap">12dp</dimen>
+    <dimen name="tile_icon">52dp</dimen>
+    <dimen name="radius">22dp</dimen>
+</resources>
