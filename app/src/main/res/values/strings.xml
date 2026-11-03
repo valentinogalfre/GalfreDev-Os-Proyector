@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Galfré Launcher</string>
+    <string name="brand">Galfré</string>
+    <string name="tagline">Launcher by Galfré Dev</string>
+    <string name="logo_mark">&gt;_</string>
+
+    <string name="settings_title">Ajustes</string>
+    <string name="search_hint">Buscar app…</string>
+    <string name="apps_count">%1$d aplicaciones</string>
+
+    <string name="hero_open">Tocá para abrir</string>
+    <string name="hero_none_title">Elegí la app principal</string>
+    <string name="hero_none_sub">Tocá para elegir qué se abre desde el inicio</string>
+    <string name="cant_open">No se pudo abrir la app</string>
+
+    <string name="pick_primary">Elegí la app principal</string>
+    <string name="set_primary">Fijar como app principal</string>
+    <string name="unset_primary">Quitar como app principal</string>
+    <string name="favorite">Marcar favorito</string>
+    <string name="unfavorite">Quitar de favoritos</string>
+    <string name="app_info">Información de la app</string>
+    <string name="uninstall">Desinstalar</string>
+    <string name="cancel">Cancelar</string>
+    <string name="none">—</string>
+    <string name="back">Volver</string>
+
+    <string name="default_chip">Poné Galfré como pantalla de inicio ›</string>
+
+    <string name="net_wifi">Wi-Fi conectado</string>
+    <string name="net_data">Datos móviles</string>
+    <string name="net_off">Sin conexión</string>
+
+    <string name="q_wifi">Wi-Fi</string>
+    <string name="q_bt">Bluetooth</string>
+    <string name="q_display">Pantalla</string>
+    <string name="q_sound">Sonido</string>
+    <string name="q_all">Sistema</string>
+    <string name="q_launcher">Launcher</string>
+
+    <string name="auto_boot">Abrir la app principal al encender</string>
+    <string name="auto_boot_sub">Arranca directo en tu app al prender el proyector</string>
+    <string name="sort_usage">Ordenar por uso</string>
+    <string name="sort_usage_sub">Las apps más usadas aparecen primero</string>
+    <string name="primary_app">App principal</string>
+    <string name="default_home">Pantalla de inicio del sistema</string>
+    <string name="default_home_sub">Elegí Galfré Launcher como inicio por defecto</string>
+</resources>
