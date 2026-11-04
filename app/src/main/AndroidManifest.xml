@@ -6,6 +6,8 @@
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
         tools:ignore="QueryAllPackagesPermission" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Estado de red (Wi-Fi/datos/IP) en el inicio y en el centro de ajustes. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <!-- Explorador de archivos y reproductor: acceso a USB / memoria. -->
     <uses-permission
@@ -63,6 +65,12 @@
         <activity
             android:name=".PlayerActivity"
             android:exported="false"
+            android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenLayout|screenSize|smallestScreenSize|uiMode" />
+
+        <activity
+            android:name=".SettingsHubActivity"
+            android:exported="false"
+            android:label="@string/hub_title"
             android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenLayout|screenSize|smallestScreenSize|uiMode" />
 
         <receiver
