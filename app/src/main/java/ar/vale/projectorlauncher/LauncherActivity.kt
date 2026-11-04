@@ -100,6 +100,15 @@ class LauncherActivity : Activity() {
         findViewById<View>(R.id.btn_settings_hub).setOnClickListener {
             startActivity(Intent(this, SettingsHubActivity::class.java))
         }
+        findViewById<View>(R.id.btn_apphub).setOnClickListener {
+            startActivity(Intent(this, AppHubActivity::class.java))
+        }
+        findViewById<View>(R.id.btn_apk).setOnClickListener {
+            startActivity(
+                Intent(this, FileBrowserActivity::class.java)
+                    .putExtra(FileBrowserActivity.EXTRA_MODE, FileBrowserActivity.MODE_APK)
+            )
+        }
         defaultChip.setOnClickListener { openHomeSettings() }
 
         wireQuick(R.id.q_wifi, Settings.ACTION_WIFI_SETTINGS)

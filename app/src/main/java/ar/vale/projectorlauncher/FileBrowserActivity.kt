@@ -27,12 +27,17 @@ class FileBrowserActivity : Activity() {
     private lateinit var emptyView: TextView
     private lateinit var permissionView: View
 
+    /** Modo "instalar APK": solo muestra carpetas y .apk. */
+    private var apkMode = false
+
     /** null = pantalla de orígenes (raíces); si no, la carpeta actual. */
     private var currentDir: File? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_file_browser)
+        apkMode = intent.getStringExtra(EXTRA_MODE) == MODE_APK
+        if (apkMode) findViewById<TextView>(R.id.browser_title).setText(R.string.apk_title)
         list = findViewById(R.id.file_list)
         pathLabel = findViewById(R.id.path_label)
         emptyView = findViewById(R.id.empty_view)
@@ -108,7 +113,9 @@ class FileBrowserActivity : Activity() {
         if (entries != null) {
             for (f in entries) {
                 if (f.isHidden) continue
-                items.add(FileItem(f, MediaTypes.kindOf(f)))
+                val kind = MediaTypes.kindOf(f)
+                if (apkMode && kind != FileKind.DIR && kind != FileKind.APK) continue
+                items.add(FileItem(f, kind))
             }
             items.sortWith(
                 compareByDescending<FileItem> { it.kind == FileKind.DIR }
@@ -136,7 +143,8 @@ class FileBrowserActivity : Activity() {
                 i.putExtra(PlayerActivity.EXTRA_KIND, item.kind.name)
                 startActivity(i)
             }
-            FileKind.APK, FileKind.OTHER ->
+            FileKind.APK -> ApkInstaller.install(this, item.file)
+            FileKind.OTHER ->
                 Toast.makeText(this, getString(R.string.files_cant_open_here), Toast.LENGTH_SHORT).show()
         }
     }
@@ -156,5 +164,7 @@ class FileBrowserActivity : Activity() {
 
     companion object {
         private const val REQ_READ = 1
+        const val EXTRA_MODE = "mode"
+        const val MODE_APK = "apk"
     }
 }

@@ -19,6 +19,7 @@
             android:src="@drawable/ic_media" />
 
         <TextView
+            android:id="@+id/browser_title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="12dp"
