@@ -74,11 +74,25 @@ logo del encabezado. El wordmark dice **Galfré · Launcher by Galfré Dev**.
 
 ---
 
+## Descargar el APK sin compilar
+
+Cada cambio que se sube a este repo lo compila GitHub solo y lo prueba en un
+emulador de TV 1080p (`.github/workflows/projector-os.yml`):
+
+1. Pestaña **Actions** → corrida más reciente de **"Projector OS (APK + emulador)"**.
+2. Abajo de todo, en **Artifacts**:
+   - **`galfre-projector-os-apk`** → el `.apk` listo para instalar.
+   - **`capturas-emulador`** → capturas de cada pantalla y el log de la prueba.
+
+Si alguna pantalla se cierra sola en el emulador, la corrida queda en rojo.
+
+---
+
 ## Compilar
 
 ### Opción A — Android Studio (recomendado)
 
-1. Abrí Android Studio → **Open** → elegí la carpeta `projector-launcher/`.
+1. Abrí Android Studio → **Open** → elegí la carpeta del repo (`GalfreDev-Os-Proyector/`).
 2. Dejá que sincronice Gradle (baja AGP 8.10.1, Kotlin 2.1.21 y el SDK 35 solo).
 3. **Build → Build Bundle(s) / APK(s) → Build APK(s)**.
 4. El APK queda en `app/build/outputs/apk/debug/app-debug.apk`.
@@ -86,7 +100,7 @@ logo del encabezado. El wordmark dice **Galfré · Launcher by Galfré Dev**.
 ### Opción B — Terminal
 
 ```bash
-cd projector-launcher
+cd GalfreDev-Os-Proyector
 ./gradlew assembleDebug
 ```
 
@@ -150,7 +164,7 @@ Centro de ajustes → "Galfré Launcher"):
 ## Estructura
 
 ```
-projector-launcher/
+GalfreDev-Os-Proyector/
 ├─ ROADMAP.md                     # módulos, estado, límites y decisiones
 ├─ app/
 │  ├─ build.gradle.kts            # minSdk 26, compileSdk 35, sin AndroidX

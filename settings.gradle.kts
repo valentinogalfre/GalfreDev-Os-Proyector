@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "projector-launcher"
+rootProject.name = "GalfreDev-Os-Proyector"
 include(":app")
