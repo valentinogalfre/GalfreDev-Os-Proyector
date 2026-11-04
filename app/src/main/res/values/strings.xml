@@ -45,4 +45,16 @@
     <string name="primary_app">App principal</string>
     <string name="default_home">Pantalla de inicio del sistema</string>
     <string name="default_home_sub">Elegí Galfré Launcher como inicio por defecto</string>
+
+    <!-- Módulo: archivos y reproductor -->
+    <string name="module_media">Multimedia</string>
+    <string name="files_title">Archivos</string>
+    <string name="files_folder">Carpeta</string>
+    <string name="files_origins">Elegí un origen: memoria interna o USB</string>
+    <string name="files_empty_roots">No se encontró ningún origen de archivos</string>
+    <string name="files_empty_dir">Carpeta vacía</string>
+    <string name="files_need_permission">Galfré necesita permiso para leer los archivos del equipo</string>
+    <string name="files_grant">Dar permiso</string>
+    <string name="files_cant_open_here">Por ahora este tipo de archivo no se abre desde acá</string>
+    <string name="player_error">No se pudo reproducir el archivo</string>
 </resources>

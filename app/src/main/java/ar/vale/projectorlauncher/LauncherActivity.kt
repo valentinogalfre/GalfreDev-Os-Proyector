@@ -94,6 +94,9 @@ class LauncherActivity : Activity() {
         findViewById<View>(R.id.btn_settings).setOnClickListener {
             startActivity(Intent(this, SettingsActivity::class.java))
         }
+        findViewById<View>(R.id.btn_media).setOnClickListener {
+            startActivity(Intent(this, FileBrowserActivity::class.java))
+        }
         defaultChip.setOnClickListener { openHomeSettings() }
 
         wireQuick(R.id.q_wifi, Settings.ACTION_WIFI_SETTINGS)
