@@ -84,4 +84,9 @@
     <string name="apk_need_unknown_sources">Permití a Galfré instalar apps desconocidas y volvé a intentarlo</string>
     <string name="apk_install_error">No se pudo abrir el instalador</string>
     <string name="apk_empty_dir">No hay archivos .apk en esta carpeta</string>
+
+    <!-- Explorador: nombres amigables de los orígenes y aviso de permiso -->
+    <string name="files_internal">Memoria interna</string>
+    <string name="files_usb">USB (%1$s)</string>
+    <string name="files_permission_screen_missing">Este equipo no tiene la pantalla de permiso: concedelo en Ajustes › Apps › Acceso especial › Acceso a todos los archivos</string>
 </resources>

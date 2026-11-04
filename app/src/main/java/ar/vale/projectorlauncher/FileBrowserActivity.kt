@@ -50,6 +50,11 @@ class FileBrowserActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        refresh()
+    }
+
+    /** Re-evalúa el permiso y vuelve a mostrar orígenes o la carpeta actual. */
+    private fun refresh() {
         if (hasStorageAccess()) {
             permissionView.visibility = View.GONE
             val dir = currentDir
@@ -74,6 +79,10 @@ class FileBrowserActivity : Activity() {
             )
             runCatching { startActivity(i) }.onFailure {
                 runCatching { startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)) }
+                    .onFailure {
+                        // Algunos firmwares AOSP/TV no traen la pantalla de "acceso a todos los archivos".
+                        Toast.makeText(this, R.string.files_permission_screen_missing, Toast.LENGTH_LONG).show()
+                    }
             }
         } else {
             requestPermissions(arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE), REQ_READ)
@@ -82,7 +91,7 @@ class FileBrowserActivity : Activity() {
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        onResume()
+        refresh()
     }
 
     private fun showRoots() {
@@ -90,7 +99,9 @@ class FileBrowserActivity : Activity() {
         pathLabel.text = getString(R.string.files_origins)
         val roots = ArrayList<FileItem>()
         val internal = Environment.getExternalStorageDirectory()
-        if (internal != null && internal.exists()) roots.add(FileItem(internal, FileKind.DIR))
+        if (internal != null && internal.exists()) {
+            roots.add(FileItem(internal, FileKind.DIR, getString(R.string.files_internal)))
+        }
         val children = File("/storage").listFiles()
         if (children != null) {
             for (c in children) {
@@ -99,7 +110,7 @@ class FileBrowserActivity : Activity() {
                 if (n == "emulated" || n == "self") continue
                 if (internal != null && c.absolutePath == internal.absolutePath) continue
                 if (!c.canRead()) continue
-                roots.add(FileItem(c, FileKind.DIR))
+                roots.add(FileItem(c, FileKind.DIR, getString(R.string.files_usb, n)))
             }
         }
         bind(roots, getString(R.string.files_empty_roots))
@@ -127,6 +138,7 @@ class FileBrowserActivity : Activity() {
 
     private fun bind(items: List<FileItem>, emptyMsg: String) {
         adapter.setItems(items)
+        list.setSelection(0)   // el cursor del control vuelve al primer ítem al cambiar de carpeta
         val empty = items.isEmpty()
         emptyView.text = emptyMsg
         emptyView.visibility = if (empty) View.VISIBLE else View.GONE

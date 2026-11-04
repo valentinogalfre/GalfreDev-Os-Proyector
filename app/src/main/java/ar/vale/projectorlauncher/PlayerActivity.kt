@@ -16,6 +16,11 @@ import java.io.File
 class PlayerActivity : Activity() {
 
     private var videoView: VideoView? = null
+    private var mediaController: MediaController? = null
+
+    /** Posición y estado al pausar: si se pierde el Surface (standby/onStop), VideoView re-prepara desde cero. */
+    private var lastPos = 0
+    private var resumePlaying = true
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,9 +47,13 @@ class PlayerActivity : Activity() {
         videoView = vv
         vv.visibility = View.VISIBLE
         val mc = MediaController(this)
+        mediaController = mc
         mc.setAnchorView(vv)
         vv.setMediaController(mc)
-        vv.setOnPreparedListener { it.start() }
+        vv.setOnPreparedListener { mp ->
+            if (lastPos > 0) mp.seekTo(lastPos)
+            if (resumePlaying) mp.start()
+        }
         vv.setOnErrorListener { _, _, _ -> finishWithError(); true }
         vv.setVideoPath(file.absolutePath)
         vv.requestFocus()
@@ -80,6 +89,7 @@ class PlayerActivity : Activity() {
             val vv = videoView
             if (vv != null) {
                 if (vv.isPlaying) vv.pause() else vv.start()
+                mediaController?.show()   // recalcula el ícono play/pausa y reinicia su timeout
                 return true
             }
         }
@@ -88,7 +98,10 @@ class PlayerActivity : Activity() {
 
     override fun onPause() {
         super.onPause()
-        videoView?.pause()
+        val vv = videoView ?: return
+        lastPos = vv.currentPosition
+        resumePlaying = vv.isPlaying
+        vv.pause()
     }
 
     companion object {
