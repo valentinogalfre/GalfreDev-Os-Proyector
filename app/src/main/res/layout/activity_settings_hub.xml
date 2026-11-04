@@ -1,10 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fitsSystemWindows="true"
-    android:orientation="vertical"
-    android:padding="@dimen/pad">
+    android:fitsSystemWindows="true">
+
+    <!-- El padding va en el hijo: en la vista con fitsSystemWindows los insets lo pisarían. -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:padding="@dimen/pad">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -52,4 +57,5 @@
         android:scrollbars="none"
         android:stretchMode="spacingWidthUniform"
         android:verticalSpacing="12dp" />
-</LinearLayout>
+    </LinearLayout>
+</FrameLayout>
