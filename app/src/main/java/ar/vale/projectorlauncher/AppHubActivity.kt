@@ -54,7 +54,7 @@ class AppHubActivity : Activity() {
         val favs = prefs.favorites
         apps.sortWith(
             compareByDescending<AppInfo> { favs.contains(it.packageName) }
-                .thenByDescending { prefs.usageCount(it.packageName) }
+                .thenByDescending { if (prefs.sortByUsage) prefs.usageCount(it.packageName) else 0 }
                 .thenBy { it.label.lowercase() }
         )
         adapter.setItems(apps, favs)
@@ -62,7 +62,7 @@ class AppHubActivity : Activity() {
     }
 
     private fun launch(app: AppInfo) {
-        val i = packageManager.getLaunchIntentForPackage(app.packageName)
+        val i = AppRepository.launchIntent(packageManager, app.packageName)
         if (i == null) {
             Toast.makeText(this, R.string.cant_open, Toast.LENGTH_SHORT).show()
             return
@@ -70,5 +70,6 @@ class AppHubActivity : Activity() {
         i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         prefs.incrementUsage(app.packageName)
         runCatching { startActivity(i) }
+            .onFailure { Toast.makeText(this, R.string.cant_open, Toast.LENGTH_SHORT).show() }
     }
 }
