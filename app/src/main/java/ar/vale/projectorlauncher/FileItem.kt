@@ -23,6 +23,7 @@ object MediaTypes {
     }
 }
 
-data class FileItem(val file: File, val kind: FileKind) {
-    val name: String get() = file.name
+/** [label] permite mostrar un nombre amigable (p. ej. "Memoria interna") en vez del nombre del directorio. */
+data class FileItem(val file: File, val kind: FileKind, val label: String? = null) {
+    val name: String get() = label ?: file.name
 }
