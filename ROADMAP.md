@@ -11,8 +11,8 @@ propias que cubren la experiencia que ve y usa la persona.
 | # | Módulo | Estado |
 |---|--------|--------|
 | 1 | **Launcher / home** — pantalla de inicio, grilla de apps, favoritos, app principal, arranque al encender | ✅ Hecho |
-| 2 | **Reproductor + archivos** — explorar USB/memoria y reproducir video, música e imágenes | 🔨 En curso |
-| 3 | **Centro de ajustes + red** — panel propio con accesos a wifi, pantalla, sonido, hora, etc. | ⏳ Pendiente |
+| 2 | **Reproductor + archivos** — explorar USB/memoria y reproducir video, música e imágenes | 🔍 Hecho, en revisión |
+| 3 | **Centro de ajustes + red** — panel propio con accesos a wifi, pantalla, sonido, hora, etc. + estado de red e IP | 🔍 Hecho, en revisión |
 | 4 | **Hub de streaming + favoritos** — accesos grandes a las apps instaladas | ⏳ Pendiente |
 | 5 | **Instalador de APKs (sideload)** — instalar apps desde USB sin Play Store | ⏳ Pendiente |
 
@@ -41,8 +41,8 @@ propias que cubren la experiencia que ve y usa la persona.
 ## Orden de construcción
 
 1. ✅ Launcher (listo, con D-pad).
-2. 🔨 Reproductor + archivos.
-3. Centro de ajustes + red.
+2. 🔍 Reproductor + archivos (hecho, en revisión).
+3. 🔍 Centro de ajustes + red (hecho, en revisión).
 4. Hub de streaming.
 5. Instalador de APKs.
 

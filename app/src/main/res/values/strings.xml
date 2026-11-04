@@ -57,4 +57,18 @@
     <string name="files_grant">Dar permiso</string>
     <string name="files_cant_open_here">Por ahora este tipo de archivo no se abre desde acá</string>
     <string name="player_error">No se pudo reproducir el archivo</string>
+
+    <!-- Módulo: centro de ajustes + red -->
+    <string name="module_settings_hub">Ajustes</string>
+    <string name="hub_title">Centro de ajustes</string>
+    <string name="hub_datetime">Fecha y hora</string>
+    <string name="hub_language">Idioma</string>
+    <string name="hub_storage">Almacenamiento</string>
+    <string name="hub_apps">Aplicaciones</string>
+    <string name="hub_home">Pantalla de inicio</string>
+    <string name="hub_launcher">Galfré Launcher</string>
+    <string name="hub_about">Acerca del equipo</string>
+    <string name="hub_all">Todos los ajustes</string>
+    <string name="net_ethernet">Ethernet conectado</string>
+    <string name="net_other">Conectado</string>
 </resources>
