@@ -8,6 +8,8 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!-- Estado de red (Wi-Fi/datos/IP) en el inicio y en el centro de ajustes. -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Instalador de APKs (sideload). -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <!-- Explorador de archivos y reproductor: acceso a USB / memoria. -->
     <uses-permission
@@ -72,6 +74,19 @@
             android:exported="false"
             android:label="@string/hub_title"
             android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenLayout|screenSize|smallestScreenSize|uiMode" />
+
+        <activity
+            android:name=".AppHubActivity"
+            android:exported="false"
+            android:label="@string/apphub_title"
+            android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenLayout|screenSize|smallestScreenSize|uiMode" />
+
+        <!-- Sirve .apk al instalador del sistema por content:// (solo lectura, no exportado). -->
+        <provider
+            android:name=".ApkProvider"
+            android:authorities="ar.vale.projectorlauncher.apk"
+            android:exported="false"
+            android:grantUriPermissions="true" />
 
         <receiver
             android:name=".BootReceiver"

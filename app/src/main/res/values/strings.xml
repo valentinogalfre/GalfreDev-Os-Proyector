@@ -71,4 +71,16 @@
     <string name="hub_all">Todos los ajustes</string>
     <string name="net_ethernet">Ethernet conectado</string>
     <string name="net_other">Conectado</string>
+
+    <!-- Módulo: hub de apps -->
+    <string name="module_apphub">Mis apps</string>
+    <string name="apphub_title">Mis apps</string>
+    <string name="apphub_hint">OK abre · mantené apretado para marcar favorito</string>
+    <string name="apphub_empty">No hay apps instaladas</string>
+
+    <!-- Módulo: instalador de APKs -->
+    <string name="module_apk">Instalar APK</string>
+    <string name="apk_title">Instalar APK</string>
+    <string name="apk_need_unknown_sources">Permití a Galfré instalar apps desconocidas y volvé a intentarlo</string>
+    <string name="apk_install_error">No se pudo abrir el instalador</string>
 </resources>

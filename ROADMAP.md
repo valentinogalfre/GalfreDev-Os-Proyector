@@ -13,8 +13,8 @@ propias que cubren la experiencia que ve y usa la persona.
 | 1 | **Launcher / home** — pantalla de inicio, grilla de apps, favoritos, app principal, arranque al encender | ✅ Hecho |
 | 2 | **Reproductor + archivos** — explorar USB/memoria y reproducir video, música e imágenes | 🔍 Hecho, en revisión |
 | 3 | **Centro de ajustes + red** — panel propio con accesos a wifi, pantalla, sonido, hora, etc. + estado de red e IP | 🔍 Hecho, en revisión |
-| 4 | **Hub de streaming + favoritos** — accesos grandes a las apps instaladas | ⏳ Pendiente |
-| 5 | **Instalador de APKs (sideload)** — instalar apps desde USB sin Play Store | ⏳ Pendiente |
+| 4 | **Hub de apps + favoritos** — baldosas grandes con favoritos y lo más usado primero | 🔍 Hecho, en revisión |
+| 5 | **Instalador de APKs (sideload)** — instalar apps desde USB sin Play Store (provider propio) | 🔍 Hecho, en revisión |
 
 ## Límites honestos (lo que una app normal NO puede hacer)
 
@@ -43,8 +43,8 @@ propias que cubren la experiencia que ve y usa la persona.
 1. ✅ Launcher (listo, con D-pad).
 2. 🔍 Reproductor + archivos (hecho, en revisión).
 3. 🔍 Centro de ajustes + red (hecho, en revisión).
-4. Hub de streaming.
-5. Instalador de APKs.
+4. 🔍 Hub de apps + favoritos (hecho, en revisión).
+5. 🔍 Instalador de APKs (hecho, en revisión).
 
 Cada módulo entra como un commit propio al PR, pasa una autorevisión y queda
 documentado acá.
