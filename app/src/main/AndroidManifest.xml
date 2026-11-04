@@ -60,6 +60,12 @@
                 <category android:name="android.intent.category.HOME" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
+            <!-- Ícono en el menú de apps del proyector: permite abrirlo aunque el equipo
+                 no muestre el diálogo para elegir pantalla de inicio. -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
         </activity>
 
         <activity
