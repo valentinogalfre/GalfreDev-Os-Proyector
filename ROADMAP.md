@@ -12,7 +12,7 @@ propias que cubren la experiencia que ve y usa la persona.
 |---|--------|--------|
 | 1 | **Launcher / home** — pantalla de inicio, grilla de apps, favoritos, app principal, arranque al encender | ✅ Hecho |
 | 2 | **Reproductor + archivos** — explorar USB/memoria y reproducir video, música e imágenes | 🔍 Hecho, en revisión |
-| 3 | **Centro de ajustes + red** — panel propio con accesos a wifi, pantalla, sonido, hora, etc. + estado de red e IP | 🔍 Hecho, en revisión |
+| 3 | **Centro de ajustes + red** — panel propio con accesos a wifi, pantalla, sonido, hora, etc. + estado de red e IP | ✅ Revisado |
 | 4 | **Hub de apps + favoritos** — baldosas grandes con favoritos y lo más usado primero | 🔍 Hecho, en revisión |
 | 5 | **Instalador de APKs (sideload)** — instalar apps desde USB sin Play Store (provider propio) | 🔍 Hecho, en revisión |
 
@@ -42,7 +42,7 @@ propias que cubren la experiencia que ve y usa la persona.
 
 1. ✅ Launcher (listo, con D-pad).
 2. 🔍 Reproductor + archivos (hecho, en revisión).
-3. 🔍 Centro de ajustes + red (hecho, en revisión).
+3. ✅ Centro de ajustes + red (revisado).
 4. 🔍 Hub de apps + favoritos (hecho, en revisión).
 5. 🔍 Instalador de APKs (hecho, en revisión).
 
