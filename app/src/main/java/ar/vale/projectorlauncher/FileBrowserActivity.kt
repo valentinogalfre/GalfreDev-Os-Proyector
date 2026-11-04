@@ -122,7 +122,7 @@ class FileBrowserActivity : Activity() {
                     .thenBy { it.name.lowercase() }
             )
         }
-        bind(items, getString(R.string.files_empty_dir))
+        bind(items, getString(if (apkMode) R.string.apk_empty_dir else R.string.files_empty_dir))
     }
 
     private fun bind(items: List<FileItem>, emptyMsg: String) {

@@ -211,7 +211,7 @@ class LauncherActivity : Activity() {
     }
 
     private fun launch(app: AppInfo) {
-        val i = packageManager.getLaunchIntentForPackage(app.packageName)
+        val i = AppRepository.launchIntent(packageManager,app.packageName)
         if (i == null) { toast(getString(R.string.cant_open)); return }
         i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         prefs.incrementUsage(app.packageName)
@@ -222,7 +222,7 @@ class LauncherActivity : Activity() {
         val pkg = prefs.primaryPkg ?: return showPrimaryPicker()
         val app = allApps.firstOrNull { it.packageName == pkg }
         if (app != null) { launch(app); return }
-        val i = packageManager.getLaunchIntentForPackage(pkg)
+        val i = AppRepository.launchIntent(packageManager,pkg)
         if (i != null) {
             i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             runCatching { startActivity(i) }
@@ -235,7 +235,7 @@ class LauncherActivity : Activity() {
         prefs.pendingBootLaunch = false
         if (!prefs.autoLaunchOnBoot) return
         val pkg = prefs.primaryPkg ?: return
-        val i = packageManager.getLaunchIntentForPackage(pkg) ?: return
+        val i = AppRepository.launchIntent(packageManager,pkg) ?: return
         i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         runCatching { startActivity(i) }
     }
