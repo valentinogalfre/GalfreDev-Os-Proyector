@@ -150,9 +150,13 @@ class BootView(
             handedOff = true
             onHandoff?.invoke(RectF(tapeRect))
             val frameMs = if (frames > 1) (lastFrameAt - firstFrameAt).toFloat() / (frames - 1) else 0f
-            animate().alpha(0f).setDuration(Motion.BASE).setInterpolator(Motion.out).withLayer()
-                .withEndAction { onFinished?.invoke(frameMs) }
-                .start()
+            // La salida arranca fuera de este dibujo. Una animación con capa propia arma la capa al
+            // empezar, y armarla en medio de un onDraw cierra la app en Android 10 o más.
+            post {
+                animate().alpha(0f).setDuration(Motion.BASE).setInterpolator(Motion.out).withLayer()
+                    .withEndAction { onFinished?.invoke(frameMs) }
+                    .start()
+            }
         }
     }
 
