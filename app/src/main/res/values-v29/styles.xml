@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- El sistema no invierte los colores: el modo oscuro de la marca es el nuestro. -->
+    <style name="Theme.Gd" parent="Base.Theme.Gd">
+        <item name="android:forceDarkAllowed">false</item>
+    </style>
+</resources>

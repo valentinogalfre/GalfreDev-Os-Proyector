@@ -1,216 +1,192 @@
-# Galfré Projector OS
+# galfredev OS
 
-Software completo para **proyectores Android** (tipo HY300 y similares) con la
-identidad de **Galfré Dev**, pensado 100% para **control remoto (D-pad)**.
+El sistema que hicimos para proyectores Android, como el Fika P8 y los tipo HY300. Se maneja
+entero con el control remoto y lleva la marca de punta a punta.
 
-No es una ROM ni toca el firmware: es **un solo APK** con varias pantallas que
-reemplazan la experiencia de fábrica por algo limpio, rápido y con personalidad.
+No es una ROM y no toca el firmware. Es un solo APK de 1,5 MB que reemplaza la pantalla
+de inicio del fabricante. Si algo falla, el inicio original sigue en el equipo.
 
-```
->_ Galfré Dev
-```
+Nada de esto se probó todavía en un proyector real. Lo probamos en emulador, con
+Android 9 y 11. Lo que falta comprobar en hardware está en [`ROADMAP.md`](ROADMAP.md).
 
----
+## Qué tiene
 
-## Módulos
-
-| Módulo | Qué hace |
+| Pantalla | Qué hace |
 |---|---|
-| 🏠 **Launcher / inicio** | Reloj, fecha, estado de red y batería, **app principal destacada**, atajos rápidos, buscador, grilla de apps con **favoritos** y **orden por uso**. **Abre tu app principal al encender** el proyector. |
-| 🎬 **Multimedia (archivos + reproductor)** | Explora la **memoria interna y pendrives USB**, y reproduce **video, música e imágenes** con el reproductor del sistema. |
-| ⚙️ **Centro de ajustes + red** | Accesos grandes a Wi-Fi, Bluetooth, pantalla, sonido, fecha/hora, idioma, almacenamiento, apps, inicio del sistema y más, con el **tipo de conexión y la IP** a la vista. |
-| 📺 **Mis apps (hub)** | Baldosas **grandes para ver desde el sillón**, con favoritos y lo más usado primero. OK abre; mantener apretado marca favorito. |
-| 📦 **Instalar APK (sideload)** | Instalá apps desde un pendrive o la memoria **sin Play Store**, con el instalador del sistema. |
+| Inicio | Ocho palabras grandes y, al lado, lo que importa de cada una: seguí viendo, apps recientes, recomendaciones |
+| Apps | Grilla con búsqueda, favoritas, app principal y desinstalar |
+| Cine | Netflix y compañía, y video, música, fotos y PDF desde la memoria, un pendrive o el celular. Retoma donde dejaste, con subtítulos |
+| Tienda | 21 apps elegidas para proyector, bajadas de su fuente oficial y comprobadas antes de instalar |
+| Claude | Hablale desde el celular y usa las apps por vos: abre, busca, escribe y le da reproducir. La respuesta sale en la pared |
+| Juntada | Todos se suman desde su celular con un código: trivia que escribe Claude, votaciones y las cuentas de la casa |
+| Pared | La hora en palabras, la hora grande o una retícula. Arranca sola si dejás de usarlo |
+| Celular | Tu celular como control, trackpad y teclado de cualquier app, sin instalar nada |
+| Ajustes | Lo del sistema que este equipo de verdad tiene, más tema, animaciones y temporizador |
 
-Todo es liviano a propósito (**sin AndroidX**, solo framework + Kotlin) para que
-arranque al toque en el hardware modesto de estos proyectores.
+## Lo que no vas a ver en otro proyector
 
-Qué **no** hace (y por qué): keystone, foco, lámpara o cambio de entrada HDMI son
-funciones del sistema del fabricante; una app normal no puede controlarlas.
-Detalles y plan en [`ROADMAP.md`](ROADMAP.md).
+- **La cinta es el foco.** Hay una sola por pantalla. Se mueve con el control, tapa la
+  pantalla en cada transición y lo que queda debajo se dibuja en carbón. El arranque
+  construye el logo y le entrega esa misma cinta al inicio.
+- **El celular sin app.** Escaneás un QR y listo: flechas, trackpad, abrir apps, texto,
+  subir un archivo, mandar un enlace o preguntarle a Claude.
+- **Claude usa las apps.** Le decís «abrí YouTube y poné música para programar» y lo hace:
+  lee lo que hay en pantalla, mueve el puntero, toca, escribe y vuelve a mirar. En la pared se
+  ve cada paso. Marca con la cinta la palabra que resume la respuesta.
+- **Se le habla.** En el celular hay un botón de micrófono: decís el pedido y sale.
+- **La juntada.** La pared como tablero y cada celular como control, sin instalar nada. Una
+  trivia sobre el tema que quieran, votaciones, y quién le debe a quién al final del asado.
+- **Una Tienda que sabe de proyectores.** Elige la variante de 32 o 64 bits, compara
+  hashes y firmas, y avisa si tenés una versión con malware.
+- **Calibración.** Patrones de foco, geometría y niveles para dejar bien la imagen.
+- **Imagen en negro.** Apaga la imagen sin apagar el equipo. También se dispara con el
+  temporizador o desde el celular.
 
----
+## Con el control remoto
 
-## Navegación con el control remoto
+- Flechas: mueven la cinta.
+- OK: abre. En el reproductor, pausa.
+- Menú, o mantener OK sobre una app: principal, favorita, información y desinstalar.
+- Atrás: vuelve. En Claude, si está respondiendo, detiene la respuesta.
 
-- **Flechas** mueven el foco; lo seleccionado se marca con un **borde de acento**.
-- **OK** abre la app, la carpeta o el archivo. En el reproductor, **OK = play/pausa**.
-- **Mantener OK** sobre una app → fijar como principal, favorito, info o desinstalar.
-- **Atrás** en el explorador sube una carpeta; en el inicio no hace nada (es el inicio).
-- Al abrir el inicio, el foco arranca en la **app principal**.
+## Instalar en un proyector
 
----
+El paso a paso completo está en [`docs/instalar.md`](docs/instalar.md). Lo corto, con ADB:
 
-## Identidad de marca (Galfré Dev)
-
-Definida en `app/src/main/res/values/colors.xml` — cambiás un color y se
-propaga a toda la app:
-
-| Token | Color | Uso |
-|---|---|---|
-| `accent` | `#7C5CFF` (violeta) | Marca, foco, bordes activos, degradados |
-| `accent2` | `#22D3EE` (cian) | Acentos, tagline, estado |
-| `bg_top`/`bg_bottom` | `#0B0B12`→`#15151F` | Fondo degradado |
-| `surface` | `#1C1C28` | Baldosas y tarjetas |
-
-La marca `>_` (prompt de terminal, guiño "Dev") es el ícono de la app y el
-logo del encabezado. El wordmark dice **Galfré · Launcher by Galfré Dev**.
-
-> Si más gente lo usa, tu marca viaja con cada proyector. 💜
-
----
-
-## Requisitos para compilar
-
-- **Android Studio** (Ladybug o más nuevo) — es el camino recomendado.
-- O, por línea de comandos: **JDK 17**, **Android SDK** con **Platform 35** y
-  **Build-Tools 35**, y la variable `ANDROID_HOME` apuntando al SDK.
-
-> ⚠️ **Por qué el APK no se construyó en la sesión de la nube:** el contenedor
-> no tiene el Android SDK y su red bloquea los servidores de Google
-> (`dl.google.com` / Maven de Android), de donde se bajan el Android Gradle
-> Plugin y las plataformas. Por eso el repo trae el **código fuente completo**
-> (validado y con autorevisión), y la compilación se hace en tu PC.
-
----
-
-## Descargar el APK sin compilar
-
-Cada cambio que se sube a este repo lo compila GitHub solo y lo prueba en un
-emulador de TV 1080p (`.github/workflows/projector-os.yml`):
-
-1. Pestaña **Actions** → corrida más reciente de **"Projector OS (APK + emulador)"**.
-2. Abajo de todo, en **Artifacts**:
-   - **`galfre-projector-os-apk`** → el `.apk` listo para instalar.
-   - **`capturas-emulador`** → capturas de cada pantalla y el log de la prueba.
-
-Si alguna pantalla se cierra sola en el emulador, la corrida queda en rojo.
-
----
-
-## Compilar
-
-### Opción A — Android Studio (recomendado)
-
-1. Abrí Android Studio → **Open** → elegí la carpeta del repo (`GalfreDev-Os-Proyector/`).
-2. Dejá que sincronice Gradle (baja AGP 8.10.1, Kotlin 2.1.21 y el SDK 35 solo).
-3. **Build → Build Bundle(s) / APK(s) → Build APK(s)**.
-4. El APK queda en `app/build/outputs/apk/debug/app-debug.apk`.
-
-### Opción B — Terminal
-
-```bash
-cd GalfreDev-Os-Proyector
-./gradlew assembleDebug
-```
-
-APK de depuración: `app/build/outputs/apk/debug/app-debug.apk`
-Para una versión firmada y optimizada: `./gradlew assembleRelease` (configurá
-tu `keystore` antes).
-
----
-
-## Instalar en el proyector
-
-1. En el proyector: **Ajustes → Acerca del dispositivo → tocá "Número de compilación" 7 veces** (habilita Opciones de desarrollador) → **Depuración por USB**.
-2. Conectalo a tu PC por USB y:
-
-```bash
-adb install -r app/build/outputs/apk/debug/app-debug.apk
-```
-
-Si no tenés PC a mano, copiá el `app-debug.apk` a un pendrive y abrilo desde
-el explorador de archivos del proyector (hay que permitir "instalar apps de
-orígenes desconocidos").
-
----
-
-## Ponerlo como pantalla de inicio
-
-Al presionar el botón de inicio del control, elegí **Galfré Launcher** y
-**Siempre**. Muchos proyectores **no muestran ese diálogo**; en ese caso:
-
-```bash
+```sh
+adb install app-debug.apk
 adb shell cmd package set-home-activity ar.vale.projectorlauncher/.LauncherActivity
 ```
 
-o desde la app: el chip **"Poné Galfré como pantalla de inicio"** te lleva a la
-pantalla correcta del sistema.
+Antes de probar en un equipo, leé [`docs/proyectores.md`](docs/proyectores.md): hay cosas
+que no conviene tocar. Dejá habilitado el inicio del fabricante, es la salida si algo falla.
 
----
+**En un Fika P8 o un Chowa P8, no reinicies con Depuración USB activada:** se queda sin Wi-Fi
+ni Bluetooth. La guía instala por pendrive y solo usa ADB si hace falta.
 
-## Permisos que va a pedir (una sola vez)
+Si instalás encima de un APK compilado en otra máquina o en el CI, la firma de depuración
+no coincide y hay que desinstalar antes.
 
-| Cuándo | Permiso | Para qué |
-|---|---|---|
-| Abrir **Multimedia** | *Acceso a todos los archivos* (Android 11+) o *Almacenamiento* (anteriores) | Leer el pendrive y la memoria, como cualquier gestor de archivos. |
-| **Instalar APK** | *Instalar apps desconocidas* | Que el instalador del sistema acepte el `.apk` elegido. |
+### Para que el celular maneje otras apps
 
-El estado de red (Wi-Fi/datos/IP) no necesita ubicación ni permisos en runtime.
+Dentro de nuestras pantallas el celular funciona solo. Para manejar otras apps hay que dar
+permiso de accesibilidad una vez, desde Celular. Forzar la detención de la app lo apaga y
+hay que volver a darlo.
 
----
+Con ese permiso, el trackpad dibuja un puntero sobre cualquier app. En Android 9 el toque llega
+como un dedo de verdad, aunque el equipo no tenga pantalla táctil. En Android 11, Android cancela
+esos gestos, así que el toque le pide la acción a la vista que está en ese punto, como un lector
+de pantalla. Ahí, una parte de una app que no expone sus botones no responde al trackpad y quedan
+las flechas.
 
-## Configurar
+### Para usar Claude
 
-Abrí **Ajustes del launcher** (botón `>_` en la fila de atajos, o desde el
-Centro de ajustes → "Galfré Launcher"):
+Necesitás una clave de API de Anthropic. Se carga en Claude, en Ajustes, o desde el celular
+para no tipearla con el control. Cada pregunta se cobra en esa cuenta. La clave queda cifrada
+en el equipo y nunca sale de ahí, salvo hacia la API.
 
-- **App principal** → la app que se abre desde la tarjeta grande (o mantené apretada una app en la grilla → "Fijar como app principal").
-- **Abrir la app principal al encender** → el proyector arranca directo en esa app.
-- **Ordenar por uso** → lo más usado primero.
+**Para que maneje otras apps** hace falta el mismo permiso de Control total que usa el celular.
+Con eso Claude tiene seis herramientas: ver la pantalla, tocar, escribir, apretar una tecla,
+deslizar y esperar. No ve imágenes: Android 9 no deja sacar capturas, así que lee lo mismo que
+un lector de pantalla, como una lista numerada. Lo que lee de esa pantalla se manda a la API de
+Anthropic, y se puede apagar en los ajustes de Claude.
 
----
+Hay cosas que no toca aunque se lo pidan, y están en el código y no solo en las instrucciones:
+el instalador, los permisos, la tienda de Google y los ajustes del sistema, que puede abrir pero
+no leer ni tocar. Tampoco escribe en campos de contraseña.
+Una tarea se corta sola a los treinta pasos. Cada toque es un pedido a la API: buscar una
+película y darle reproducir son unos diez, y tarda cerca de medio minuto.
 
-## Estructura
+**Para hablarle** desde el celular hay dos caminos. El micrófono del teclado funciona siempre.
+El botón de micrófono de la página necesita que el navegador confíe en ella, y para eso el
+proyector la sirve también por HTTPS, en el puerto 8696, con un certificado que firma él mismo:
+el navegador avisa una vez y hay que aceptarlo. La transcripción la hace el celular.
 
+### La juntada
+
+En la pantalla Juntada hay un código para los invitados. Con ese código solo se pide permiso:
+cada uno pone su nombre y entra cuando el dueño lo deja pasar, desde su celular o en la pared.
+Al aprobar se elige hasta dónde llega: la juntada sola, o también el control (flechas, puntero,
+teclado y abrir apps, sin entrar a Celular, Ajustes ni Claude). Nadie más que el dueño le habla
+a Claude, carga la clave, manda archivos o abre enlaces. El pase de cada celular se guarda como
+huella, así que el archivo del equipo no sirve para entrar. La trivia la
+arma el dueño, desde la pared, desde su celular o pidiéndosela a Claude. Las preguntas las
+escribe Claude sobre el tema que elijan; sin clave o sin red, salen de un banco propio. La
+respuesta correcta no viaja a los celulares hasta que la pregunta cierra. La gente y las
+cuentas se guardan en el equipo; «Empezar de cero» borra todo, saca a los invitados y cambia
+el código.
+
+## Compilar
+
+Hace falta JDK 17 y el Android SDK con la plataforma 35.
+
+```sh
+./gradlew assembleDebug        # el APK queda en app/build/outputs/apk/debug/
+./gradlew testDebugUnitTest    # 280 tests de contrato
+./gradlew lintDebug            # los errores frenan la compilación
 ```
-GalfreDev-Os-Proyector/
-├─ ROADMAP.md                     # módulos, estado, límites y decisiones
-├─ app/
-│  ├─ build.gradle.kts            # minSdk 26, compileSdk 35, sin AndroidX
-│  └─ src/main/
-│     ├─ AndroidManifest.xml      # HOME, activities, BootReceiver, ApkProvider
-│     ├─ java/ar/vale/projectorlauncher/
-│     │  ├─ LauncherActivity.kt   # inicio (reloj, hero, módulos, atajos, grilla)
-│     │  ├─ SettingsActivity.kt   # ajustes del launcher
-│     │  ├─ FileBrowserActivity.kt# explorador USB/memoria (+ modo APK)
-│     │  ├─ PlayerActivity.kt     # video / música / imagen
-│     │  ├─ SettingsHubActivity.kt# centro de ajustes + red
-│     │  ├─ AppHubActivity.kt     # hub de apps (baldosas grandes)
-│     │  ├─ ApkProvider.kt        # sirve .apk al instalador (content://)
-│     │  ├─ ApkInstaller.kt       # flujo de instalación
-│     │  ├─ AppRepository.kt / AppInfo.kt / AppTileAdapter.kt / HubTileAdapter.kt
-│     │  ├─ FileItem.kt / FileListAdapter.kt
-│     │  ├─ Prefs.kt              # memoria (principal, favoritos, uso, arranque)
-│     │  └─ BootReceiver.kt       # automatización al encender
-│     └─ res/                     # paleta, layouts, íconos, animaciones, foco D-pad
-├─ build.gradle.kts
-├─ settings.gradle.kts
-└─ gradle/ (wrapper 8.14.3)
+
+El proyecto no usa AndroidX a propósito: solo el framework y Kotlin, para que arranque
+rápido en equipos con 1 GB de RAM.
+
+## Probar
+
+| Qué | Cómo |
+|---|---|
+| Recorrido en emulador | `scripts/emulator-smoke.sh <apk> <carpeta>`. Falla si algo se cierra solo o si la cinta no está donde debe |
+| Claude sin gastar | `python3 scripts/fake_claude.py`, un servidor de mentira. Solo lo acepta la versión de depuración. Con «contactos» maneja otra app paso a paso, y con «trivia» arma una |
+| Catálogo de la Tienda | `python3 scripts/store/check_catalog.py --token "$(gh auth token)"` resuelve las 21 apps contra sus fuentes |
+
+El CI compila, corre los tests y lint, y hace el recorrido en un emulador de TV a 1080p.
+Una vez por semana revisa que el catálogo siga resolviendo.
+
+## La marca
+
+Todo sale del Kit de marca v2. No se dibuja nada a mano:
+
+```sh
+python3 scripts/brand/build_fonts.py   # Archivo, Instrument Sans y Geist Mono
+python3 scripts/brand/build_logo.py "<carpeta 01_Logo del kit>"
+python3 scripts/brand/build_icons.py   # íconos de línea, trazo 1,7
 ```
 
+`scripts/brand/build_bootanimation.py` genera la animación de arranque del sistema, solo
+para equipos con root.
+
+Las reglas que más se rompen sin querer: una sola cinta por pantalla, la cinta nunca indica
+un estado, y arriba de la cinta solo va carbón.
+
+## El código
+
+| Carpeta | Qué hay |
+|---|---|
+| `ui/` | Base de las pantallas, cinta, arranque, teclado, paneles |
+| `apps/`, `media/`, `store/`, `wall/` | Una pantalla o módulo cada una |
+| `device/` | Lo del equipo: funciones del fabricante, temporizador, calibración |
+| `claude/` | Protocolo de la API, sesión, herramientas, clave, lectura y manejo de otras apps |
+| `juntada/` | Trivia, votación y cuentas; la pantalla de la pared y el banco de preguntas |
+| `remote/` | Servidor HTTP y HTTPS, emparejado, invitados, control por accesibilidad |
+
+Más detalle en el [diseño](docs/superpowers/specs/2026-11-06-galfredev-os-design.md), en
+[qué apps conviene instalar](docs/apps.md) y en las
+[notas de firmware](docs/proyectores.md).
+
+## Lo que no hace
+
+- Trapecio, foco, lámpara y entrada HDMI son del firmware de cada fabricante. Si el equipo
+  trae esas pantallas, las encontramos y las abrimos. No las podemos reemplazar.
+- La animación de arranque del sistema necesita root. La nuestra arranca después.
+- Netflix, Prime Video, Disney+ y HBO Max no están pensadas para estos equipos. Algunos las
+  traen de fábrica. Si faltan, Cine las busca en Aurora Store, y el celular las maneja, pero
+  pueden verse en baja calidad o no abrir. Si querés buena imagen, conectá un Google TV Streamer
+  o un Fire TV Stick por HDMI.
+- La conexión con el celular es HTTP dentro de tu red, sin cifrar. Usala en una red de confianza.
+  La versión por HTTPS existe para el micrófono, y su certificado no lo avala nadie.
+- Claude no ve la imagen. Si una app no describe sus botones, o es un video a pantalla
+  completa, no tiene qué leer. Tampoco puede confirmar que algo se esté reproduciendo.
+- Netflix se cierra sola en los emuladores, así que ahí Claude se probó con otras apps. Que
+  busque y reproduzca en el Netflix del proyector falta comprobarlo en el equipo.
+
 ---
 
-## Notas sobre el hardware de los proyectores
-
-- Muchos corren Android viejo y con poca RAM: por eso todo es liviano (sin
-  AndroidX, íconos vectoriales, animaciones baratas).
-- El reproductor usa los códecs del equipo: reproduce lo que el proyector
-  soporte de fábrica. Si hiciera falta más compatibilidad, el upgrade natural es
-  Media3/ExoPlayer (ver `ROADMAP.md`).
-- Si el equipo bloquea cambiar el launcher (algunos vienen "candadeados"),
-  revisá si permite Opciones de desarrollador o instalar apps externas.
-
----
-
-## Ideas para próximas versiones
-
-- Modo "ambient" con reloj grande cuando está inactivo.
-- Fondo de pantalla configurable (con el degradado de marca por defecto).
-- Perfil de kiosko (bloquear a una sola app con PIN).
-- Media3/ExoPlayer para más formatos; subtítulos; recordar dónde quedó cada video.
-- Atajos a entradas (HDMI/AV) donde el fabricante lo permita.
-
----
-
-_Galfré Dev · Projector OS_
+[galfredev.com](https://galfredev.com) · Río Tercero, Córdoba

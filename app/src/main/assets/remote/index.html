@@ -1,0 +1,1055 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#111111">
+<meta name="robots" content="noindex">
+<title>galfredev OS</title>
+<style>
+@font-face{font-family:Archivo;src:url(/fonts/archivo.ttf);font-weight:800;font-display:swap}
+@font-face{font-family:Instrument;src:url(/fonts/sans.ttf);font-weight:400;font-display:swap}
+@font-face{font-family:Instrument;src:url(/fonts/sans-medium.ttf);font-weight:500;font-display:swap}
+@font-face{font-family:Geist;src:url(/fonts/mono.ttf);font-weight:500;font-display:swap}
+:root{--carbon:#111;--carbon2:#1b1b1a;--carbon3:#262624;--hueso:#f1ede6;--gris:#a19c92;--linea:#2e2d2b;--control:#767169;--cinta:#e4a32b;--error:#d97a7a}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{margin:0;background:var(--carbon);color:var(--hueso);font:400 17px/1.4 Instrument,system-ui,sans-serif;display:flex;flex-direction:column;overscroll-behavior:none;user-select:none;-webkit-user-select:none}
+header{display:flex;align-items:center;justify-content:space-between;padding:calc(14px + env(safe-area-inset-top)) 20px 10px}
+header img{height:19px;display:block}
+#device{font:500 11.5px Geist,monospace;color:var(--gris);text-align:right;max-width:55%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+main{flex:1;min-height:0;overflow:auto;padding:6px 20px 16px}
+section{display:none;flex-direction:column;gap:14px;min-height:100%}
+section.on{display:flex}
+h1{font:800 34px/1 Archivo,sans-serif;letter-spacing:-.034em;margin:6px 0 2px}
+p{margin:0;color:var(--gris)}
+label,.tag{font:500 11.5px Geist,monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--gris);display:block;margin-bottom:6px}
+button{font:500 17px Instrument,sans-serif;color:var(--hueso);background:var(--carbon2);border:1px solid var(--linea);border-radius:0;padding:15px 14px;min-height:52px;touch-action:manipulation;cursor:pointer}
+button:active{background:var(--carbon3)}
+button.main{background:var(--hueso);color:var(--carbon);border-color:var(--hueso)}
+button.main:active{background:#e7e2d8}
+button svg{display:block;margin:auto}
+svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+input,textarea{width:100%;font:400 18px Instrument,sans-serif;color:var(--hueso);background:var(--carbon2);border:1px solid var(--control);border-radius:0;padding:13px 12px;outline:none;user-select:text;-webkit-user-select:text}
+input:focus,textarea:focus{border-color:var(--hueso)}
+textarea{min-height:120px;resize:none}
+.row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.two{grid-template-columns:repeat(2,1fr)}
+.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:auto 0}
+.pad button{aspect-ratio:1;min-height:0}
+.pad .blank{visibility:hidden}
+[hidden]{display:none!important}
+.list{display:flex;flex-direction:column;gap:8px}
+.item{display:flex;justify-content:space-between;align-items:center;gap:12px;text-align:left}
+.item small{font:500 11.5px Geist,monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--gris);white-space:nowrap}
+nav{display:flex;padding:6px 8px calc(8px + env(safe-area-inset-bottom));border-top:1px solid var(--linea);gap:2px;overflow-x:auto;scrollbar-width:none}
+nav::-webkit-scrollbar{display:none}
+nav button{flex:1 0 auto;background:none;border:0;font:500 13px Instrument,sans-serif;color:var(--gris);padding:10px 9px;min-height:44px}
+body.guest nav,body.guest #device{display:none}
+body.limited nav [data-tab=files],body.limited nav [data-tab=claude],body.limited .full{display:none}
+#asks{display:flex;flex-direction:column;gap:10px;padding:14px 20px;background:var(--carbon2);border-top:2px solid var(--hueso)}
+#asks .q small{font:500 12px Geist,monospace;letter-spacing:.02em;color:var(--gris);margin-left:8px}
+#asks button{min-height:48px;padding:10px 6px;font-size:15px}
+#mic{display:flex;align-items:center;justify-content:center;gap:10px;min-height:92px;font-size:20px}
+#mic svg{margin:0;width:28px;height:28px}
+#mic.live{background:var(--carbon2);color:var(--hueso);border-color:var(--hueso);animation:oir 1.1s ease-in-out infinite}
+@keyframes oir{50%{background:var(--carbon3)}}
+#said{border-left:2px solid var(--hueso);padding:10px 14px;background:var(--carbon2);font-size:16px;overflow-wrap:anywhere}
+#said b{display:block;font:500 11.5px Geist,monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--gris);margin-bottom:4px}
+a.hint{color:var(--gris);font-size:15px;text-decoration:underline;text-underline-offset:3px}
+details summary{font:500 11.5px Geist,monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--gris);padding:8px 0;cursor:pointer}
+details>div{display:flex;flex-direction:column;gap:10px;padding-top:6px}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:0}
+.seg button{min-height:44px;padding:10px 4px;font-size:15px;color:var(--gris)}
+.seg button.main{color:var(--carbon)}
+.pane{display:none;flex-direction:column;gap:12px}
+.pane.on{display:flex}
+.q{font:800 25px/1.08 Archivo,sans-serif;letter-spacing:-.03em}
+.opt{display:flex;align-items:center;gap:12px;text-align:left;width:100%}
+.opt i{font:500 12px Geist,monospace;font-style:normal;color:var(--gris);min-width:16px}
+.opt span{flex:1;overflow-wrap:anywhere}
+.opt small{font:500 12px Geist,monospace;color:var(--gris)}
+.opt.mine{background:var(--hueso);color:var(--carbon);border-color:var(--hueso)}
+.opt.mine i,.opt.mine small{color:var(--carbon)}
+.opt.right{border-color:var(--hueso);border-width:2px}
+.opt.off{opacity:.45}
+.bar{height:3px;background:var(--linea)}
+.bar i{display:block;height:3px;background:var(--hueso);width:0}
+.line{display:flex;justify-content:space-between;gap:12px;align-items:baseline;padding:9px 0;border-bottom:1px solid var(--linea)}
+.line span{flex:1;overflow-wrap:anywhere}
+.line b{font:500 14px Geist,monospace;white-space:nowrap}
+.line button{min-height:0;padding:6px 10px;font-size:13px;color:var(--gris)}
+.checks{display:flex;flex-wrap:wrap;gap:6px}
+.checks button{min-height:0;padding:9px 12px;font-size:15px;color:var(--gris)}
+.checks button.main{color:var(--carbon)}
+select{width:100%;font:400 18px Instrument,sans-serif;color:var(--hueso);background:var(--carbon2);border:1px solid var(--control);border-radius:0;padding:13px 12px;-webkit-appearance:none;appearance:none}
+.big{font:800 34px/1 Archivo,sans-serif;letter-spacing:-.034em}
+nav button.on{background:var(--cinta);color:var(--carbon)}
+#note{position:fixed;left:20px;right:20px;bottom:calc(76px + env(safe-area-inset-bottom));background:var(--carbon3);border-left:2px solid var(--hueso);padding:12px 14px;display:none;font-size:15px;pointer-events:none}
+#note.on{display:block}
+#note.bad{border-left-color:var(--error)}
+#line{height:2px;background:var(--linea)}
+#line i{display:block;height:2px;width:0;background:var(--hueso)}
+#list{font:500 13px Geist,monospace;color:var(--gris);display:flex;flex-direction:column;gap:6px;overflow-wrap:anywhere}
+#touch,#track{flex:1;min-height:220px;border:1px solid var(--control);touch-action:none;display:flex;align-items:center;justify-content:center;color:var(--gris);text-align:center;padding:20px}
+#pair{position:fixed;inset:0;background:var(--carbon);display:none;flex-direction:column;gap:16px;padding:calc(30px + env(safe-area-inset-top)) 20px 30px}
+#pair.on{display:flex}
+#pair img{height:22px;width:auto;align-self:flex-start;margin-bottom:26px}
+#pin{font:800 40px Archivo,sans-serif;letter-spacing:.12em;text-align:left}
+@media (min-width:560px){main,header,nav{max-width:520px;width:100%;margin:0 auto}}
+</style>
+</head>
+<body>
+<header><img src="/logo.svg" alt="galfredev"><div id="device"></div></header>
+<main>
+  <section id="control" class="on">
+    <div class="row two">
+      <button id="use-pad" class="main" aria-pressed="true">Flechas</button><button id="use-track" aria-pressed="false">Trackpad</button>
+    </div>
+    <div class="pad" id="pad">
+      <button class="blank"></button><button data-key="up" aria-label="Arriba"><svg viewBox="0 0 24 24"><path d="m6 15 6-6 6 6"/></svg></button><button class="blank"></button>
+      <button data-key="left" aria-label="Izquierda"><svg viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></svg></button><button data-key="ok" class="main">OK</button><button data-key="right" aria-label="Derecha"><svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
+      <button class="blank"></button><button data-key="down" aria-label="Abajo"><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button><button class="blank"></button>
+    </div>
+    <div id="track" hidden>Deslizá para mover el puntero. Tocá para elegir. Con dos dedos, desplazá la pantalla.</div>
+    <div class="row">
+      <button data-key="back">Atrás</button><button data-key="home">Inicio</button><button data-key="playpause">Pausa</button>
+      <button data-key="voldown">Vol −</button><button data-key="mute">Silencio</button><button data-key="volup">Vol +</button>
+    </div>
+  </section>
+
+  <section id="apps">
+    <h1>Abrí una app.</h1>
+    <p>Las que falten se buscan en el proyector, con Aurora Store. Algunas pueden verse en baja calidad o no abrir.</p>
+    <div class="tag">Servicios</div>
+    <div class="list" id="services"></div>
+    <div class="tag">Tus apps</div>
+    <div class="list" id="others"></div>
+  </section>
+
+  <section id="write">
+    <h1>Escribí desde acá.</h1>
+    <p>Lo que escribís aparece en el teclado del proyector. El teclado del celular también sirve para dictar.</p>
+    <div><label for="text">Texto</label><textarea id="text" autocomplete="off"></textarea></div>
+    <button id="sendtext" class="main">Enviar</button>
+    <div class="full"><label for="url">Enlace</label><input id="url" type="url" inputmode="url" placeholder="https://" autocomplete="off"></div>
+    <button id="sendurl" class="full">Abrir en el proyector</button>
+  </section>
+
+  <section id="files">
+    <h1>Mandá archivos.</h1>
+    <p>Videos, fotos, música, PDF o apps. Llegan a Cine, y en el proyector se elige si abrirlos.</p>
+    <input id="pick" type="file" multiple hidden>
+    <button id="choose" class="main">Elegir archivos</button>
+    <div id="line"><i></i></div>
+    <div id="list"></div>
+  </section>
+
+  <section id="claude">
+    <h1>Hablale a la pared.</h1>
+    <p>Pedile que abra una app, que busque una película y le dé reproducir, que arme una trivia, o preguntale lo que quieras.</p>
+    <button id="mic" class="main" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg><span>Hablar</span></button>
+    <div id="said" hidden><b></b><span></span></div>
+    <button id="stop" hidden>Detener</button>
+    <a id="secure" class="hint" hidden>Para hablarle con un toque, abrí la versión segura. El navegador va a avisar que no conoce el certificado: es el del proyector. Aceptalo una vez.</a>
+    <div><label for="question">O escribilo</label><textarea id="question" autocomplete="off" enterkeyhint="send"></textarea></div>
+    <button id="ask">Preguntar</button>
+    <details>
+      <summary>Clave de la API</summary>
+      <div>
+        <input id="apikey" type="password" autocomplete="off" placeholder="sk-ant-" aria-label="Clave de la API">
+        <button id="savekey">Guardar la clave</button>
+        <p>Se guarda cifrada en el proyector. Cada pedido se cobra en tu cuenta de Anthropic. Para manejar otras apps, Claude lee lo que hay en pantalla y lo manda a la API.</p>
+      </div>
+    </details>
+  </section>
+
+  <section id="juntada">
+    <div id="j-join" class="pane on">
+      <h1>Sumate a la juntada.</h1>
+      <p id="j-hint">Trivia, votaciones y las cuentas de la casa. Poné tu nombre, como te van a ver en la pared.</p>
+      <input id="j-name" maxlength="18" autocomplete="off" autocapitalize="words" enterkeyhint="go" aria-label="Tu nombre">
+      <button id="j-enter" class="main">Entrar</button>
+    </div>
+    <div id="j-wait" class="pane">
+      <h1>Falta que te dejen pasar.</h1>
+      <p>Tu pedido ya está en el proyector. Entrás solo cuando lo aprueben: dejá esta página abierta.</p>
+    </div>
+    <div id="j-main" class="pane">
+      <div class="seg">
+        <button data-pane="trivia" class="main">Trivia</button><button data-pane="poll">Votación</button><button data-pane="accounts">Cuentas</button>
+      </div>
+      <div id="j-trivia" class="pane on"></div>
+      <div id="j-poll" class="pane">
+        <div id="j-poll-live" class="pane on"></div>
+        <details>
+          <summary>Armar una votación</summary>
+          <div>
+            <input id="p-question" maxlength="120" autocomplete="off" placeholder="¿Qué comemos?" aria-label="Pregunta">
+            <textarea id="p-options" autocomplete="off" placeholder="Una opción por renglón" aria-label="Opciones"></textarea>
+            <button id="p-create" class="main">Abrir la votación</button>
+          </div>
+        </details>
+      </div>
+      <div id="j-accounts" class="pane">
+        <div id="j-accounts-live" class="pane on"></div>
+        <details>
+          <summary>Anotar un gasto</summary>
+          <div>
+            <input id="e-what" maxlength="40" autocomplete="off" placeholder="Asado, bebidas, nafta" aria-label="Qué fue">
+            <input id="e-amount" inputmode="numeric" autocomplete="off" placeholder="Cuánto, en pesos" aria-label="Monto">
+            <div><label for="e-payer">Pagó</label><select id="e-payer"></select></div>
+            <div><div class="tag">Se reparte entre</div><div class="checks" id="e-among"></div></div>
+            <button id="e-add" class="main">Anotar</button>
+          </div>
+        </details>
+      </div>
+    </div>
+    <details id="guests" hidden>
+      <summary>Invitados</summary>
+      <div id="guest-list"></div>
+    </details>
+  </section>
+
+  <section id="present">
+    <div class="row two"><button data-key="left">Anterior</button><button data-key="right" class="main">Siguiente</button></div>
+    <div id="touch">Deslizá el dedo acá para mover el puntero en la pared.</div>
+    <button data-key="blackout">Imagen en negro</button>
+  </section>
+</main>
+<div id="note" role="status"></div>
+<div id="asks" hidden>
+  <div class="tag">Quiere conectarse</div>
+  <div class="q"><span id="ask-name"></span><small id="ask-more"></small></div>
+  <div class="row"><button data-level="party" class="main">Solo juntada</button><button data-level="control">Con control</button><button data-level="none">No</button></div>
+</div>
+<nav>
+  <button data-tab="control" class="on">Control</button>
+  <button data-tab="apps">Apps</button>
+  <button data-tab="write">Escribir</button>
+  <button data-tab="files">Archivos</button>
+  <button data-tab="claude">Claude</button>
+  <button data-tab="juntada">Juntada</button>
+  <button data-tab="present">Presentar</button>
+</nav>
+
+<div id="pair">
+  <img src="/logo.svg" alt="galfredev">
+  <h1>Conectá tu celular.</h1>
+  <p>Abrí Celular en el proyector y escribí el PIN que aparece, o escaneá el código.</p>
+  <input id="pin" inputmode="numeric" maxlength="7" autocomplete="one-time-code" aria-label="PIN">
+  <button id="connect" class="main">Conectar</button>
+</div>
+
+<script>
+'use strict';
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+const STORE = 'gd.token';
+const load = key => { try { return localStorage.getItem(key); } catch (e) { return null; } };
+const save = (key, value) => { try { value ? localStorage.setItem(key, value) : localStorage.removeItem(key); } catch (e) {} };
+let token = load(STORE);
+// El código de la pared solo sirve para pedir permiso. El pase es propio de este celular y no
+// abre nada hasta que el dueño lo aprueba.
+let code = load('gd.guest');
+let pass = load('gd.pass');
+
+// Los códigos llegan después del #: nunca viajan en el pedido de la página.
+const fragment = new URLSearchParams(location.hash.slice(1));
+if (fragment.get('t')) { token = fragment.get('t'); save(STORE, token); }
+if (fragment.get('g')) { code = fragment.get('g'); save('gd.guest', code); }
+const wanted = fragment.get('tab');
+if (location.hash) history.replaceState(null, '', '/');
+const isOwner = !!token;
+// Hasta dónde llega un invitado: 'pending', 'party' (la juntada) o 'control' (además, el control).
+let level = null;
+const hasControl = () => isOwner || level === 'control';
+const inParty = () => isOwner || level === 'party' || level === 'control';
+function setMode() {
+  document.body.classList.toggle('guest', !hasControl());
+  document.body.classList.toggle('limited', !isOwner && level === 'control');
+}
+setMode();
+const bearer = () => 'Bearer ' + (token || pass || code);
+
+let noteTimer = 0;
+function note(text, bad) {
+  const n = $('#note');
+  n.textContent = text;
+  n.className = bad ? 'on bad' : 'on';
+  clearTimeout(noteTimer);
+  noteTimer = setTimeout(() => { n.className = ''; }, 3800);
+}
+
+const ERRORS = {
+  accessibility: 'Para manejar otras apps, activá el control total en Celular, en el proyector.',
+  no_field: 'No hay un campo de texto abierto en el proyector.',
+  url: 'Esa dirección no parece válida.',
+  key: 'Esa clave no tiene el formato correcto.',
+  space: 'No hay espacio libre en el proyector.',
+  incomplete: 'El archivo no llegó entero.',
+  person: 'Esto se confirma con el control, en el proyector.',
+  busy: 'Ya hay un archivo en camino. Esperá a que termine.',
+  not_installed: 'Esa app no está en el proyector.',
+  claude_busy: 'Claude todavía está con el pedido anterior.',
+  name: 'Poné un nombre.',
+  name_taken: 'Ese nombre ya está. Probá con otro.',
+  full: 'No entra nadie más.',
+  closed: 'Eso ya cerró.',
+  invalid: 'Falta completar algo.',
+  options: 'Poné entre dos y seis opciones, una por renglón.',
+  poll_open: 'Hay una votación abierta. La cierra quien la armó.',
+  not_allowed: 'Eso lo hace quien lo anotó.',
+  amount: 'Ese monto no parece válido.',
+  owner: 'Eso lo hace el dueño del proyector.',
+  private: 'Esa pantalla la maneja el dueño. Salí con Atrás o Inicio.',
+  gone: 'Ese pedido ya no está.',
+};
+
+function showPair() { $('#pair').className = 'on'; $('#pin').focus(); }
+
+async function post(path, body, quiet) {
+  let response;
+  try {
+    response = await fetch('/api/' + path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: bearer() },
+      body: JSON.stringify(body),
+    });
+  } catch (e) {
+    if (!quiet) note('No encontramos el proyector. Revisá que estén en la misma red.', true);
+    return null;
+  }
+  if (response.status === 401) { denied(); return null; }
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    // La juntada empezó de cero, o se reinició: hay que volver a entrar con el nombre.
+    if (data.error === 'join') { leave(); return null; }
+    if (!quiet) note(ERRORS[data.error] || 'Algo falló.', true);
+    return null;
+  }
+  return data;
+}
+
+function denied() {
+  if (isOwner) { showPair(); return; }
+  if (pass) {
+    // El pase dejó de valer: no lo aprobaron, lo sacaron, o la juntada empezó de cero.
+    pass = null;
+    save('gd.pass', null);
+    level = null;
+    setMode();
+    showTab('juntada');
+    leave();
+    note('No tenés permiso para entrar. Podés pedirlo de nuevo.', true);
+    return;
+  }
+  code = null;
+  save('gd.guest', null);
+  note('Ese código ya no sirve. Escaneá de nuevo el de la pantalla.', true);
+}
+
+let securePort = 0;
+async function loadState() {
+  if (!hasControl()) return;
+  const response = await fetch('/api/state', { headers: { Authorization: bearer() } }).catch(() => null);
+  if (!response) return;
+  if (response.status === 401) { denied(); return; }
+  if (!response.ok) return;
+  const state = await response.json();
+  $('#device').textContent = state.name || '';
+  securePort = state.secure_port || 0;
+}
+
+$('#connect').onclick = async () => {
+  const response = await fetch('/api/pair', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    // En el proyector se lee con un espacio en el medio: se puede escribir igual que se ve.
+    body: JSON.stringify({ pin: $('#pin').value.replace(/\D/g, '') }),
+  }).catch(() => null);
+  if (!response) { note('No encontramos el proyector.', true); return; }
+  const data = await response.json().catch(() => ({}));
+  if (response.ok) {
+    token = data.token;
+    save(STORE, token);
+    // Un invitado que se empareja pasa a ser dueño: la página se arma de nuevo con todo.
+    location.reload();
+  } else if (data.error === 'locked') {
+    note('Demasiados intentos. Esperá ' + data.seconds + ' segundos.', true);
+  } else if (data.error === 'closed') {
+    note('No hay un PIN a la vista. Escaneá el código de la pantalla Celular.', true);
+  } else {
+    note('Ese PIN no es. Fijate en el proyector.', true);
+  }
+};
+
+let tab = 'control';
+function showTab(name) {
+  tab = name;
+  $$('nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === name));
+  $$('section').forEach(s => s.classList.toggle('on', s.id === name));
+  if (isOwner) save('gd.tab', name);
+  if (name === 'apps') loadApps();
+  if (name === 'claude') watchClaude();
+  if (name === 'juntada') watchParty();
+}
+$$('nav button').forEach(tab => { tab.onclick = () => showTab(tab.dataset.tab); });
+
+// Los nombres vienen de cada app instalada: van siempre como texto.
+function fill(host, items) {
+  host.replaceChildren(...items.map(app => {
+    const row = document.createElement('button');
+    row.className = 'item';
+    const name = document.createElement('span');
+    name.textContent = app.name;
+    row.append(name);
+    if (app.installed === false) {
+      const state = document.createElement('small');
+      state.textContent = 'Sin instalar';
+      row.append(state);
+    }
+    row.onclick = async () => {
+      if (!await post('open', { package: app.package })) return;
+      note(app.installed === false ? 'Seguí en el proyector para instalarla.' : 'Abierta en el proyector.');
+      showTab('control');
+    };
+    return row;
+  }));
+}
+async function loadApps() {
+  if (!hasControl()) return;
+  const response = await fetch('/api/apps', { headers: { Authorization: bearer() } }).catch(() => null);
+  if (!response || !response.ok) return;
+  const data = await response.json().catch(() => null);
+  if (!data) return;
+  fill($('#services'), data.services || []);
+  fill($('#others'), data.apps || []);
+}
+
+$$('[data-key]').forEach(button => {
+  button.onclick = () => {
+    if (navigator.vibrate) navigator.vibrate(8);
+    post('key', { name: button.dataset.key });
+  };
+});
+
+let typing = 0;
+$('#text').oninput = () => {
+  clearTimeout(typing);
+  typing = setTimeout(() => post('text', { text: $('#text').value }), 160);
+};
+$('#sendtext').onclick = async () => {
+  clearTimeout(typing);
+  if (await post('text', { text: $('#text').value, submit: true })) $('#text').value = '';
+};
+$('#sendurl').onclick = async () => {
+  let url = $('#url').value.trim();
+  if (!url) return;
+  if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+  if (await post('link', { url })) note('Abierto en el proyector.');
+};
+
+$('#choose').onclick = () => $('#pick').click();
+$('#pick').onchange = async () => {
+  for (const file of $('#pick').files) await upload(file);
+  $('#pick').value = '';
+};
+function upload(file) {
+  return new Promise(resolve => {
+    const bar = $('#line i');
+    const row = document.createElement('div');
+    row.textContent = file.name;
+    $('#list').prepend(row);
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/api/upload?name=' + encodeURIComponent(file.name));
+    xhr.setRequestHeader('Authorization', bearer());
+    xhr.upload.onprogress = e => { if (e.lengthComputable) bar.style.width = (e.loaded / e.total * 100) + '%'; };
+    xhr.onloadend = () => {
+      bar.style.width = '0';
+      if (xhr.status === 200) {
+        row.textContent = file.name + ' · listo';
+      } else {
+        let code = '';
+        try { code = JSON.parse(xhr.responseText).error; } catch (e) {}
+        row.textContent = file.name + ' · no llegó';
+        note(ERRORS[code] || 'No se pudo mandar el archivo.', true);
+      }
+      resolve();
+    };
+    xhr.send(file);
+  });
+}
+
+// --- Claude ---
+async function ask() {
+  const text = $('#question').value.trim();
+  if (!text) return;
+  if (!await post('claude/ask', { text })) return;
+  $('#question').value = '';
+  $('#question').blur();
+  said(text, 'pensando…');
+  watchClaude();
+}
+$('#ask').onclick = ask;
+
+function said(label, text) {
+  $('#said').hidden = !text;
+  $('#said b').textContent = label || '';
+  $('#said span').textContent = text || '';
+}
+
+// Lo que Claude va haciendo se ve también acá: quien pidió algo no tiene que mirar la pared.
+let claudeTimer = 0;
+async function watchClaude() {
+  clearTimeout(claudeTimer);
+  if (tab !== 'claude' || !isOwner) return;
+  const response = await fetch('/api/claude/state', { headers: { Authorization: bearer() } }).catch(() => null);
+  const state = response && response.ok ? await response.json().catch(() => null) : null;
+  if (!state) return;
+  $('#stop').hidden = !state.busy;
+  if (state.question) said(state.question, state.status);
+  if (state.busy) claudeTimer = setTimeout(watchClaude, 900);
+}
+$('#stop').onclick = async () => { await post('claude/stop', {}); watchClaude(); };
+
+// El navegador solo presta el micrófono a una página segura. Si no se puede, queda el del teclado.
+const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+// Algunos navegadores no avisan nunca que terminaron de escuchar, o no devuelven nada: por eso
+// el final lo decide esta página, con tiempos propios, y no espera ese aviso.
+const HEAR_START_MS = 8000;
+const HEAR_PAUSE_MS = 1800;
+const HEAR_CLOSE_MS = 900;
+let hearing = null;
+function micState(on, label) {
+  $('#mic').classList.toggle('live', on);
+  $('#mic').setAttribute('aria-pressed', String(on));
+  $('#mic span').textContent = label || (on ? 'Te escucho. Tocá para enviar.' : 'Hablar');
+}
+function dictate() {
+  $('#question').focus();
+  note('Tocá el micrófono del teclado, decí tu pedido y apretá Preguntar.');
+  if (securePort && location.protocol !== 'https:') {
+    $('#secure').href = 'https://' + location.hostname + ':' + securePort + '/#t=' + token + '&tab=claude';
+    $('#secure').hidden = false;
+  }
+}
+function listen() {
+  const recognition = new Recognition();
+  recognition.lang = 'es-AR';
+  recognition.interimResults = true;
+  recognition.continuous = false;
+  const session = { text: '', refused: false, done: false, timer: 0 };
+  // Termina una sola vez, venga de donde venga: el aviso del navegador, el silencio o el reloj.
+  const finish = () => {
+    if (session.done) return;
+    session.done = true;
+    clearTimeout(session.timer);
+    recognition.onresult = recognition.onerror = recognition.onend = null;
+    try { recognition.abort(); } catch (e) {}
+    hearing = null;
+    micState(false);
+    if (session.refused) { dictate(); return; }
+    if (session.text) { ask(); return; }
+    said('', '');
+    dictate();
+    note('No te escuché. Probá de nuevo, o dictá con el micrófono del teclado.', true);
+  };
+  // Cerrar: se le da un instante al navegador para entregar las últimas palabras, y se envía igual.
+  session.close = () => {
+    if (session.done) return;
+    try { recognition.stop(); } catch (e) {}
+    micState(true, 'Enviando…');
+    clearTimeout(session.timer);
+    session.timer = setTimeout(finish, HEAR_CLOSE_MS);
+  };
+  recognition.onresult = e => {
+    session.text = Array.from(e.results).map(r => r[0].transcript).join(' ').trim();
+    $('#question').value = session.text;
+    said('Te escucho', session.text);
+    // Una pausa después de hablar es el final del pedido.
+    clearTimeout(session.timer);
+    session.timer = setTimeout(session.close, HEAR_PAUSE_MS);
+  };
+  recognition.onerror = e => {
+    session.refused = e.error === 'not-allowed' || e.error === 'service-not-allowed';
+    if (e.error !== 'no-speech') finish();
+  };
+  recognition.onend = finish;
+  try {
+    recognition.start();
+  } catch (e) { dictate(); return; }
+  hearing = session;
+  micState(true);
+  // Si en unos segundos no llegó ni una palabra, no se queda escuchando para siempre.
+  session.timer = setTimeout(finish, HEAR_START_MS);
+  if (navigator.vibrate) navigator.vibrate(12);
+}
+$('#mic').onclick = () => {
+  if (hearing) { hearing.close(); return; }
+  if (!Recognition || !window.isSecureContext) { dictate(); return; }
+  listen();
+};
+$('#savekey').onclick = async () => {
+  const key = $('#apikey').value.trim();
+  if (!key) return;
+  const data = await post('claude/key', { key });
+  if (data) {
+    $('#apikey').value = '';
+    note(data.stored ? 'Clave guardada.' : 'Este equipo no pudo guardarla: vale hasta que lo apagues.');
+  }
+};
+
+// Puntero: uno solo en camino. Si la red se atrasa se manda la última posición, no una fila.
+let target = null;
+let sending = false;
+function pump() {
+  if (sending || !target) return;
+  const body = target;
+  target = null;
+  sending = true;
+  post('pointer', body, true).finally(() => {
+    sending = false;
+    setTimeout(pump, 40);
+  });
+}
+function point(x, y) {
+  target = { x, y };
+  pump();
+}
+
+const touch = $('#touch');
+function move(e) {
+  e.preventDefault();
+  const t = e.touches ? e.touches[0] : e;
+  const box = touch.getBoundingClientRect();
+  point((t.clientX - box.left) / box.width, (t.clientY - box.top) / box.height);
+}
+function release() {
+  target = null;
+  post('pointer', { x: 0, y: 0, visible: false }, true);
+}
+touch.addEventListener('touchstart', move, { passive: false });
+touch.addEventListener('touchmove', move, { passive: false });
+touch.addEventListener('touchend', release);
+
+// Trackpad: como el de una notebook. El puntero se mueve por diferencia, no por dónde se apoya
+// el dedo, y queda en su lugar para poder tocar. La pantalla del proyector es 16:9.
+const track = $('#track');
+const SPEED = 1.7;
+const SCROLL = 0.6;
+const ASPECT = 16 / 9;
+const TAP_MOVE = 10;
+const TAP_MS = 350;
+const SWIPE_MOVE = 12;
+let cursorX = 0.5;
+let cursorY = 0.5;
+let stroke = null;
+
+const clamp = v => Math.min(1, Math.max(0, v));
+
+// Desplaza lo pedido aunque el puntero esté cerca de un borde: corre el punto de partida.
+function span(from, delta) {
+  const d = Math.min(1, Math.max(-1, delta));
+  const start = from + d > 1 ? 1 - d : from + d < 0 ? -d : from;
+  return [clamp(start), clamp(start + d)];
+}
+
+function useTrack(on) {
+  $('#pad').hidden = on;
+  track.hidden = !on;
+  $('#use-pad').className = on ? '' : 'main';
+  $('#use-track').className = on ? 'main' : '';
+  $('#use-pad').setAttribute('aria-pressed', String(!on));
+  $('#use-track').setAttribute('aria-pressed', String(on));
+  save('gd.track', on ? '1' : null);
+}
+$('#use-pad').onclick = () => useTrack(false);
+$('#use-track').onclick = () => useTrack(true);
+if (load('gd.track')) useTrack(true);
+
+track.addEventListener('touchstart', e => {
+  e.preventDefault();
+  const t = e.touches[0];
+  if (!stroke) stroke = { fingers: 0, moved: 0, dx: 0, dy: 0, at: performance.now() };
+  stroke.fingers = Math.max(stroke.fingers, e.touches.length);
+  stroke.x = t.clientX;
+  stroke.y = t.clientY;
+  point(cursorX, cursorY);
+}, { passive: false });
+
+track.addEventListener('touchmove', e => {
+  e.preventDefault();
+  if (!stroke) return;
+  const t = e.touches[0];
+  const width = track.getBoundingClientRect().width;
+  const dx = (t.clientX - stroke.x) / width * SPEED;
+  const dy = (t.clientY - stroke.y) / width * SPEED * ASPECT;
+  stroke.moved += Math.abs(t.clientX - stroke.x) + Math.abs(t.clientY - stroke.y);
+  stroke.x = t.clientX;
+  stroke.y = t.clientY;
+  if (stroke.fingers > 1) {
+    stroke.dx += dx * SCROLL;
+    stroke.dy += dy * SCROLL;
+    return;
+  }
+  cursorX = clamp(cursorX + dx);
+  cursorY = clamp(cursorY + dy);
+  point(cursorX, cursorY);
+}, { passive: false });
+
+track.addEventListener('touchend', e => {
+  e.preventDefault();
+  if (!stroke) return;
+  if (e.touches.length) {
+    stroke.x = e.touches[0].clientX;
+    stroke.y = e.touches[0].clientY;
+    return;
+  }
+  const done = stroke;
+  stroke = null;
+  if (done.fingers > 1) {
+    if (done.moved < SWIPE_MOVE) return;
+    const [x1, x2] = span(cursorX, done.dx);
+    const [y1, y2] = span(cursorY, done.dy);
+    post('swipe', { x1, y1, x2, y2 });
+  } else if (done.moved < TAP_MOVE && performance.now() - done.at < TAP_MS) {
+    if (navigator.vibrate) navigator.vibrate(8);
+    post('tap', { x: cursorX, y: cursorY });
+  }
+}, { passive: false });
+track.addEventListener('touchcancel', () => { stroke = null; });
+
+// --- Juntada ---
+// Todo lo que escribe la gente va como texto, nunca como HTML: acá hay invitados.
+let me = load('gd.jkey');
+let party = null;
+let partyTimer = 0;
+let pane = 'trivia';
+let drawn = {};
+const excluded = new Set();
+const pesos = n => '$ ' + Number(n).toLocaleString('es-AR');
+const el = (tag, cls, text) => {
+  const node = document.createElement(tag);
+  if (cls) node.className = cls;
+  if (text !== undefined) node.textContent = text;
+  return node;
+};
+const nameOf = id => ((party.people || []).find(p => p.id === id) || {}).name || '?';
+
+function partyPane(name) {
+  ['join', 'wait', 'main'].forEach(p => $('#j-' + p).classList.toggle('on', p === name));
+}
+function leave() {
+  me = null;
+  save('gd.jkey', null);
+  partyPane(level === 'pending' ? 'wait' : 'join');
+}
+
+async function partyPost(path, body) {
+  const data = await post('juntada/' + path, Object.assign({ key: me }, body));
+  if (data) drawParty(data);
+  return data;
+}
+
+async function joinParty(name) {
+  const data = await post('juntada/join', { name });
+  if (!data) { partyPane('join'); return; }
+  me = data.key;
+  save('gd.jkey', me);
+  watchParty();
+}
+$('#j-enter').onclick = async () => {
+  const name = $('#j-name').value.trim();
+  if (!name) { note(ERRORS.name, true); return; }
+  if (inParty()) { joinParty(name); return; }
+  // Primero el permiso: el nombre es lo que el dueño ve para decidir.
+  const data = await post('access/ask', { name });
+  if (!data) return;
+  pass = data.pass;
+  save('gd.pass', pass);
+  save('gd.jname', name);
+  level = 'pending';
+  partyPane('wait');
+  watchPass();
+};
+
+// Un invitado mira su permiso: mientras espera, y después por si el dueño le da o le saca el control.
+let passTimer = 0;
+async function watchPass() {
+  clearTimeout(passTimer);
+  if (isOwner || !pass) return;
+  const data = await post('access/me', {}, true);
+  if (!pass) return;
+  if (data && data.level !== level) {
+    const before = level;
+    level = data.level;
+    setMode();
+    if (level === 'pending') {
+      partyPane('wait');
+    } else {
+      if (level === 'control') { loadState(); if (before) note('Te dieron el control.'); }
+      else if (before === 'control') showTab('juntada');
+      const name = load('gd.jname');
+      if (!me && name) joinParty(name);
+      else watchParty();
+    }
+  }
+  if (!document.hidden) passTimer = setTimeout(watchPass, level === 'pending' ? 1500 : 5000);
+}
+
+async function watchParty() {
+  clearTimeout(partyTimer);
+  if (tab !== 'juntada' || !inParty()) return;
+  if (!me) { leave(); return; }
+  const data = await post('juntada/state', { key: me }, true);
+  if (data && !data.me) { leave(); return; }
+  if (data) drawParty(data);
+  // Durante una pregunta se consulta más seguido: el tiempo corre.
+  const live = data && data.trivia.phase !== 'idle' && data.trivia.phase !== 'final';
+  if (!document.hidden) partyTimer = setTimeout(watchParty, live ? 700 : 1500);
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { watchParty(); watchClaude(); watchPass(); watchAsks(); } });
+
+function showPane(name) {
+  pane = name;
+  $$('.seg button').forEach(b => { b.className = b.dataset.pane === name ? 'main' : ''; });
+  ['trivia', 'poll', 'accounts'].forEach(p => $('#j-' + p).classList.toggle('on', p === name));
+}
+$$('.seg button').forEach(b => { b.onclick = () => showPane(b.dataset.pane); });
+
+// Cada parte se vuelve a armar solo si cambió lo suyo: no se pisa lo que alguien está tocando.
+function once(key, value, build) {
+  const signature = JSON.stringify(value);
+  if (drawn[key] === signature) return;
+  drawn[key] = signature;
+  build();
+}
+
+function drawParty(state) {
+  const before = party;
+  party = state;
+  partyPane('main');
+  // Se pasa sola a lo que acaba de empezar, como la pared.
+  const phase = state.trivia.phase;
+  if (phase !== 'idle' && (!before || before.trivia.phase === 'idle')) showPane('trivia');
+  if (state.poll && state.poll.open && (!before || !before.poll || before.poll.question !== state.poll.question)) showPane('poll');
+  const t = Object.assign({}, state.trivia, { left_ms: 0, answered: 0 });
+  once('trivia', [t, state.me, state.owner], () => drawTrivia(state));
+  once('poll', [state.poll, state.me.id, state.owner], () => drawPoll(state));
+  once('accounts', [state.expenses, state.people, state.owner], () => drawAccounts(state));
+  once('people', state.people, () => drawPeople(state));
+}
+
+function drawTrivia(state) {
+  const t = state.trivia;
+  const host = $('#j-trivia');
+  const out = [];
+  if (t.phase === 'idle') {
+    if (t.failed) out.push(el('p', '', 'No pudimos armar la trivia. Probá de nuevo.'));
+    if (state.owner) {
+      const topic = el('input');
+      topic.maxLength = 80;
+      topic.placeholder = 'Tema: programación, fútbol, los 90';
+      topic.setAttribute('aria-label', 'Tema');
+      const count = el('select');
+      [5, 8, 10, 15].forEach(n => { const o = el('option', '', n + ' preguntas'); o.value = n; o.selected = n === 8; count.append(o); });
+      const go = el('button', 'main', 'Armar la trivia');
+      go.onclick = () => partyPost('trivia/start', { topic: topic.value.trim() || 'Cultura general', count: Number(count.value) });
+      out.push(el('h1', '', '¿Jugamos una trivia?'), el('p', '', 'Elegí el tema y Claude escribe las preguntas.'), topic, count, go);
+    } else {
+      out.push(el('h1', '', 'Todavía no hay trivia.'), el('p', '', 'La arma el dueño del proyector, o se la pide a Claude. Cuando empiece, aparece acá.'));
+    }
+  } else if (t.phase === 'loading') {
+    out.push(el('h1', '', 'Armando las preguntas…'), el('p', '', t.topic));
+  } else if (t.phase === 'ready') {
+    out.push(el('h1', '', 'Prepárense.'), el('p', '', t.own ? 'Sin conexión con Claude: van preguntas de la casa.' : 'Tema: ' + t.topic));
+  } else if (t.phase === 'final') {
+    const place = (t.ranking || []).findIndex(r => r.name === state.me.name);
+    out.push(el('div', 'tag', 'Resultado'), el('h1', '', place === 0 ? 'Ganaste.' : place > 0 ? 'Quedaste ' + (place + 1) + '.º' : 'Terminó.'));
+    (t.ranking || []).forEach((r, i) => {
+      const row = el('div', 'line');
+      row.append(el('span', '', (i + 1) + '. ' + r.name), el('b', '', r.score.toLocaleString('es-AR')));
+      out.push(row);
+    });
+  } else {
+    const reveal = t.phase === 'reveal';
+    out.push(el('div', 'tag', 'Pregunta ' + (t.index + 1) + ' de ' + t.total));
+    const bar = el('div', 'bar');
+    const fill = el('i');
+    bar.append(fill);
+    out.push(bar, el('div', 'q', t.question));
+    t.options.forEach((text, i) => {
+      const button = el('button', 'opt');
+      button.append(el('i', '', 'ABCD'[i]), el('span', '', text));
+      const mine = state.me.answer === i;
+      if (mine) button.classList.add('mine');
+      if (reveal) {
+        if (t.correct === i) { button.classList.add('right'); button.append(el('small', '', 'correcta')); }
+        else if (!mine) button.classList.add('off');
+      } else if (state.me.answer !== null && !mine) {
+        button.classList.add('off');
+      }
+      button.disabled = reveal || state.me.answer !== null;
+      button.onclick = () => { if (navigator.vibrate) navigator.vibrate(10); partyPost('answer', { question: t.index, option: i }); };
+      out.push(button);
+    });
+    if (reveal) {
+      const won = state.me.gained > 0;
+      out.push(el('p', '', state.me.answer === null ? 'No llegaste a responder.' : won ? 'Sumaste ' + state.me.gained + ' puntos.' : 'Esta no.'));
+      if (t.fact) out.push(el('p', '', t.fact));
+    } else if (state.me.answer !== null) {
+      out.push(el('p', '', 'Respuesta enviada. Mirá la pared.'));
+    }
+    // La barra baja sola hasta el final de la pregunta, sin esperar la próxima consulta.
+    if (!reveal) requestAnimationFrame(() => {
+      fill.style.width = (state.trivia.left_ms / t.of_ms * 100) + '%';
+      requestAnimationFrame(() => { fill.style.transition = 'width ' + state.trivia.left_ms + 'ms linear'; fill.style.width = '0'; });
+    });
+  }
+  if (t.phase !== 'idle') out.push(el('p', '', 'Tus puntos: ' + state.me.score.toLocaleString('es-AR')));
+  if (state.owner && t.phase !== 'idle') {
+    const stop = el('button', '', 'Terminar la trivia');
+    stop.onclick = () => partyPost('trivia/stop', {});
+    out.push(stop);
+  }
+  host.replaceChildren(...out);
+}
+
+function drawPoll(state) {
+  const poll = state.poll;
+  const host = $('#j-poll-live');
+  if (!poll) { host.replaceChildren(el('h1', '', '¿Qué votamos?'), el('p', '', 'Qué comemos, qué vemos, quién lava. Armá una acá abajo.')); return; }
+  const out = [el('div', 'tag', poll.open ? 'Votación' : 'Votación cerrada'), el('div', 'q', poll.question)];
+  poll.options.forEach((option, i) => {
+    const button = el('button', 'opt' + (poll.mine === i ? ' mine' : ''));
+    button.append(el('i', '', 'ABCDEF'[i]), el('span', '', option.text), el('small', '', String(option.votes)));
+    button.disabled = !poll.open;
+    button.onclick = () => partyPost('vote', { option: i });
+    out.push(button);
+  });
+  out.push(el('p', '', poll.total === 1 ? '1 voto' : poll.total + ' votos'));
+  if (poll.open && (state.owner || poll.by === state.me.id)) {
+    const close = el('button', '', 'Cerrar la votación');
+    close.onclick = () => partyPost('poll/close', {});
+    out.push(close);
+  }
+  host.replaceChildren(...out);
+}
+$('#p-create').onclick = async () => {
+  const options = $('#p-options').value.split('\n').map(o => o.trim()).filter(Boolean);
+  if (!await partyPost('poll', { question: $('#p-question').value.trim(), options })) return;
+  $('#p-question').value = '';
+  $('#p-options').value = '';
+  $('#p-create').closest('details').open = false;
+};
+
+function drawAccounts(state) {
+  const out = [];
+  if (!state.total) {
+    out.push(el('h1', '', 'Las cuentas de la casa.'), el('p', '', 'Anotá lo que pagaste y acá sale quién le debe a quién.'));
+  } else {
+    out.push(el('div', 'tag', 'Para quedar a mano'));
+    if (!state.transfers.length) out.push(el('div', 'q', 'Están a mano.'));
+    state.transfers.forEach(t => {
+      const row = el('div', 'line');
+      row.append(el('span', '', nameOf(t.from) + ' le paga a ' + nameOf(t.to)), el('b', '', pesos(t.amount)));
+      out.push(row);
+    });
+    out.push(el('div', 'tag', 'Gastos · ' + pesos(state.total)));
+    state.expenses.slice().reverse().forEach(e => {
+      const row = el('div', 'line');
+      const share = e.among.length === state.people.length ? 'entre todos' : 'entre ' + e.among.length;
+      row.append(el('span', '', e.what + ' · pagó ' + nameOf(e.payer) + ' · ' + share), el('b', '', pesos(e.amount)));
+      if (state.owner || e.by === state.me.id || e.payer === state.me.id) {
+        const remove = el('button', '', 'Borrar');
+        remove.onclick = () => partyPost('expense/delete', { id: e.id });
+        row.append(remove);
+      }
+      out.push(row);
+    });
+  }
+  $('#j-accounts-live').replaceChildren(...out);
+}
+
+function drawPeople(state) {
+  const payer = $('#e-payer');
+  const chosen = payer.value || state.me.id;
+  payer.replaceChildren(...state.people.map(p => { const o = el('option', '', p.name); o.value = p.id; o.selected = p.id === chosen; return o; }));
+  // Lo normal es repartir entre todos: se destilda a quien no le toca.
+  $('#e-among').replaceChildren(...state.people.map(p => {
+    const button = el('button', excluded.has(p.id) ? '' : 'main', p.name);
+    button.onclick = () => { excluded.has(p.id) ? excluded.delete(p.id) : excluded.add(p.id); button.className = excluded.has(p.id) ? '' : 'main'; };
+    return button;
+  }));
+}
+$('#e-add').onclick = async () => {
+  const amount = Number($('#e-amount').value.replace(/\D/g, ''));
+  const body = { what: $('#e-what').value.trim(), amount, payer: $('#e-payer').value, among: party.people.map(p => p.id).filter(id => !excluded.has(id)) };
+  if (!await partyPost('expense', body)) return;
+  $('#e-what').value = '';
+  $('#e-amount').value = '';
+  $('#e-add').closest('details').open = false;
+  note('Anotado.');
+};
+
+// --- Permisos: el dueño ve quién pide entrar y decide hasta dónde llega ---
+let askTimer = 0;
+let asking = null;
+async function watchAsks() {
+  clearTimeout(askTimer);
+  if (!isOwner) return;
+  const response = await fetch('/api/access/list', { headers: { Authorization: bearer() } }).catch(() => null);
+  const data = response && response.ok ? await response.json().catch(() => null) : null;
+  if (data) drawAsks(data);
+  if (!document.hidden) askTimer = setTimeout(watchAsks, 2500);
+}
+async function decide(id, to) {
+  const data = await post('access/decide', { id, level: to });
+  if (data) drawAsks(data);
+  else watchAsks();
+}
+function drawAsks(data) {
+  const first = data.pending[0] || null;
+  if (first && (!asking || asking.id !== first.id) && navigator.vibrate) navigator.vibrate([20, 60, 20]);
+  asking = first;
+  $('#asks').hidden = !first;
+  if (first) {
+    $('#ask-name').textContent = first.name;
+    $('#ask-more').textContent = data.pending.length > 1 ? 'y ' + (data.pending.length - 1) + ' más' : '';
+  }
+  $('#guests').hidden = !data.allowed.length;
+  once('guests', data.allowed, () => {
+    $('#guest-list').replaceChildren(...data.allowed.map(g => {
+      const row = el('div', 'line');
+      const control = g.level === 'control';
+      const swap = el('button', '', control ? 'Quitar control' : 'Dar control');
+      swap.onclick = () => decide(g.id, control ? 'party' : 'control');
+      const out = el('button', '', 'Sacar');
+      out.onclick = () => decide(g.id, 'none');
+      row.append(el('span', '', g.name + (control ? ' · con control' : ' · juntada')), swap, out);
+      return row;
+    }));
+  });
+}
+$$('#asks [data-level]').forEach(button => {
+  button.onclick = () => { if (asking) decide(asking.id, button.dataset.level); };
+});
+
+// La página vuelve a donde la dejaste. Un invitado arranca en la juntada: pide permiso o espera.
+if (isOwner) {
+  showTab(wanted || load('gd.tab') || 'control');
+  loadState();
+  watchAsks();
+} else if (pass || code) {
+  if (!pass) $('#j-hint').textContent = 'Poné tu nombre, como te van a ver en la pared. Entrás cuando el dueño del proyector te deje pasar.';
+  showTab('juntada');
+  // Con un pase guardado no se muestra nada hasta saber si sigue valiendo.
+  if (pass) partyPane('none');
+  watchPass();
+} else {
+  showPair();
+}
+</script>
+</body>
+</html>

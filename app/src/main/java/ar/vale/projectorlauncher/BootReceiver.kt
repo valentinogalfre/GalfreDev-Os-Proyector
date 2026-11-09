@@ -3,6 +3,7 @@ package ar.vale.projectorlauncher
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import ar.vale.projectorlauncher.remote.RemoteService
 
 /**
  * Automatización: marca que, al mostrarse la pantalla de inicio después de
@@ -18,5 +19,6 @@ class BootReceiver : BroadcastReceiver() {
         if (prefs.autoLaunchOnBoot && prefs.primaryPkg != null) {
             prefs.pendingBootLaunch = true
         }
+        if (prefs.remoteEnabled) RemoteService.start(context)
     }
 }

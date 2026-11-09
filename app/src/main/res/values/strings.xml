@@ -1,92 +1,401 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Galfré Launcher</string>
-    <string name="brand">Galfré</string>
-    <string name="tagline">Launcher by Galfré Dev</string>
-    <string name="logo_mark">&gt;_</string>
+    <string name="app_name">galfredev OS</string>
 
-    <string name="settings_title">Ajustes</string>
-    <string name="search_hint">Buscar app…</string>
-    <string name="apps_count">%1$d aplicaciones</string>
+    <!-- Lema: siempre con el logo. Nunca junto a la bajada. -->
+    <string name="lema_line_1">Software bien</string>
+    <string name="lema_line_2">hecho, a medida.</string>
+    <string name="lema_mark">a medida.</string>
 
-    <string name="hero_open">Tocá para abrir</string>
-    <string name="hero_none_title">Elegí la app principal</string>
-    <string name="hero_none_sub">Tocá para elegir qué se abre desde el inicio</string>
-    <string name="cant_open">No se pudo abrir la app</string>
+    <!-- Arranque: los números son los de la lámina de construcción del manual. -->
+    <string name="boot_guide_x">altura de x · 526</string>
+    <string name="boot_guide_base">línea de base · 0</string>
+    <string name="boot_guide_foot">pie · −78</string>
+    <string name="boot_guide_desc">descendente · −197</string>
+    <string name="boot_stem">asta 164</string>
+    <string name="boot_foot">pie 119</string>
+    <string name="boot_label_resolution">PANEL</string>
+    <string name="boot_label_apps">APPS</string>
+    <string name="boot_label_net">RED</string>
 
-    <string name="pick_primary">Elegí la app principal</string>
-    <string name="set_primary">Fijar como app principal</string>
-    <string name="unset_primary">Quitar como app principal</string>
-    <string name="favorite">Marcar favorito</string>
-    <string name="unfavorite">Quitar de favoritos</string>
-    <string name="app_info">Información de la app</string>
-    <string name="uninstall">Desinstalar</string>
+    <!-- Comunes -->
     <string name="cancel">Cancelar</string>
-    <string name="none">—</string>
+    <string name="delete">Borrar</string>
     <string name="back">Volver</string>
+    <string name="cant_open">No pudimos abrir esa app</string>
 
-    <string name="default_chip">Poné Galfré como pantalla de inicio ›</string>
+    <!-- Teclado -->
+    <string name="key_shift">Mayús</string>
+    <string name="key_symbols">Símbolos</string>
+    <string name="key_letters">Letras</string>
+    <string name="key_space">Espacio</string>
+    <string name="key_delete">Borrar</string>
+    <string name="key_done">Listo</string>
 
-    <string name="net_wifi">Wi-Fi conectado</string>
-    <string name="net_data">Datos móviles</string>
+    <!-- Red -->
+    <string name="net_wifi">Wi-Fi</string>
+    <string name="net_data">Datos</string>
+    <string name="net_ethernet">Ethernet</string>
+    <string name="net_other">Conectado</string>
     <string name="net_off">Sin conexión</string>
 
-    <string name="q_wifi">Wi-Fi</string>
-    <string name="q_bt">Bluetooth</string>
-    <string name="q_display">Pantalla</string>
-    <string name="q_sound">Sonido</string>
-    <string name="q_all">Sistema</string>
-    <string name="q_launcher">Launcher</string>
+    <!-- Inicio -->
+    <string name="word_apps">Apps</string>
+    <string name="word_cine">Cine</string>
+    <string name="word_tienda">Tienda</string>
+    <string name="word_claude">Claude</string>
+    <string name="word_juntada">Juntada</string>
+    <string name="word_pared">Pared</string>
+    <string name="word_celular">Celular</string>
+    <string name="word_ajustes">Ajustes</string>
 
-    <string name="auto_boot">Abrir la app principal al encender</string>
-    <string name="auto_boot_sub">Arranca directo en tu app al prender el proyector</string>
-    <string name="sort_usage">Ordenar por uso</string>
-    <string name="sort_usage_sub">Las apps más usadas aparecen primero</string>
-    <string name="primary_app">App principal</string>
-    <string name="default_home">Pantalla de inicio del sistema</string>
-    <string name="default_home_sub">Elegí Galfré Launcher como inicio por defecto</string>
+    <plurals name="home_apps_label">
+        <item quantity="one">%1$d app</item>
+        <item quantity="other">%1$d apps</item>
+    </plurals>
+    <string name="home_apps_title">Lo que más usás, primero.</string>
+    <string name="home_cine_title">Tus películas, fotos y música.</string>
+    <string name="home_cine_body">Desde un USB, la memoria o el celular.</string>
+    <string name="home_cine_left">Faltan %1$s</string>
+    <string name="home_cine_browse">Explorar archivos</string>
+    <string name="home_cine_services">Netflix, Prime Video y más</string>
+    <string name="home_store_title">Apps que sirven en un proyector.</string>
+    <string name="home_store_body">Elegidas por nosotros y bajadas de su fuente oficial.</string>
+    <string name="home_store_all">Ver las %1$d apps</string>
+    <string name="home_claude_title">Preguntale a la pared.</string>
+    <string name="home_claude_body">Responde grande y usa las apps por vos: abre, busca y le da reproducir.</string>
+    <string name="home_claude_no_key">Responde grande y usa las apps por vos. Hace falta tu clave de la API.</string>
+    <string name="home_party_title">Todos juegan desde su celular.</string>
+    <string name="home_party_body">Trivia, votaciones y las cuentas de la casa. Escanean un código y listo.</string>
+    <string name="home_party_open">Abrir la juntada</string>
+    <string name="home_wall_body">La hora en la pared cuando nadie usa el proyector. Aparece sola.</string>
+    <string name="home_wall_open">Mostrar la pared</string>
+    <string name="home_remote_title">Tu celular es el control.</string>
+    <string name="home_remote_body">Flechas, teclado, archivos y un puntero para presentar. Sin instalar nada.</string>
+    <string name="home_remote_on">Conectar un celular</string>
+    <string name="home_remote_off">Activar</string>
+    <string name="home_settings_title">Ajustá tu proyector.</string>
+    <string name="home_settings_all">Todos los ajustes</string>
+    <string name="home_usb">Entró un USB. Está en Cine.</string>
 
-    <!-- Módulo: archivos y reproductor -->
-    <string name="module_media">Multimedia</string>
-    <string name="files_title">Archivos</string>
-    <string name="files_folder">Carpeta</string>
-    <string name="files_origins">Elegí un origen: memoria interna o USB</string>
-    <string name="files_empty_roots">No se encontró ningún origen de archivos</string>
-    <string name="files_empty_dir">Carpeta vacía</string>
-    <string name="files_need_permission">Galfré necesita permiso para leer los archivos del equipo</string>
-    <string name="files_grant">Dar permiso</string>
-    <string name="files_cant_open_here">Por ahora este tipo de archivo no se abre desde acá</string>
-    <string name="player_error">No se pudo reproducir el archivo</string>
+    <string name="apps_search">Buscar una app</string>
 
-    <!-- Módulo: centro de ajustes + red -->
-    <string name="module_settings_hub">Ajustes</string>
-    <string name="hub_title">Centro de ajustes</string>
-    <string name="hub_datetime">Fecha y hora</string>
-    <string name="hub_language">Idioma</string>
-    <string name="hub_storage">Almacenamiento</string>
-    <string name="hub_apps">Aplicaciones</string>
-    <string name="hub_home">Pantalla de inicio</string>
-    <string name="hub_launcher">Galfré Launcher</string>
-    <string name="hub_about">Acerca del equipo</string>
-    <string name="hub_all">Todos los ajustes</string>
-    <string name="net_ethernet">Ethernet conectado</string>
-    <string name="net_other">Conectado</string>
+    <!-- Opciones de una app -->
+    <string name="set_primary">Fijar como app principal</string>
+    <string name="unset_primary">Quitar como app principal</string>
+    <string name="favorite">Marcar como favorita</string>
+    <string name="unfavorite">Quitar de favoritas</string>
+    <string name="app_info">Información de la app</string>
+    <string name="uninstall">Desinstalar</string>
 
-    <!-- Módulo: hub de apps -->
-    <string name="module_apphub">Mis apps</string>
-    <string name="apphub_title">Mis apps</string>
-    <string name="apphub_hint">OK abre · mantené apretado para marcar favorito</string>
-    <string name="apphub_empty">No hay apps instaladas</string>
-
-    <!-- Módulo: instalador de APKs -->
-    <string name="module_apk">Instalar APK</string>
-    <string name="apk_title">Instalar APK</string>
-    <string name="apk_need_unknown_sources">Permití a Galfré instalar apps desconocidas y volvé a intentarlo</string>
-    <string name="apk_install_error">No se pudo abrir el instalador</string>
-    <string name="apk_empty_dir">No hay archivos .apk en esta carpeta</string>
-
-    <!-- Explorador: nombres amigables de los orígenes y aviso de permiso -->
+    <!-- Cine -->
+    <string name="cine_continue">Seguí viendo</string>
+    <string name="cine_sources">Orígenes</string>
+    <string name="cine_services">Servicios</string>
+    <string name="streaming_missing">Sin instalar</string>
+    <string name="streaming_body">No está en este equipo. Se baja de Google Play con Aurora Store y se maneja con el trackpad del celular. Puede verse en baja calidad, o no abrir.</string>
+    <string name="streaming_aurora_open">Buscarla en Aurora Store</string>
+    <string name="streaming_aurora_install">Instalar Aurora Store</string>
+    <string name="streaming_phone">Conectar el celular</string>
+    <string name="streaming_hdmi_sub">Para un Chromecast o un Fire TV enchufado al proyector</string>
+    <string name="cine_left">faltan %1$s</string>
+    <string name="cine_inbox">Recibido del celular</string>
+    <string name="cine_limited">Acceso limitado</string>
     <string name="files_internal">Memoria interna</string>
-    <string name="files_usb">USB (%1$s)</string>
-    <string name="files_permission_screen_missing">Este equipo no tiene la pantalla de permiso: concedelo en Ajustes › Apps › Acceso especial › Acceso a todos los archivos</string>
+    <string name="files_usb">USB %1$s</string>
+    <string name="files_need_permission">Necesitamos permiso para leer tus archivos.</string>
+    <string name="files_grant">Dar permiso</string>
+    <string name="files_full_access">Dar acceso a todos los archivos</string>
+    <string name="files_full_access_sub">Hace falta para ver APK y PDF. Los videos y las fotos ya se ven.</string>
+    <string name="files_full_access_missing">Este equipo no trae esa pantalla. Se puede dar por ADB.</string>
+    <string name="files_full_access_adb">Por ADB: appops set %1$s MANAGE_EXTERNAL_STORAGE allow</string>
+    <string name="files_empty_roots">No encontramos ningún origen de archivos.</string>
+    <string name="files_empty_dir">Esta carpeta está vacía.</string>
+    <string name="files_cant_open_here">Ese tipo de archivo no se abre desde acá</string>
+
+    <!-- Reproductor -->
+    <string name="player_error">No pudimos reproducir este archivo</string>
+    <string name="player_error_body">El sistema no decodifica este formato. Otro reproductor sí puede.</string>
+    <string name="player_open_with">Abrir con %1$s</string>
+    <string name="player_get_player">Conseguir un reproductor</string>
+    <string name="player_resumed">Seguimos desde %1$s</string>
+    <string name="player_hint_media">OK pausa · ← → 10 s · ↑ ↓ archivo</string>
+    <string name="player_hint_image">OK pase automático · ← → foto</string>
+    <string name="player_hint_pdf">← → página</string>
+    <string name="player_slideshow_on">Pase automático encendido</string>
+    <string name="player_slideshow_off">Pase automático apagado</string>
+    <string name="player_pdf_error">No pudimos abrir este PDF</string>
+
+    <!-- Tienda -->
+    <string name="store_data">%1$d apps · revisado %2$s</string>
+    <string name="store_security">Seguridad</string>
+    <string name="store_for_you">Mejores versiones para este equipo</string>
+    <string name="store_own">Tus archivos</string>
+    <string name="store_apk_sub">Instalá un APK desde el USB, la memoria o el celular.</string>
+    <string name="store_not_offered">Lo que no podemos instalar</string>
+    <string name="store_installed">instalada</string>
+    <string name="store_incompatible">no compatible</string>
+    <string name="store_better_than">Mejor que %1$s en una pantalla grande.</string>
+    <string name="store_legacy_title">Versión vieja de %1$s</string>
+    <string name="store_legacy_sub">Conviene desinstalarla.</string>
+    <string name="store_label">%1$s · licencia %2$s</string>
+    <string name="store_tv_first">Hecha para TV</string>
+    <string name="store_tv_adapted">Adaptada a TV</string>
+    <string name="store_checking">Consultando la última versión…</string>
+    <string name="store_no_network">No pudimos consultar la última versión.</string>
+    <string name="store_needs_android">Necesita una versión más nueva de Android (API %1$d).</string>
+    <string name="store_versions">Tenés la %1$s · última %2$s</string>
+    <string name="store_version">Última versión: %1$s</string>
+    <string name="store_ready">Lista para instalar</string>
+    <string name="store_downloading">Bajando %1$s…</string>
+    <string name="store_open">Abrir</string>
+    <string name="store_update">Actualizar</string>
+    <string name="store_install">Instalar</string>
+    <string name="store_retry">Reintentar</string>
+    <string name="store_err_network">Se cortó la descarga. Revisá la conexión y volvé a probar.</string>
+    <string name="store_err_space">No hay espacio libre suficiente en el equipo.</string>
+    <string name="store_err_corrupt">El archivo llegó dañado. No lo instalamos.</string>
+    <string name="store_err_package">El archivo no es la app que pediste. No lo instalamos.</string>
+    <string name="store_err_signer">La firma no coincide con la del proyecto. No lo instalamos.</string>
+    <string name="store_err_too_new">Esta versión necesita un Android más nuevo.</string>
+    <string name="store_err_unreadable">No pudimos leer el archivo descargado.</string>
+
+    <!-- Funciones del proyector -->
+    <string name="fn_keystone">Trapecio</string>
+    <string name="fn_focus">Foco</string>
+    <string name="fn_hdmi">Entrada HDMI</string>
+    <string name="fn_mirror">Pantalla inalámbrica</string>
+    <string name="fn_vendor_home">Inicio original del equipo</string>
+
+    <!-- Calibración -->
+    <string name="cal_title">Calibración</string>
+    <string name="cal_sub">Foco, geometría y niveles</string>
+    <string name="cal_focus">FOCO</string>
+    <string name="cal_focus_hint">Girá el foco hasta que las puntas de las estrellas se vean nítidas.</string>
+    <string name="cal_geometry">GEOMETRÍA</string>
+    <string name="cal_geometry_hint">El círculo tiene que ser redondo y los bordes, rectos. OK abre el trapecio.</string>
+    <string name="cal_levels">NIVELES</string>
+    <string name="cal_levels_hint">Tenés que distinguir todos los escalones de abajo.</string>
+
+    <!-- Pared -->
+    <string name="wall_words">Hora en palabras</string>
+    <string name="wall_clock">Hora grande</string>
+    <string name="wall_grid">Retícula</string>
+    <string name="wall_time_up">Se acabó el tiempo.</string>
+
+    <!-- Ajustes -->
+    <string name="value_on">encendido</string>
+    <string name="value_off">apagado</string>
+    <string name="value_yes">sí</string>
+    <string name="value_no">no</string>
+    <string name="value_none">ninguna</string>
+    <string name="set_projector">Proyector</string>
+    <string name="set_blackout">Apagar la imagen</string>
+    <string name="set_blackout_sub">Negro total hasta la próxima tecla</string>
+    <string name="set_sleep">Temporizador de apagado</string>
+    <string name="set_sleep_lock">Pausa lo que suena y apaga la imagen.</string>
+    <string name="set_sleep_black">Pausa lo que suena y deja la imagen en negro.</string>
+    <string name="set_sleep_body">Android no deja que una app apague el equipo. Lo más cerca es bloquear la pantalla, y para eso hay que dar un permiso una sola vez.</string>
+    <string name="set_sleep_on">Listo: en %1$d minutos apagamos la imagen</string>
+    <string name="set_sleep_cancel">Cancelar el temporizador</string>
+    <string name="set_sleep_admin">Permitir bloquear la pantalla</string>
+    <string name="set_sleep_admin_why">Solo se usa para apagar la imagen cuando vence el temporizador.</string>
+    <string name="set_sleep_admin_missing">Este equipo no trae esa pantalla</string>
+    <string name="set_minutes">%1$d min</string>
+    <string name="set_system">Sistema</string>
+    <string name="set_wifi">Wi-Fi</string>
+    <string name="set_bluetooth">Bluetooth</string>
+    <string name="set_volume">Volumen</string>
+    <string name="set_volume_sub">Ajustalo con izquierda y derecha</string>
+    <string name="set_display">Pantalla</string>
+    <string name="set_date">Fecha y hora</string>
+    <string name="set_language">Idioma</string>
+    <string name="set_storage">Almacenamiento</string>
+    <string name="set_apps">Apps del sistema</string>
+    <string name="set_all">Todos los ajustes</string>
+    <string name="set_sys_about">Información del equipo</string>
+    <string name="set_sys_dev">Opciones de desarrollador</string>
+    <string name="set_sys_dev_sub">En algunos equipos, prender con la depuración activada deja sin Wi-Fi. Apagala antes de reiniciar.</string>
+    <string name="set_home">Es la pantalla de inicio</string>
+    <string name="set_home_adb">Este equipo no ofrece una pantalla para elegirlo. Se hace una sola vez por ADB, desde una computadora:\n\n%1$s\n\nApagá la depuración antes de reiniciar: en algunos equipos, prender con ella activada deja sin Wi-Fi.</string>
+    <string name="set_primary_app">App principal</string>
+    <string name="set_auto_boot">Abrir la app principal al encender</string>
+    <string name="set_auto_boot_sub">Arranca directo en tu app</string>
+    <string name="set_sort_usage">Ordenar las apps por uso</string>
+    <string name="set_home_section">Inicio</string>
+    <string name="set_theme">Tema</string>
+    <string name="theme_carbon">Carbón</string>
+    <string name="theme_day">Hueso</string>
+    <string name="theme_auto">Según la hora</string>
+    <string name="set_motion">Animaciones</string>
+    <string name="motion_auto">automáticas</string>
+    <string name="motion_full">completas</string>
+    <string name="motion_reduced">reducidas</string>
+    <string name="motion_auto_sub">Se ajustan a lo que medimos en este equipo</string>
+    <string name="set_boot_anim">Animación de arranque</string>
+    <string name="set_replay_boot">Ver la animación de arranque</string>
+    <string name="set_wall_idle">Mostrar la pared en reposo</string>
+    <string name="set_claude_sub">Clave y modelo</string>
+    <string name="set_remote">Controlar desde el celular</string>
+    <string name="set_remote_sub">Abre un servidor en tu red local</string>
+    <string name="set_about">Acerca de</string>
+    <string name="set_version">Versión</string>
+    <string name="set_about_body">Un sistema de galfredev para proyectores. Software bien hecho, a medida.\n\ngalfredev.com · Río Tercero, Córdoba</string>
+    <string name="set_device">Equipo</string>
+    <string name="set_platform">Software del equipo</string>
+    <string name="set_abi">Procesador %1$s</string>
+    <string name="set_measured">Duración de un cuadro</string>
+    <string name="set_ms">%1$.1f ms</string>
+    <string name="set_free">Espacio libre</string>
+    <string name="set_licenses">Licencias</string>
+
+    <!-- Claude -->
+    <string name="claude_intro">¿Qué querés saber?</string>
+    <string name="claude_intro_no_key">Claude responde en la pared y maneja el proyector. Para eso hace falta tu clave de la API.</string>
+    <string name="claude_ask">Preguntar</string>
+    <string name="claude_ask_title">Tu pregunta</string>
+    <string name="claude_new">Empezar de nuevo</string>
+    <string name="claude_stop">Detener</string>
+    <string name="claude_thinking">pensando…</string>
+    <string name="claude_searching">buscando en internet…</string>
+    <string name="claude_acting">usando el proyector…</string>
+    <string name="claude_looking">mirando la pantalla…</string>
+    <string name="claude_tapping">tocando…</string>
+    <string name="claude_typing">escribiendo…</string>
+    <string name="claude_moving">moviéndose por la app…</string>
+    <string name="claude_opening">abriendo…</string>
+    <string name="claude_hud">Claude · %1$s</string>
+    <string name="claude_step">› %1$s</string>
+    <string name="claude_hands">Manejar otras apps: %1$s</string>
+    <string name="claude_refused">Claude no respondió esto. Probá preguntarlo de otra forma.</string>
+    <string name="claude_too_long">Esto necesitaba demasiados pasos. Probá con un pedido más concreto.</string>
+    <string name="claude_link_title">¿Abrir este enlace?</string>
+    <string name="claude_link_yes">Abrir</string>
+    <string name="claude_key_load">Cargar la clave</string>
+    <string name="claude_key_change">Cambiar la clave</string>
+    <string name="claude_key_title">Clave de la API de Anthropic</string>
+    <string name="claude_key_delete">Borrar la clave</string>
+    <string name="claude_key_help">Se saca en console.anthropic.com. Es más fácil pegarla desde el celular: entrá a Celular. Cada pregunta se cobra en esa cuenta.</string>
+    <string name="claude_key_ready">Clave cargada. Cada pregunta se cobra en tu cuenta de Anthropic. Para manejar otras apps, Claude lee lo que hay en pantalla y lo manda a la API.</string>
+    <string name="claude_key_invalid">Esa clave no tiene el formato correcto</string>
+    <string name="claude_key_saved">Clave guardada</string>
+    <string name="claude_key_memory">Este equipo no pudo guardarla: vale hasta que lo apagues</string>
+    <string name="claude_model">Modelo: %1$s</string>
+    <string name="claude_model_title">Modelo</string>
+    <string name="claude_model_body">Opus es el más capaz. Sonnet cuesta la mitad. Haiku es el más rápido y barato.</string>
+    <string name="claude_search">Buscar en internet: %1$s</string>
+    <string name="claude_err_key">La clave no es válida. Revisala en Ajustes.</string>
+    <string name="claude_err_billing">Tu cuenta de Anthropic no tiene saldo.</string>
+    <string name="claude_err_forbidden">Esta clave no tiene permiso para usar Claude.</string>
+    <string name="claude_err_model">Ese modelo no está disponible en tu cuenta. Probá con otro en Ajustes.</string>
+    <string name="claude_err_rate">Hubo demasiadas preguntas seguidas. Probá en un rato.</string>
+    <string name="claude_err_busy">Claude está saturado. Probá en un rato.</string>
+    <string name="claude_err_network">No pudimos conectarnos. Revisá la red del proyector.</string>
+    <string name="claude_err_other">Algo falló y no pudimos responder.</string>
+    <string-array name="claude_suggestions">
+        <item>Abrí YouTube y buscá música para programar</item>
+        <item>Poné una cuenta regresiva de diez minutos</item>
+        <item>La imagen se ve borrosa, ayudame</item>
+    </string-array>
+
+    <!-- Juntada -->
+    <plurals name="juntada_people">
+        <item quantity="one">%1$d persona</item>
+        <item quantity="other">%1$d personas</item>
+    </plurals>
+    <plurals name="juntada_votes">
+        <item quantity="one">%1$d voto</item>
+        <item quantity="other">%1$d votos</item>
+    </plurals>
+    <string name="juntada_lead">Escaneá el código y poné tu nombre. Entrás cuando te dejan pasar.</string>
+    <string name="juntada_off">Activá el celular para que se puedan sumar.</string>
+    <string name="juntada_trivia">Trivia</string>
+    <string name="juntada_trivia_start">Armar una trivia</string>
+    <string name="juntada_trivia_stop">Terminar la trivia</string>
+    <string name="juntada_trivia_idle">¿Jugamos una trivia?</string>
+    <string name="juntada_trivia_idle_note">Elegí un tema y Claude escribe las preguntas. Cada uno responde desde su celular.</string>
+    <string name="juntada_trivia_failed">No pudimos armar la trivia. Probá de nuevo.</string>
+    <string name="juntada_trivia_loading">Armando las preguntas…</string>
+    <string name="juntada_trivia_ready">Prepárense.</string>
+    <string name="juntada_trivia_topic">Tema: %1$s</string>
+    <string name="juntada_trivia_own">Sin conexión con Claude: van preguntas de la casa.</string>
+    <string name="juntada_trivia_number">Pregunta %1$d de %2$d</string>
+    <string name="juntada_trivia_answered">Respondieron %1$d de %2$d</string>
+    <string name="juntada_trivia_result">Resultado</string>
+    <string name="juntada_trivia_winner">Ganó %1$s.</string>
+    <string name="juntada_trivia_nobody">Nadie sumó puntos.</string>
+    <string name="juntada_topic_title">Tema de la trivia</string>
+    <string name="juntada_topic_other">Otro tema</string>
+    <string name="juntada_topic_body">También se puede armar desde el celular, o pidiéndosela a Claude.</string>
+    <string-array name="juntada_topics">
+        <item>Programación</item>
+        <item>Cultura general</item>
+        <item>Cine y series</item>
+        <item>Música</item>
+        <item>Argentina</item>
+    </string-array>
+    <string name="juntada_poll">Votación</string>
+    <string name="juntada_poll_closed">Votación cerrada</string>
+    <string name="juntada_poll_show">Votación</string>
+    <string name="juntada_poll_close">Cerrar la votación</string>
+    <string name="juntada_poll_idle">¿Qué votamos?</string>
+    <string name="juntada_poll_idle_note">Cualquiera puede armar una votación desde su celular: qué comemos, qué vemos, quién lava.</string>
+    <string name="juntada_accounts">Cuentas</string>
+    <string name="juntada_accounts_title">Para quedar a mano.</string>
+    <string name="juntada_accounts_even">Están a mano.</string>
+    <string name="juntada_accounts_idle">Las cuentas de la casa.</string>
+    <string name="juntada_accounts_idle_note">Cada uno anota lo que pagó desde su celular, y acá sale quién le debe a quién.</string>
+    <string name="juntada_accounts_total">Gastaron %1$s en total.</string>
+    <string name="juntada_pays">%1$s le paga a %2$s</string>
+    <string name="juntada_reset">Empezar de cero</string>
+    <string name="juntada_reset_body">Se van todos, se borran las cuentas y el código viejo deja de servir.</string>
+    <string name="juntada_reset_yes">Borrar todo</string>
+
+    <!-- Celular -->
+    <string name="remote_running">Celular conectado</string>
+    <string name="remote_off">El proyector no escucha nada hasta que lo actives.</string>
+    <string name="remote_no_network">Conectá el proyector a una red para usar el celular.</string>
+    <string name="remote_lead">Escaneá el código con la cámara del celular.</string>
+    <string name="remote_lead_claimed">Este proyector ya tiene dueño. Escaneá el código para pedir permiso.</string>
+    <string name="remote_pin_label">O escribí este PIN</string>
+    <string name="remote_owner_link">Vincular otro celular mío</string>
+    <string name="remote_owner_link_sub">Muestra el código con acceso total</string>
+    <string name="remote_owner_link_body">Quien escanee ese código maneja todo: Claude, los archivos y tu clave. Mostralo solo para tus equipos. Se oculta al salir de esta pantalla.</string>
+    <string name="remote_owner_link_yes">Mostrar</string>
+    <string name="remote_guests">Invitados</string>
+    <string name="remote_guests_body">Elegí a alguien para sacarlo.</string>
+    <string name="remote_guest_row">%1$s · %2$s</string>
+    <string name="remote_guest_remove">¿Sacar a %1$s?</string>
+    <string name="remote_guest_remove_yes">Sacar</string>
+    <string name="access_ask">%1$s quiere conectarse</string>
+    <string name="access_body">Con la juntada juega, vota y anota gastos. Con el control además maneja el proyector, como con el control remoto. En ningún caso ve tu clave ni le habla a Claude.</string>
+    <string name="access_party">Solo la juntada</string>
+    <string name="access_control">Juntada y control</string>
+    <string name="access_no">No dejar pasar</string>
+    <string name="access_level_party">juntada</string>
+    <string name="access_level_control">con control</string>
+    <string name="remote_turn_on">Activar</string>
+    <string name="remote_turn_on_sub">Abre un servidor en tu red local</string>
+    <string name="remote_turn_off">Apagar</string>
+    <string name="remote_full">Control total</string>
+    <string name="remote_full_sub">Para manejar también las otras apps</string>
+    <string name="remote_full_body">Android no deja que una app mande teclas a otra sin este permiso. Se activa una sola vez en Accesibilidad, en «galfredev OS».</string>
+    <string name="remote_full_open">Abrir Accesibilidad</string>
+    <string name="remote_full_adb">Este equipo no trae esa pantalla. Se activa una sola vez por ADB, desde una computadora:\n\n%1$s\n\nApagá la depuración antes de reiniciar: en algunos equipos, prender con ella activada deja sin Wi-Fi.</string>
+    <string name="remote_disconnect">Desconectar los celulares</string>
+    <string name="remote_disconnect_sub">El tuyo y los invitados. Tendrán que volver a vincularse.</string>
+    <string name="remote_disconnect_yes">Desconectar</string>
+    <string name="remote_disconnected">Listo: desconectamos todos los celulares</string>
+    <string name="remote_got_body">Llegó desde el celular.</string>
+    <string name="remote_got_open">Abrir ahora</string>
+    <string name="remote_got_install">Instalar</string>
+    <string name="remote_got_later">Más tarde</string>
+    <string name="remote_got_saved">Llegó %1$s. Está en Cine.</string>
+    <string name="remote_a11y_description">Permite que tu celular y Claude manejen el proyector, también dentro de otras apps. No guarda nada. Cuando le pedís a Claude que use una app, lo que hay en esa pantalla se manda a la API de Anthropic para que sepa qué tocar; se apaga en los ajustes de Claude.</string>
+
+    <!-- Instalador -->
+    <string name="apk_title">Instalar APK</string>
+    <string name="apk_empty_dir">No hay archivos .apk en esta carpeta.</string>
+    <string name="apk_need_unknown_sources">Permití instalar apps desconocidas y volvé a intentarlo</string>
+    <string name="apk_install_error">No pudimos abrir el instalador</string>
 </resources>

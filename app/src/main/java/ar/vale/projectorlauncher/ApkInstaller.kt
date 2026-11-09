@@ -1,19 +1,19 @@
 package ar.vale.projectorlauncher
 
-import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
-import android.widget.Toast
+import ar.vale.projectorlauncher.ui.GdActivity
+import ar.vale.projectorlauncher.ui.Notice
 import java.io.File
 
 /** Abre el instalador del sistema para un .apk (sideload). */
 object ApkInstaller {
 
-    fun install(activity: Activity, file: File) {
+    fun install(activity: GdActivity, file: File) {
         // Android 8+: la app debe tener permitido "instalar apps desconocidas".
         if (!activity.packageManager.canRequestPackageInstalls()) {
-            Toast.makeText(activity, R.string.apk_need_unknown_sources, Toast.LENGTH_LONG).show()
+            Notice.show(activity, activity.getString(R.string.apk_need_unknown_sources), Notice.Kind.WARN)
             runCatching {
                 activity.startActivity(
                     Intent(
@@ -28,6 +28,6 @@ object ApkInstaller {
             .setDataAndType(ApkProvider.uriFor(activity, file), ApkProvider.MIME)
             .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         runCatching { activity.startActivity(intent) }
-            .onFailure { Toast.makeText(activity, R.string.apk_install_error, Toast.LENGTH_SHORT).show() }
+            .onFailure { Notice.show(activity, activity.getString(R.string.apk_install_error), Notice.Kind.ERROR) }
     }
 }

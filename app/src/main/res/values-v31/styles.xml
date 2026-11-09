@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        Android 12 en adelante muestra su propia pantalla de inicio con el ícono de la app. El manual
+        pide que la primera presentación sea el logo entero, así que queda solo el fondo carbón y
+        la marca aparece con el arranque del sistema.
+    -->
+    <style name="Theme.Gd" parent="Base.Theme.Gd">
+        <item name="android:forceDarkAllowed">false</item>
+        <item name="android:windowSplashScreenBackground">@color/carbon</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@android:color/transparent</item>
+    </style>
+</resources>

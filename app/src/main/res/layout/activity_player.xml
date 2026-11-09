@@ -2,30 +2,127 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#000000">
+    android:background="@color/carbon">
 
     <VideoView
         android:id="@+id/video"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
         android:layout_gravity="center"
         android:visibility="gone" />
 
     <ImageView
-        android:id="@+id/image"
+        android:id="@+id/image_back"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:contentDescription="@null"
+        android:importantForAccessibility="no"
         android:scaleType="fitCenter"
         android:visibility="gone" />
 
+    <ImageView
+        android:id="@+id/image_front"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no"
+        android:scaleType="fitCenter"
+        android:visibility="gone" />
+
+    <LinearLayout
+        android:id="@+id/audio_panel"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center_vertical"
+        android:orientation="vertical"
+        android:paddingStart="@dimen/margin_h"
+        android:paddingEnd="@dimen/margin_h"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/audio_artist"
+            style="@style/Gd.Label"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="@color/gris_oscuro" />
+
+        <TextView
+            android:id="@+id/audio_title"
+            style="@style/Gd.Display"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:ellipsize="end"
+            android:maxLines="3"
+            android:textColor="@color/hueso"
+            android:textSize="64sp" />
+    </LinearLayout>
+
     <TextView
-        android:id="@+id/audio_title"
+        android:id="@+id/subtitle"
+        style="@style/Gd.Text.Medium"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        android:fontFamily="sans-serif-medium"
-        android:textColor="@color/text_primary"
-        android:textSize="22sp"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginBottom="@dimen/margin_v"
+        android:background="@color/carbon"
+        android:gravity="center"
+        android:paddingStart="12dp"
+        android:paddingTop="4dp"
+        android:paddingEnd="12dp"
+        android:paddingBottom="4dp"
+        android:textColor="@color/hueso"
+        android:textSize="24sp"
         android:visibility="gone" />
+
+    <LinearLayout
+        android:id="@+id/hud"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:background="@color/carbon"
+        android:orientation="vertical"
+        android:paddingStart="@dimen/margin_h"
+        android:paddingTop="16dp"
+        android:paddingEnd="@dimen/margin_h"
+        android:paddingBottom="22dp"
+        android:visibility="invisible">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:baselineAligned="true"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/hud_title"
+                style="@style/Gd.Title"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="@color/hueso" />
+
+            <TextView
+                android:id="@+id/hud_time"
+                style="@style/Gd.Data"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:textColor="@color/hueso" />
+        </LinearLayout>
+
+        <ar.vale.projectorlauncher.ui.LineProgress
+            android:id="@+id/hud_line"
+            android:layout_width="match_parent"
+            android:layout_height="2dp"
+            android:layout_marginTop="10dp" />
+
+        <TextView
+            android:id="@+id/hud_hint"
+            style="@style/Gd.Label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:textColor="@color/gris_oscuro" />
+    </LinearLayout>
 </FrameLayout>

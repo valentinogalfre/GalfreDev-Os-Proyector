@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Tema Carbón: «el carbón pasa a ser el papel y el hueso la tinta» (tokens de la marca).
+         Es el tema por defecto: un proyector trabaja a oscuras. -->
+    <color name="page">@color/carbon</color>
+    <color name="ink">@color/hueso</color>
+    <color name="ink_2">@color/gris_oscuro</color>
+    <color name="rule">@color/linea_oscura</color>
+    <color name="surface">@color/carbon_2</color>
+    <color name="surface_2">@color/carbon_3</color>
+    <color name="control">@color/borde_control_oscuro</color>
+    <color name="scrim">#B3111111</color>
+</resources>

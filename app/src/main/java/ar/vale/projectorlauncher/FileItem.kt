@@ -3,7 +3,7 @@ package ar.vale.projectorlauncher
 import java.io.File
 import java.util.Locale
 
-enum class FileKind { DIR, VIDEO, AUDIO, IMAGE, APK, OTHER }
+enum class FileKind { DIR, VIDEO, AUDIO, IMAGE, PDF, APK, OTHER }
 
 /** Clasifica archivos por extensión para elegir ícono y reproductor. */
 object MediaTypes {
@@ -15,6 +15,7 @@ object MediaTypes {
         if (file.isDirectory) return FileKind.DIR
         return when (file.extension.lowercase(Locale.ROOT)) {
             "apk" -> FileKind.APK
+            "pdf" -> FileKind.PDF
             in VIDEO -> FileKind.VIDEO
             in AUDIO -> FileKind.AUDIO
             in IMAGE -> FileKind.IMAGE

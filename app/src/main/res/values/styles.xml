@@ -1,13 +1,100 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.Galfre" parent="@android:style/Theme.Material.NoActionBar">
-        <item name="android:windowBackground">@drawable/bg_launcher</item>
-        <item name="android:colorAccent">@color/accent</item>
+    <style name="Base.Theme.Gd" parent="@android:style/Theme.Material.NoActionBar.Fullscreen">
+        <item name="android:windowBackground">@color/page</item>
+        <item name="android:colorBackground">@color/page</item>
+        <item name="android:colorAccent">@color/cinta</item>
+        <item name="android:textColorPrimary">@color/ink</item>
+        <item name="android:textColorSecondary">@color/ink_2</item>
+        <item name="android:textColorHint">@color/ink_2</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
-        <item name="android:navigationBarColor">#15151F</item>
-        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
-        <item name="android:textColorPrimary">@color/text_primary</item>
-        <item name="android:textColorSecondary">@color/text_secondary</item>
-        <item name="android:textColorHint">@color/text_tertiary</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowDisablePreview">true</item>
+        <item name="android:windowAnimationStyle">@null</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:defaultFocusHighlightEnabled">false</item>
+    </style>
+
+    <style name="Theme.Gd" parent="Base.Theme.Gd" />
+
+    <!-- El inicio muestra su fondo al instante. Si el sistema mató el proceso, apretar Inicio no
+         deja la app anterior congelada mientras arranca. Las otras pantallas entran tapadas por la cinta. -->
+    <style name="Theme.Gd.Home" parent="Theme.Gd">
+        <item name="android:windowDisablePreview">false</item>
+    </style>
+
+    <!-- Tipografía: los valores salen de 08_Fuentes-editables/src/css/marca.css. -->
+    <style name="Gd" />
+
+    <!-- .h1: Archivo 800, interlínea .97, tracking -.038em -->
+    <style name="Gd.Display">
+        <item name="android:fontFamily">@font/archivo_extrabold</item>
+        <item name="android:textColor">@color/ink</item>
+        <item name="android:letterSpacing">-0.038</item>
+        <item name="android:lineSpacingMultiplier">0.97</item>
+        <item name="android:includeFontPadding">false</item>
+        <item name="android:textSize">44sp</item>
+    </style>
+
+    <style name="Gd.Display.Headline">
+        <item name="android:textSize">34sp</item>
+        <item name="android:letterSpacing">-0.034</item>
+        <item name="android:lineSpacingMultiplier">1</item>
+    </style>
+
+    <!-- .h3: Archivo 700, interlínea 1.08, tracking -.02em -->
+    <style name="Gd.Title">
+        <item name="android:fontFamily">@font/archivo_bold</item>
+        <item name="android:textColor">@color/ink</item>
+        <item name="android:letterSpacing">-0.02</item>
+        <item name="android:lineSpacingMultiplier">1.08</item>
+        <item name="android:includeFontPadding">false</item>
+        <item name="android:textSize">21sp</item>
+    </style>
+
+    <!-- .body: Instrument Sans, interlínea 1.38 -->
+    <style name="Gd.Text">
+        <item name="android:fontFamily">@font/instrument_sans</item>
+        <item name="android:textColor">@color/ink</item>
+        <item name="android:letterSpacing">-0.005</item>
+        <item name="android:lineSpacingMultiplier">1.3</item>
+        <item name="android:includeFontPadding">false</item>
+        <item name="android:textSize">16sp</item>
+    </style>
+
+    <style name="Gd.Text.Muted">
+        <item name="android:textColor">@color/ink_2</item>
+    </style>
+
+    <style name="Gd.Text.Medium">
+        <item name="android:fontFamily">@font/instrument_sans_medium</item>
+    </style>
+
+    <!-- .label: Geist Mono 500, tracking .06em, mayúsculas. Hasta cuatro palabras. -->
+    <style name="Gd.Label">
+        <item name="android:fontFamily">@font/geist_mono_medium</item>
+        <item name="android:textColor">@color/ink_2</item>
+        <item name="android:letterSpacing">0.06</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="android:includeFontPadding">false</item>
+        <item name="android:textSize">11.5sp</item>
+    </style>
+
+    <!-- .mono: datos medidos. -->
+    <style name="Gd.Data">
+        <item name="android:fontFamily">@font/geist_mono</item>
+        <item name="android:textColor">@color/ink_2</item>
+        <item name="android:includeFontPadding">false</item>
+        <item name="android:textSize">13sp</item>
+    </style>
+
+    <!-- Palabra del índice de inicio: la cinta se apoya detrás. -->
+    <!-- Ocho palabras tienen que entrar enteras en el alto del lienzo, que son 540 dp. -->
+    <style name="Gd.Index" parent="Gd.Display">
+        <item name="android:textSize">40sp</item>
+        <item name="android:textColor">@color/ink_2</item>
+        <item name="android:focusable">true</item>
+        <item name="android:clickable">true</item>
+        <item name="android:maxLines">1</item>
     </style>
 </resources>

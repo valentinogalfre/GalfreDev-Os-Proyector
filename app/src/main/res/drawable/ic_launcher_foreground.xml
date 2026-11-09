@@ -1,17 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generado por scripts/brand/build_logo.py. No editar a mano. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp" android:height="108dp"
-    android:viewportWidth="108" android:viewportHeight="108">
-    <!-- Marca ">_" de Galfré Dev, centrada en la zona segura del ícono adaptativo. -->
-    <path
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="9"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:fillColor="#00000000"
-        android:pathData="M40,40 L58,54 L40,68" />
-    <path
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="9"
-        android:strokeLineCap="round"
-        android:pathData="M62,68 h18" />
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group android:translateX="34.449" android:translateY="27.000" android:scaleX="0.07336" android:scaleY="0.07336">
+        <path android:fillColor="#F1EDE6" android:pathData="M0 736.09H533V539.09H532.93V12H398.78L384.98 84.72H377.98Q352.98 42.63 310.48 21.32Q267.98 0 216.98 0Q149.72 0 101.09 29.82Q52.46 59.63 26.41 120.9Q0.37 182.17 0.37 276.54Q0.37 369.46 26.64 430.46Q52.91 491.46 101.09 521.27Q149.26 551.09 213.78 551.09Q245.43 551.09 272.99 543.63Q300.54 536.17 323 521.3Q345.46 506.43 362.54 485.15H369.09V539.09H369V617.09H0ZM268.02 423.26Q230.63 423.26 208.21 408.21Q185.78 393.15 175.91 364.22Q166.04 335.28 166.04 293.33V258.13Q166.04 215.72 175.91 186.55Q185.78 157.39 208.21 142.61Q230.63 127.83 268.02 127.83Q304.04 127.83 326.51 144.65Q348.98 161.48 359.58 192Q370.17 222.52 370.17 263.57V286.98Q370.17 317.28 364.26 342.35Q358.35 367.41 346.25 385.42Q334.15 403.44 314.64 413.35Q295.13 423.26 268.02 423.26Z" />
+    </group>
 </vector>

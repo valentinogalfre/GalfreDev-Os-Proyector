@@ -1,0 +1,222 @@
+{
+  "version": 1,
+  "reviewed": "2026-11-06",
+  "categories": [
+    {"id": "video", "name": "Video"},
+    {"id": "players", "name": "Reproductores"},
+    {"id": "web", "name": "Navegador"},
+    {"id": "files", "name": "Archivos"},
+    {"id": "server", "name": "Tu propio servidor"},
+    {"id": "cast", "name": "Pantalla y juegos"},
+    {"id": "stores", "name": "Otras tiendas"},
+    {"id": "tools", "name": "Herramientas"}
+  ],
+  "apps": [
+    {
+      "id": "smarttube", "name": "SmartTube", "package": "org.smarttube.stable", "category": "video", "tv": "first",
+      "license": "MIT", "minSdk": 21,
+      "summary": "YouTube pensado para control remoto, sin publicidad.",
+      "details": "Es la mejor forma de ver YouTube en un proyector sin certificación de Google: se maneja con flechas y soporta 4K, subtítulos y velocidad.",
+      "caveat": "No es de Google y va contra sus términos de uso. Lo bajamos de la versión oficial del proyecto, con la firma fijada.",
+      "replaces": ["com.google.android.youtube"],
+      "legacy": ["com.teamsmart.videomanager.tv", "com.liskovsoft.smarttubetv.beta", "org.smartteam.smarttube.tv.orig", "com.amazon.firetv.youtube"],
+      "legacyReason": "En noviembre de 2025 el equipo del desarrollador se infectó y algunas versiones de SmartTube salieron con malware. Las versiones con este nombre de paquete son anteriores a ese arreglo: conviene desinstalarlas.",
+      "signers": ["109735aa24fe85e2e1623ebb3b1ecc4bf4263f4c6374e4411d646bfa2eda482a"],
+      "source": {"type": "github", "repo": "yuliskov/SmartTube",
+        "assets": {"armeabi-v7a": "^SmartTube_stable_.*_armeabi-v7a\\.apk$", "arm64-v8a": "^SmartTube_stable_.*_arm64-v8a\\.apk$", "x86": "^SmartTube_stable_.*_x86\\.apk$"}}
+    },
+    {
+      "id": "newpipe", "name": "NewPipe", "package": "org.schabi.newpipe", "category": "video", "tv": "adapted",
+      "license": "GPL-3.0", "minSdk": 23,
+      "summary": "YouTube de código abierto, sin cuenta.",
+      "details": "Segunda opción si SmartTube no anda en tu equipo. También baja audio y video.",
+      "caveat": "Su diseño es de celular: con el control se usa, pero no es cómodo. Va contra los términos de YouTube.",
+      "signers": ["cb84069bd68116bafae5ee4ee5b08a567aa6d898404e7cb12f9e756df5cf5cab"],
+      "source": {"type": "github", "repo": "TeamNewPipe/NewPipe", "asset": "^NewPipe_v[0-9.]+\\.apk$"}
+    },
+    {
+      "id": "twitch", "name": "SmartTwitchTV", "package": "com.fgl27.twitch", "category": "video", "tv": "first",
+      "license": "GPL-3.0", "minSdk": 21,
+      "summary": "Twitch para televisión.",
+      "details": "Reemplaza a la app de celular de Twitch, que con flechas casi no se puede usar.",
+      "caveat": "No es oficial de Twitch.",
+      "replaces": ["tv.twitch.android.app"],
+      "source": {"type": "github", "repo": "fgl27/SmartTwitchTV", "asset": "^SmartTV_twitch_.*\\.apk$"}
+    },
+    {
+      "id": "justplayer", "name": "Just Player", "package": "com.brouken.player", "category": "players", "tv": "adapted",
+      "license": "Unlicense", "minSdk": 23,
+      "summary": "Reproductor liviano y sin vueltas.",
+      "details": "Abre casi todo lo que el reproductor del sistema rechaza, con subtítulos y audios múltiples.",
+      "source": {"type": "github", "repo": "moneytoo/Player", "asset": "^Just\\.Player\\.v[0-9.]+\\.apk$"}
+    },
+    {
+      "id": "vlc", "name": "VLC", "package": "org.videolan.vlc", "category": "players", "tv": "first",
+      "license": "GPL-3.0", "minSdk": 17,
+      "summary": "El reproductor que abre cualquier cosa.",
+      "details": "Lee MKV, audio DTS y subtítulos raros. También navega carpetas compartidas de tu red.",
+      "caveat": "En equipos que no se presentan como TV puede abrir la pantalla de celular. Se cambia en sus ajustes.",
+      "source": {"type": "listing", "url": "https://download.videolan.org/pub/videolan/vlc-android/last/",
+        "assets": {"armeabi-v7a": "VLC-Android-([0-9.]+)-armeabi-v7a\\.apk", "arm64-v8a": "VLC-Android-([0-9.]+)-arm64-v8a\\.apk", "x86": "VLC-Android-([0-9.]+)-x86\\.apk"}, "sha256Suffix": ".sha256"}
+    },
+    {
+      "id": "kodi", "name": "Kodi", "package": "org.xbmc.kodi", "category": "players", "tv": "first",
+      "license": "GPL-2.0", "minSdk": 21,
+      "summary": "Centro multimedia completo.",
+      "details": "Ordena tus películas y series con carátulas, y lee discos de red. Pesa unos 65 MB.",
+      "caveat": "Es pesado para equipos de 1 GB de RAM. Muchos complementos de terceros son piratería: no los recomendamos.",
+      "source": {"type": "listing", "url": "https://mirrors.kodi.tv/releases/android/arm/",
+        "urls": {"arm64-v8a": "https://mirrors.kodi.tv/releases/android/arm64-v8a/"},
+        "assets": {"armeabi-v7a": "kodi-([0-9.]+)-[A-Za-z]+-armeabi-v7a\\.apk", "arm64-v8a": "kodi-([0-9.]+)-[A-Za-z]+-arm64-v8a\\.apk"}}
+    },
+    {
+      "id": "nova", "name": "NOVA", "package": "org.courville.nova", "category": "players", "tv": "adapted",
+      "license": "Apache-2.0", "minSdk": 23,
+      "summary": "Tu videoteca, también desde un disco de red.",
+      "details": "Reconoce películas y series, y las lee por SMB, FTP o UPnP.",
+      "source": {"type": "github", "repo": "nova-video-player/aos-AVP",
+        "assets": {"armeabi-v7a": "^org\\.courville\\.nova-.*-armeabi-v7a-release\\.apk$", "arm64-v8a": "^org\\.courville\\.nova-.*-arm64-v8a-release\\.apk$"}}
+    },
+    {
+      "id": "tvbro", "name": "TV Bro", "package": "com.phlox.tvwebbrowser", "category": "web", "tv": "first",
+      "license": "Propia", "minSdk": 24,
+      "summary": "Navegador que se usa con flechas.",
+      "details": "Tiene cursor manejado con el control y bloqueo de publicidad. Es el que conviene frente a un navegador de celular.",
+      "caveat": "Instalamos la versión liviana de 7 MB, que usa el motor web del sistema: en equipos viejos algunas páginas pueden fallar.",
+      "replaces": ["com.android.chrome"],
+      "source": {"type": "github", "repo": "truefedex/tv-bro", "asset": "^tvbro-.*-generic-geckoExcluded\\.apk$"}
+    },
+    {
+      "id": "fluffy", "name": "Fluffy", "package": "app.fluffy", "category": "files", "tv": "first",
+      "license": "GPL-3.0", "minSdk": 24,
+      "summary": "Gestor de archivos para TV.",
+      "details": "Copia, mueve y descomprime con el control. Complementa a Cine, que solo abre.",
+      "caveat": "Es un proyecto chico.",
+      "replaces": ["com.android.documentsui"],
+      "signers": ["4aed2f691df64a7b0fea25a6b8c80183c6dc520e049dac0178defa1d6472228f"],
+      "source": {"type": "github", "repo": "mlm-games/fluffy",
+        "assets": {"armeabi-v7a": "^fluffy-.*-armeabi-v7a\\.apk$", "arm64-v8a": "^fluffy-.*-arm64-v8a\\.apk$"}}
+    },
+    {
+      "id": "localsend", "name": "LocalSend", "package": "org.localsend.localsend_app", "category": "files", "tv": "adapted",
+      "license": "Apache-2.0", "minSdk": 24,
+      "summary": "Pasá archivos entre equipos por Wi-Fi.",
+      "details": "Sirve con computadoras y celulares que ya lo tengan. Para el celular también podés usar Celular, que no pide instalar nada.",
+      "signers": ["3220c353a73cfbd0c2f3052471c445324cf452bcba26de1c473a52fe5c44e1d6"],
+      "source": {"type": "github", "repo": "localsend/localsend",
+        "assets": {"armeabi-v7a": "^LocalSend-{version}-android-arm32v7\\.apk$", "arm64-v8a": "^LocalSend-{version}-android-arm64v8\\.apk$"}}
+    },
+    {
+      "id": "materialfiles", "name": "Material Files", "package": "me.zhanghai.android.files", "category": "files", "tv": "adapted",
+      "license": "GPL-3.0", "minSdk": 23,
+      "summary": "Gestor de archivos completo.",
+      "details": "Lee carpetas compartidas de red y archivos comprimidos.",
+      "caveat": "Su diseño es de celular.",
+      "source": {"type": "github", "repo": "zhanghai/MaterialFiles", "asset": "^app-release-universal\\.apk$"}
+    },
+    {
+      "id": "jellyfin", "name": "Jellyfin", "package": "org.jellyfin.androidtv", "category": "server", "tv": "first",
+      "license": "GPL-2.0", "minSdk": 21,
+      "summary": "Tu Netflix casero.",
+      "details": "Cliente de TV para ver tu biblioteca de Jellyfin desde otra computadora.",
+      "caveat": "Necesita un servidor Jellyfin andando en tu red.",
+      "replaces": ["org.jellyfin.mobile"],
+      "signers": ["d881796ed2a67ff6ef9f676828723c6b1fa18e09388962cba4abc4a594a69131"],
+      "source": {"type": "github", "repo": "jellyfin/jellyfin-androidtv", "asset": "^jellyfin-androidtv-v.*-release\\.apk$"}
+    },
+    {
+      "id": "wholphin", "name": "Wholphin", "package": "com.github.damontecres.wholphin", "category": "server", "tv": "first",
+      "license": "GPL-2.0", "minSdk": 23,
+      "summary": "Otro cliente de Jellyfin, más prolijo.",
+      "details": "Tiene una interfaz más moderna que el cliente oficial.",
+      "caveat": "Necesita un servidor Jellyfin andando en tu red.",
+      "source": {"type": "github", "repo": "damontecres/Wholphin",
+        "assets": {"armeabi-v7a": "^Wholphin-armeabi-v7a\\.apk$", "arm64-v8a": "^Wholphin-arm64-v8a\\.apk$"}}
+    },
+    {
+      "id": "stremio", "name": "Stremio", "package": "com.stremio.one", "category": "server", "tv": "first",
+      "license": "Cerrada", "minSdk": 21,
+      "summary": "Reúne tus servicios de video en un solo lugar.",
+      "details": "Versión oficial para TV, bajada del sitio de Stremio.",
+      "caveat": "No publica una firma para comprobar la descarga. Muchos complementos de terceros son piratería: no los recomendamos.",
+      "source": {"type": "listing", "url": "https://www.stremio.com/downloads", "absolute": true,
+        "assets": {"armeabi-v7a": "https://dl\\.strem\\.io/android/v([0-9.]+)-androidTV/com\\.stremio\\.one-[0-9.]+-[0-9]+-armeabi-v7a\\.apk", "arm64-v8a": "https://dl\\.strem\\.io/android/v([0-9.]+)-androidTV/com\\.stremio\\.one-[0-9.]+-[0-9]+-arm64-v8a\\.apk"}}
+    },
+    {
+      "id": "castbay", "name": "CastBay", "package": "com.weenas.castbay", "category": "cast", "tv": "adapted",
+      "license": "GPL-3.0", "minSdk": 23,
+      "summary": "Recibí AirPlay y DLNA en el proyector.",
+      "details": "Mandá video desde un iPhone o una computadora sin cables.",
+      "caveat": "Es un proyecto chico y no está probado en todos los equipos.",
+      "source": {"type": "github", "repo": "weenas/castbay", "asset": "^CastBay\\.apk$"}
+    },
+    {
+      "id": "moonlight", "name": "Moonlight", "package": "com.limelight", "category": "cast", "tv": "adapted",
+      "license": "GPL-3.0", "minSdk": 21,
+      "summary": "Jugá en el proyector con la potencia de tu PC.",
+      "details": "Transmite los juegos de tu computadora con muy poca demora.",
+      "caveat": "Necesita una PC con Sunshine o una placa NVIDIA, y un joystick conectado al proyector.",
+      "source": {"type": "github", "repo": "moonlight-stream/moonlight-android", "asset": "^app-nonRoot-release\\.apk$"}
+    },
+    {
+      "id": "flicky", "name": "Flicky", "package": "app.flicky", "category": "stores", "tv": "first",
+      "license": "GPL-3.0", "minSdk": 23,
+      "summary": "F-Droid hecho para el control remoto.",
+      "details": "Da acceso a miles de apps libres sin salir de la tele.",
+      "caveat": "No es el cliente oficial de F-Droid.",
+      "replaces": ["com.android.vending"],
+      "signers": ["4aed2f691df64a7b0fea25a6b8c80183c6dc520e049dac0178defa1d6472228f"],
+      "source": {"type": "github", "repo": "mlm-games/flicky",
+        "assets": {"armeabi-v7a": "^flicky-.*-armeabi-v7a\\.apk$", "arm64-v8a": "^flicky-.*-arm64-v8a\\.apk$"}}
+    },
+    {
+      "id": "fdroid", "name": "F-Droid", "package": "org.fdroid.fdroid", "category": "stores", "tv": "adapted",
+      "license": "GPL-3.0", "minSdk": 24,
+      "summary": "La tienda de apps libres.",
+      "details": "Todas sus apps se compilan desde el código fuente.",
+      "caveat": "Su diseño es de celular.",
+      "source": {"type": "fixed", "url": "https://f-droid.org/F-Droid.apk"}
+    },
+    {
+      "id": "aurora", "name": "Aurora Store", "package": "com.aurora.store", "category": "stores", "tv": "adapted",
+      "license": "GPL-3.0", "minSdk": 23,
+      "summary": "Bajá apps de Google Play sin los servicios de Google.",
+      "details": "Sirve para las apps que solo están en Play, como Pluto TV o Flow.",
+      "caveat": "Google no lo autoriza. Muchas apps de video con DRM igual no van a andar en este equipo.",
+      "signers": ["4c626157ad02bda3401a7263555f68a79663fc3e13a4d4369a12570941aa280f"],
+      "source": {"type": "fixed", "url": "https://auroraoss.com/downloads/AuroraStore/Latest/latest.apk"}
+    },
+    {
+      "id": "keymapper", "name": "Key Mapper", "package": "io.github.sds100.keymapper", "category": "tools", "tv": "adapted",
+      "license": "GPL-3.0", "minSdk": 26,
+      "summary": "Reasigná los botones del control.",
+      "details": "Por ejemplo, que el botón de una app abra otra.",
+      "caveat": "Pide el permiso de accesibilidad.",
+      "source": {"type": "github", "repo": "keymapperorg/KeyMapper", "asset": "^keymapper-[0-9.]+-foss\\.apk$"}
+    },
+    {
+      "id": "radiodroid", "name": "RadioDroid", "package": "net.programmierecke.radiodroid2", "category": "tools", "tv": "adapted",
+      "license": "GPL-3.0", "minSdk": 16,
+      "summary": "Radios de todo el mundo.",
+      "details": "Miles de emisoras, sin cuenta.",
+      "caveat": "No se actualiza desde 2023.",
+      "source": {"type": "github", "repo": "segler-alex/RadioDroid", "asset": "^RadioDroid-free-release-.*\\.apk$"}
+    }
+  ],
+  "notOffered": [
+    {"name": "Netflix", "packages": ["com.netflix.ninja", "com.netflix.mediaclient"],
+     "reason": "No hay un APK oficial. Netflix exige equipos certificados, y en estos proyectores la imagen queda en definición estándar o directamente no abre."},
+    {"name": "Prime Video", "packages": ["com.amazon.amazonvideo.livingroom", "com.amazon.avod.thirdpartyclient"],
+     "reason": "Solo está en Google Play o en equipos de Amazon. Sin certificación, la imagen queda cerca de 480p."},
+    {"name": "Disney+", "packages": ["com.disney.disneyplus"],
+     "reason": "Solo está en Google Play. No encontramos un APK oficial."},
+    {"name": "HBO Max", "packages": ["com.wbd.stream"],
+     "reason": "HBO Max dice que instalarlo por fuera de Google Play no está soportado."},
+    {"name": "YouTube para TV", "packages": ["com.google.android.youtube.tv"],
+     "reason": "Google solo lo permite en equipos certificados. SmartTube es la alternativa."},
+    {"name": "Spotify", "packages": ["com.spotify.tv.android", "com.spotify.music"],
+     "reason": "No tiene un APK oficial para TV. Se puede bajar con Aurora Store si tu equipo la acepta."},
+    {"name": "Claude", "packages": ["com.anthropic.claude"],
+     "reason": "La app oficial es para celular y solo está en Google Play. Por eso armamos la nuestra: entrá a Claude en el inicio."}
+  ]
+}

@@ -1,7 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <dimen name="pad">20dp</dimen>
+    <!-- Todas las medidas están en un lienzo fijo de 960 dp de ancho (ver ui/Screen.kt):
+         la composición es la misma en un panel de 1280 x 720 que en uno de 1920 x 1080. -->
+    <dimen name="margin_h">56dp</dimen>
+    <dimen name="margin_v">36dp</dimen>
+    <dimen name="logo_h">22dp</dimen>
+    <dimen name="index_w">248dp</dimen>
     <dimen name="gap">12dp</dimen>
-    <dimen name="tile_icon">52dp</dimen>
-    <dimen name="radius">22dp</dimen>
+    <dimen name="row_h">46dp</dimen>
+    <dimen name="icon">22dp</dimen>
+    <dimen name="tile_w">132dp</dimen>
+    <dimen name="tile_h">74dp</dimen>
 </resources>

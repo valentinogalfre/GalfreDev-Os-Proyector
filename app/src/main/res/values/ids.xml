@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Un hijo con este id es donde se apoya la cinta cuando su padre tiene el foco. -->
+    <item name="tape_anchor" type="id" />
+    <!-- Con este tag, la cinta ocupa toda la vista en vez de abrazar el texto. -->
+    <item name="tape_block" type="id" />
+</resources>

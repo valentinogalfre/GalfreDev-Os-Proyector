@@ -1,8 +1,8 @@
-name: Projector OS (APK + emulador)
+name: galfredev OS (APK + emulador)
 
-# Compila el APK de Galfré Projector OS y lo prueba en un emulador con
-# pantalla de TV 1080p: recorre las pantallas con el "control remoto",
-# saca capturas y falla si la app se cierra sola.
+# Compila el APK, corre los tests y lint, y lo prueba en un emulador con pantalla de TV a 1080p:
+# recorre las pantallas con el control remoto, saca capturas y falla si la app se cierra sola o
+# si la cinta no está donde corresponde.
 on:
   push:
     paths:
@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: projector-os-${{ github.ref }}
+  group: galfredev-os-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   build:
-    name: Compilar APK
+    name: Compilar y probar
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -28,12 +28,25 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v4
+      - name: Tests de contrato
+        run: ./gradlew --no-daemon testDebugUnitTest
+      - name: Lint
+        run: ./gradlew --no-daemon lintDebug
       - name: Compilar
         run: ./gradlew --no-daemon assembleDebug
+      - name: Subir reportes
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reportes
+          path: |
+            app/build/reports/tests
+            app/build/reports/lint-results-debug.html
+          if-no-files-found: warn
       - name: Subir APK
         uses: actions/upload-artifact@v4
         with:
-          name: galfre-projector-os-apk
+          name: galfredev-os-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
 
@@ -46,7 +59,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/download-artifact@v4
         with:
-          name: galfre-projector-os-apk
+          name: galfredev-os-apk
           path: apk
       - name: Habilitar KVM
         run: |

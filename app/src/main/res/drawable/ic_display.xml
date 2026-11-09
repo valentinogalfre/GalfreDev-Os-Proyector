@@ -1,15 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generado por scripts/brand/build_icons.py. No editar a mano. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="24dp" android:height="24dp"
-    android:viewportWidth="24" android:viewportHeight="24">
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
     <path
-        android:strokeColor="@color/text_primary"
-        android:strokeWidth="2"
-        android:strokeLineJoin="round"
-        android:fillColor="#00000000"
-        android:pathData="M4,5 h16 a1,1 0 0 1 1,1 v9 a1,1 0 0 1 -1,1 h-16 a1,1 0 0 1 -1,-1 v-9 a1,1 0 0 1 1,-1 z" />
-    <path
-        android:strokeColor="@color/text_primary"
-        android:strokeWidth="2"
+        android:pathData="M5 4.5h14a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-8a2 2 0 0 1 2 -2z"
+        android:strokeColor="@color/ink"
+        android:strokeWidth="1.7"
         android:strokeLineCap="round"
-        android:pathData="M9,20 h6 M12,16 v4" />
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M9 20.5h6M12 16.5v4"
+        android:strokeColor="@color/ink"
+        android:strokeWidth="1.7"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
 </vector>

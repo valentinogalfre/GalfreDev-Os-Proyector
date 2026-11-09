@@ -1,0 +1,22 @@
+name: Catálogo de la Tienda
+
+# Las apps cambian de versión y de dirección sin avisar. Una vez por semana se resuelve el catálogo
+# contra las fuentes oficiales: si alguna dejó de resolver, se entera el repo antes que quien usa
+# el proyector.
+on:
+  schedule:
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Resolver las apps
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - name: Revisar
+        run: python3 scripts/store/check_catalog.py --token "${{ github.token }}"
