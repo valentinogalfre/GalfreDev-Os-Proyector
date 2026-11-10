@@ -45,7 +45,7 @@ android {
     testOptions {
         unitTests.isReturnDefaultValues = true
         // Algunos contratos leen estos archivos: si cambian, los tests tienen que volver a correr.
-        unitTests.all { it.inputs.files("../docs/instalar.md", "src/main/res/values/strings.xml") }
+        unitTests.all { it.inputs.files("../docs/instalar.md", "src/main/res/values/strings.xml", "src/main/res/layout/activity_player.xml") }
     }
 
     lint {
