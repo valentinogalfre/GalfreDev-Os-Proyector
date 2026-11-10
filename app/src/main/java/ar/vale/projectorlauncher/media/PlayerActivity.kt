@@ -414,7 +414,8 @@ class PlayerActivity : GdActivity() {
                 }
             }
             subtitle.translationY = -hud.height.toFloat()
-            main.postDelayed(hideHud, HUD_MS)
+            val media = kind == FileKind.VIDEO || kind == FileKind.AUDIO
+            if (PlayerRules.hudAutoHides(media, video.isPlaying)) main.postDelayed(hideHud, HUD_MS)
         } else {
             hud.visibility = View.INVISIBLE
             subtitle.translationY = 0f
