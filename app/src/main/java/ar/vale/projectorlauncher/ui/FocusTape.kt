@@ -19,6 +19,19 @@ import kotlin.math.abs
 import kotlin.math.exp
 import kotlin.math.min
 
+/** Cuánto se ve el rótulo de la fila (en carbón, sobre la cinta) mientras la cinta tapa o destapa la pantalla. */
+object TapeLabel {
+    /**
+     * [ease] va de 0 a 1 con la transición. Al tapar el rótulo se apaga en la primera mitad, y al
+     * destapar se enciende en la segunda: con la cinta llena queda solo el título grande, y en los
+     * extremos coincide con la cinta sobre la fila.
+     */
+    fun alpha(covering: Boolean, ease: Float): Float {
+        val t = ease.coerceIn(0f, 1f)
+        return if (covering) 1f - (t * 2f).coerceAtMost(1f) else ((t - 0.5f) * 2f).coerceAtLeast(0f)
+    }
+}
+
 /**
  * La cinta: el único acento de la pantalla, y es el foco del control remoto.
  *
@@ -54,6 +67,9 @@ class FocusTape(context: Context) : View(context) {
     private var onCovered: (() -> Unit)? = null
     private var pendingUncover = false
     private var arrivedCovered = false
+    private var ease = 0f
+    private val rowClip = RectF()
+    private val labelPaint = Paint()
 
     private val fill = Paint().apply { color = context.getColor(R.color.cinta) }
     private val ink = context.getColor(R.color.carbon)
@@ -278,7 +294,14 @@ class FocusTape(context: Context) : View(context) {
         val moving = step(now)
         if (!cur.isEmpty) {
             canvas.drawRect(cur, fill)
-            if (mode != Mode.CHASE) drawTitle(canvas) else if (pinKnockout) knockout(canvas)
+            if (mode != Mode.CHASE) drawTitle(canvas) else if (pinKnockout) knockout(canvas, cur, 1f)
+            // Cubriendo o destapando, el bloque ámbar liso taparía el rótulo de la fila: se lo repinta
+            // en carbón, solo dentro de la fila (nunca el resto de la página), y se va o llega de a poco.
+            if (pinKnockout && (mode == Mode.COVER || mode == Mode.UNCOVER)) {
+                val covering = mode == Mode.COVER
+                rowClip.setIntersect(if (covering) from else dst, cur)
+                knockout(canvas, rowClip, TapeLabel.alpha(covering, ease))
+            }
         }
         if (moving) postInvalidateOnAnimation()
     }
@@ -305,6 +328,7 @@ class FocusTape(context: Context) : View(context) {
             Mode.COVER -> {
                 val t = ((now - tweenStart).toFloat() / tweenMs).coerceIn(0f, 1f)
                 val e = Motion.inOut.getInterpolation(t)
+                ease = e
                 lerpRect(from, full, e)
                 if (t >= 1f) {
                     mode = Mode.COVERED
@@ -318,6 +342,7 @@ class FocusTape(context: Context) : View(context) {
             Mode.UNCOVER -> {
                 val t = ((now - tweenStart).toFloat() / tweenMs).coerceIn(0f, 1f)
                 val e = Motion.inOut.getInterpolation(t)
+                ease = e
                 lerpRect(from, dst, e)
                 if (t >= 1f) {
                     mode = Mode.CHASE
@@ -352,10 +377,12 @@ class FocusTape(context: Context) : View(context) {
      * Vuelve a pintar lo que tiene debajo en carbón, recortado a la cinta. Dibuja solo la capa que
      * tiene el foco: por eso un panel lleva su fondo en una capa aparte de sus filas.
      */
-    private fun knockout(canvas: Canvas) {
+    private fun knockout(canvas: Canvas, bounds: RectF, alpha: Float) {
+        if (bounds.isEmpty || alpha <= 0f) return
         val root = parent as? ViewGroup ?: return
         val scope = topLevelOf(root) ?: return
-        val save = canvas.saveLayer(cur, null)
+        labelPaint.alpha = (alpha * 255f).toInt().coerceIn(0, 255)
+        val save = canvas.saveLayer(bounds, labelPaint)
         canvas.translate(scope.left.toFloat(), scope.top.toFloat())
         scope.draw(canvas)
         canvas.translate(-scope.left.toFloat(), -scope.top.toFloat())
