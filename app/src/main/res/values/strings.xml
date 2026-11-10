@@ -260,6 +260,7 @@
     <string name="claude_searching">buscando en internet…</string>
     <string name="claude_acting">usando el proyector…</string>
     <string name="claude_looking">mirando la pantalla…</string>
+    <string name="claude_waiting">esperando…</string>
     <string name="claude_tapping">tocando…</string>
     <string name="claude_typing">escribiendo…</string>
     <string name="claude_moving">moviéndose por la app…</string>
