@@ -137,11 +137,10 @@ class CineActivity : GdActivity() {
 
     private fun showDir(target: File) {
         dir = target
-        if (target == Storage.inbox(this)) {
-            setHead(getString(R.string.cine_inbox))
-        } else {
-            setHead(target.name.ifEmpty { title() }, target.parent)
-        }
+        // Lo recibido va primero: vive dentro de la memoria interna y si no se lo confundiría con una carpeta más.
+        val inbox = FileItem(Storage.inbox(this), FileKind.DIR, getString(R.string.cine_inbox))
+        val place = Storage.place(target, listOf(inbox) + Storage.roots(this))
+        setHead(place.title.ifEmpty { title() }, place.where)
         val items = Storage.list(target, apkOnly)
         setNote(if (items.isEmpty()) getString(if (apkOnly) R.string.apk_empty_dir else R.string.files_empty_dir) else null)
         adapter.submit(items.map(::rowFor))
