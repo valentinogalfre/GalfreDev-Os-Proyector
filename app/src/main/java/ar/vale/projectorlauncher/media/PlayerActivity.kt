@@ -123,6 +123,7 @@ class PlayerActivity : GdActivity() {
         pdfPage = savedInstanceState?.getInt(STATE_PAGE) ?: 0
         slideshow = savedInstanceState?.getBoolean(STATE_SLIDES) ?: false
         openCurrent()
+        if (PlayerRules.hudOnOpen(kind)) setHud(true)
         scheduleSlide()
     }
 
@@ -199,6 +200,16 @@ class PlayerActivity : GdActivity() {
         }
         if (wasPlaying) video.start()
         setHud(true)
+    }
+
+    /** Vale también antes del primer layout, cuando `hud.height` todavía es cero. */
+    private fun hudHeight(): Int {
+        if (hud.height > 0) return hud.height
+        hud.measure(
+            View.MeasureSpec.makeMeasureSpec(Screen.realSize(this).x, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        )
+        return hud.measuredHeight
     }
 
     /** Un formato que el sistema no decodifica: en estos equipos pasa con varios MKV y audios. */
@@ -409,11 +420,11 @@ class PlayerActivity : GdActivity() {
             if (hud.visibility != View.VISIBLE) {
                 hud.visibility = View.VISIBLE
                 if (Motion.full) {
-                    hud.translationY = hud.height.toFloat()
+                    hud.translationY = hudHeight().toFloat()
                     hud.animate().translationY(0f).setDuration(Motion.BASE).setInterpolator(Motion.out).start()
                 }
             }
-            subtitle.translationY = -hud.height.toFloat()
+            subtitle.translationY = -hudHeight().toFloat()
             val media = kind == FileKind.VIDEO || kind == FileKind.AUDIO
             if (PlayerRules.hudAutoHides(media, video.isPlaying)) main.postDelayed(hideHud, HUD_MS)
         } else {
