@@ -348,6 +348,7 @@
     <string name="juntada_accounts_idle_note">Cada uno anota lo que pagó desde su celular, y acá sale quién le debe a quién.</string>
     <string name="juntada_accounts_total">Gastaron %1$s en total.</string>
     <string name="juntada_pays">%1$s le paga a %2$s</string>
+    <string name="juntada_more">y %1$d más</string>
     <string name="juntada_reset">Empezar de cero</string>
     <string name="juntada_reset_body">Se van todos, se borran las cuentas y el código viejo deja de servir.</string>
     <string name="juntada_reset_yes">Borrar todo</string>

@@ -6,6 +6,7 @@ import android.graphics.RectF
 import android.os.Bundle
 import android.util.TypedValue
 import android.view.View
+import android.view.ViewGroup
 import android.view.WindowManager
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -92,6 +93,17 @@ class JuntadaActivity : GdActivity(), JuntadaHub.Watcher {
         note = findViewById(R.id.juntada_note)
         actions = findViewById(R.id.juntada_actions)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        // Cuántas filas entran depende del alto que tenga la tabla, y ese alto se conoce recién después
+        // de armar la pantalla (o cuando una pregunta larga le saca lugar): al cambiar se dibuja de nuevo.
+        lines.addOnLayoutChangeListener { _, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom ->
+            if (bottom - top != oldBottom - oldTop || right - left != oldRight - oldLeft) {
+                // Fuera de la pasada de diseño: dibujar filas o acciones desde acá las dejaría sin medir.
+                lines.post {
+                    shown = null
+                    render()
+                }
+            }
+        }
         intent.getStringExtra(EXTRA_TAB)?.let { name -> Tab.values().firstOrNull { it.name == name }?.let { tab = it } }
     }
 
@@ -214,7 +226,7 @@ class JuntadaActivity : GdActivity(), JuntadaHub.Watcher {
             )
             "final" -> {
                 val ranking = trivia.optJSONArray("ranking") ?: JSONArray()
-                val rows = (0 until minOf(ranking.length(), MAX_LINES)).map { i ->
+                val rows = (0 until ranking.length()).map { i ->
                     val r = ranking.getJSONObject(i)
                     Line((i + 1).toString(), r.getString("name"), money.format(r.getInt("score")), null)
                 }
@@ -268,7 +280,7 @@ class JuntadaActivity : GdActivity(), JuntadaHub.Watcher {
         for (i in 0 until people.length()) people.getJSONObject(i).let { names[it.getString("id")] = it.getString("name") }
         val transfers = state.getJSONArray("transfers")
         val total = state.optLong("total")
-        val rows = (0 until minOf(transfers.length(), MAX_LINES)).map { i ->
+        val rows = (0 until transfers.length()).map { i ->
             val t = transfers.getJSONObject(i)
             Line(
                 (i + 1).toString(),
@@ -295,11 +307,19 @@ class JuntadaActivity : GdActivity(), JuntadaHub.Watcher {
         title.setTextSize(TypedValue.COMPLEX_UNIT_SP, if (board.title.length > LONG_TITLE) SMALL_TITLE else BIG_TITLE)
         note.text = board.note
         note.visibility = if (board.note.isNullOrEmpty()) View.INVISIBLE else View.VISIBLE
-        val changedCount = lines.childCount != board.lines.size
+        // La tabla tiene que entrar entera en el alto que hay: las filas se achican hasta un mínimo legible
+        // y, si ni así entran (la Juntada admite hasta 40 personas), la última dice cuántas faltan.
+        val ready = lines.width > 0 && lines.height > 0
+        val natural = if (ready) naturalRowHeight(board.lines.any { it.bar != null }) else 0f
+        val plan = if (ready) BoardFit.plan(board.lines.size, lines.height.toFloat(), natural) else BoardFit.Plan(0, 0, 0f)
+        val rows = BoardFit.rows(board.lines, plan) { Line("", getString(R.string.juntada_more, it), null, null) }
+        val scale = if (natural > 0f) minOf(1f, plan.rowHeight / natural) else 1f
+        val changedCount = lines.childCount != rows.size
         if (changedCount) lines.removeAllViews()
         marked = null
-        board.lines.forEachIndexed { i, line ->
-            val row = if (changedCount) layoutInflater.inflate(R.layout.item_board_line, lines, false).also(lines::addView) else lines.getChildAt(i)
+        rows.forEachIndexed { i, line ->
+            val row = if (changedCount) inflateRow().also(lines::addView) else lines.getChildAt(i)
+            fit(row, scale, plan.rowHeight)
             val text = row.findViewById<TextView>(R.id.line_text)
             row.findViewById<TextView>(R.id.line_lead).text = line.lead
             text.text = line.text
@@ -315,11 +335,62 @@ class JuntadaActivity : GdActivity(), JuntadaHub.Watcher {
                 row.animate().cancel()
                 row.translationY = 0f
             }
-            row.alpha = if (board.mark != null && board.mark != i) DIM else 1f
-            if (board.mark == i) marked = text
+            val more = plan.hidden > 0 && i == rows.lastIndex
+            row.alpha = if (more || (board.mark != null && board.mark != i)) DIM else 1f
+            if (board.mark == i && !more) marked = text
         }
         if (changedCount && Motion.full) Motion.reveal((0 until lines.childCount).map(lines::getChildAt), stagger = 40L, rise = 10f)
         if (marked != null) tape.pin { markRect() } else tape.unpin()
+    }
+
+    /** Lo que mide una fila de la tabla al natural, con el ancho que tiene: se mide una de prueba. */
+    private fun naturalRowHeight(withBar: Boolean): Float {
+        val probe = inflateRow()
+        probe.findViewById<TextView>(R.id.line_lead).text = "1"
+        probe.findViewById<TextView>(R.id.line_text).text = "Wy"
+        probe.findViewById<TextView>(R.id.line_value).text = "1"
+        probe.findViewById<LineProgress>(R.id.line_bar).visibility = if (withBar) View.VISIBLE else View.GONE
+        probe.measure(
+            View.MeasureSpec.makeMeasureSpec(lines.width, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        )
+        return probe.measuredHeight.toFloat()
+    }
+
+    /** Los tamaños de una fila sin achicar, para poder achicarla (y volver) sin acumular errores. */
+    private class RowBase(val lead: Float, val text: Float, val value: Float, val padding: Int, val barTop: Int)
+
+    private fun inflateRow(): View = layoutInflater.inflate(R.layout.item_board_line, lines, false).also { row ->
+        row.tag = RowBase(
+            row.findViewById<TextView>(R.id.line_lead).textSize,
+            row.findViewById<TextView>(R.id.line_text).textSize,
+            row.findViewById<TextView>(R.id.line_value).textSize,
+            row.paddingTop,
+            (row.findViewById<View>(R.id.line_bar).layoutParams as ViewGroup.MarginLayoutParams).topMargin
+        )
+    }
+
+    /** Achica la fila a [scale] de su tamaño natural y le da su alto exacto; sin achicar, vuelve a lo de siempre. */
+    private fun fit(row: View, scale: Float, height: Float) {
+        val base = row.tag as RowBase
+        row.findViewById<TextView>(R.id.line_lead).setTextSize(TypedValue.COMPLEX_UNIT_PX, base.lead * scale)
+        row.findViewById<TextView>(R.id.line_text).setTextSize(TypedValue.COMPLEX_UNIT_PX, base.text * scale)
+        row.findViewById<TextView>(R.id.line_value).setTextSize(TypedValue.COMPLEX_UNIT_PX, base.value * scale)
+        val padding = Math.round(base.padding * scale)
+        row.setPadding(row.paddingLeft, padding, row.paddingRight, padding)
+        row.findViewById<View>(R.id.line_bar).let { bar ->
+            val params = bar.layoutParams as ViewGroup.MarginLayoutParams
+            val top = Math.round(base.barTop * scale)
+            if (params.topMargin != top) {
+                params.topMargin = top
+                bar.layoutParams = params
+            }
+        }
+        val wanted = if (scale >= 1f) ViewGroup.LayoutParams.WRAP_CONTENT else height.toInt()
+        if (row.layoutParams.height != wanted) {
+            row.layoutParams.height = wanted
+            row.requestLayout()
+        }
     }
 
     /** La cinta deja el foco y se apoya en la respuesta correcta, igual que en una respuesta de Claude. */
@@ -397,7 +468,6 @@ class JuntadaActivity : GdActivity(), JuntadaHub.Watcher {
         const val TAB_TRIVIA = "TRIVIA"
         private const val TICK_MS = 250L
         private const val DEFAULT_QUESTIONS = 8
-        private const val MAX_LINES = 7
         private const val LONG_TITLE = 70
         private const val BIG_TITLE = 32f
         private const val SMALL_TITLE = 25f
