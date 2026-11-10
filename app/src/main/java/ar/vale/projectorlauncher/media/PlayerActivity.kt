@@ -195,11 +195,16 @@ class PlayerActivity : GdActivity() {
         this.player = player
         if (resumeAt > 0) {
             seekExact(resumeAt)
-            Notice.show(this, getString(R.string.player_resumed, Time.clock(resumeAt)))
+            notice(getString(R.string.player_resumed, Time.clock(resumeAt)))
             resumeAt = 0
         }
         if (wasPlaying) video.start()
         setHud(true)
+    }
+
+    /** Los avisos suben por encima de la barra cuando se ve: ahí abajo está su línea de ayuda. */
+    private fun notice(text: String, style: Notice.Kind = Notice.Kind.INFO) {
+        Notice.show(this, text, style, if (hud.visibility == View.VISIBLE) hudHeight() else 0)
     }
 
     /** Vale también antes del primer layout, cuando `hud.height` todavía es cero. */
@@ -281,7 +286,7 @@ class PlayerActivity : GdActivity() {
             val bitmap = runCatching { decode(file, screen.x, screen.y) }.getOrNull()
             runOnUiThread {
                 if (isDestroyed || job != imageJob) return@runOnUiThread
-                if (bitmap == null) Notice.show(this, getString(R.string.player_error), Notice.Kind.ERROR)
+                if (bitmap == null) notice(getString(R.string.player_error), Notice.Kind.ERROR)
                 else crossfade(bitmap)
             }
         }
@@ -341,7 +346,7 @@ class PlayerActivity : GdActivity() {
             pdf = PdfRenderer(fd)
         }
         if (opened.isFailure) {
-            Notice.show(this, getString(R.string.player_pdf_error), Notice.Kind.ERROR)
+            notice(getString(R.string.player_pdf_error), Notice.Kind.ERROR)
             return
         }
         renderPage(pdfPage)
@@ -411,7 +416,7 @@ class PlayerActivity : GdActivity() {
     private fun toggleSlideshow() {
         slideshow = !slideshow
         scheduleSlide()
-        Notice.show(this, getString(if (slideshow) R.string.player_slideshow_on else R.string.player_slideshow_off))
+        notice(getString(if (slideshow) R.string.player_slideshow_on else R.string.player_slideshow_off))
     }
 
     private fun setHud(show: Boolean) {
