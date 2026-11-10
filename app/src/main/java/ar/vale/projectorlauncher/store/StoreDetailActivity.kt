@@ -22,6 +22,7 @@ class StoreDetailActivity : GdActivity() {
     private lateinit var line: LineProgress
     private lateinit var actions: LinearLayout
     private var release: Release? = null
+    private var phase = DetailPlan.Phase.CHECKING
     private var working = false
     @Volatile private var cancelled = false
 
@@ -69,12 +70,14 @@ class StoreDetailActivity : GdActivity() {
 
     /** Consulta la última versión sin bloquear: la ficha se puede leer sin internet. */
     private fun lookup() {
-        status.setText(R.string.store_checking)
+        phase = DetailPlan.Phase.CHECKING
+        render()
         Thread {
             val result = runCatching { Resolver.resolve(app, Build.SUPPORTED_ABIS.toList(), Net) }
             runOnUiThread {
                 if (isDestroyed) return@runOnUiThread
                 release = result.getOrNull()
+                phase = if (release != null) DetailPlan.Phase.DONE else DetailPlan.Phase.FAILED
                 render()
             }
         }.start()
@@ -83,24 +86,25 @@ class StoreDetailActivity : GdActivity() {
     private fun render() {
         val current = installedVersion()
         val latest = release
-        status.text = when {
-            Build.VERSION.SDK_INT < app.minSdk -> getString(R.string.store_needs_android, app.minSdk)
-            latest == null -> getString(R.string.store_no_network)
-            current != null && latest.version != null -> getString(R.string.store_versions, current, latest.version)
-            latest.version != null -> getString(R.string.store_version, latest.version)
-            else -> getString(R.string.store_ready)
+        val plan = DetailPlan.plan(Build.VERSION.SDK_INT, app.minSdk, current, phase, latest)
+        status.text = when (plan.status) {
+            DetailPlan.Status.NEEDS_ANDROID -> getString(R.string.store_needs_android, app.minSdk)
+            DetailPlan.Status.CHECKING -> getString(R.string.store_checking)
+            DetailPlan.Status.NO_NETWORK -> getString(R.string.store_no_network)
+            DetailPlan.Status.VERSIONS -> getString(R.string.store_versions, current, latest?.version)
+            DetailPlan.Status.VERSION -> getString(R.string.store_version, latest?.version)
+            DetailPlan.Status.READY -> getString(R.string.store_ready)
         }
         val keep = actions.focusedChild != null
         actions.removeAllViews()
-        val hasUpdate = current != null && latest?.version != null && Versions.isNewer(latest.version, current)
-        if (current != null) {
-            action(getString(R.string.store_open)) { openApp() }
-            if (hasUpdate) action(getString(R.string.store_update)) { install() }
-            action(getString(R.string.uninstall)) { uninstall() }
-        } else if (latest != null && Build.VERSION.SDK_INT >= app.minSdk) {
-            action(getString(R.string.store_install)) { install() }
-        } else {
-            action(getString(R.string.store_retry)) { lookup() }
+        plan.actions.forEach { act ->
+            when (act) {
+                DetailPlan.Action.OPEN -> action(getString(R.string.store_open)) { openApp() }
+                DetailPlan.Action.UPDATE -> action(getString(R.string.store_update)) { install() }
+                DetailPlan.Action.UNINSTALL -> action(getString(R.string.uninstall)) { uninstall() }
+                DetailPlan.Action.INSTALL -> action(getString(R.string.store_install)) { install() }
+                DetailPlan.Action.RETRY -> action(getString(R.string.store_retry)) { lookup() }
+            }
         }
         if (keep || window.decorView.findFocus() == null) actions.getChildAt(0)?.requestFocusFromTouch()
     }
