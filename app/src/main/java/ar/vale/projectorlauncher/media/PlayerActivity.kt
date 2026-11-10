@@ -58,6 +58,13 @@ class PlayerActivity : GdActivity() {
     private var prepared = false
     private var resumeAt = 0L
     private var wasPlaying = true
+    private var firstFrame = FirstFrame()
+    /** Adónde se retoma, hasta que haya cuadro: `currentPosition` todavía dice otra cosa. */
+    private var startAt: Long? = null
+    private var pendingNotice: String? = null
+    /** Al retomar, el primer cuadro que dibuja el sistema es el de antes de la búsqueda: hay que esperarla. */
+    private var startSeeking = false
+    private var rendered = false
     private var pendingSeek: Long? = null
     private var player: MediaPlayer? = null
     private var failed = false
@@ -71,12 +78,14 @@ class PlayerActivity : GdActivity() {
     private val decoder = Executors.newSingleThreadExecutor()
 
     private val hideHud = Runnable { setHud(false) }
+    private val giveUpWaiting = Runnable { stopWaiting { gaveUp() } }
+    private val frameShown = Runnable { stopWaiting { arrived() } }
     private val tick = object : Runnable {
         override fun run() {
             if (prepared) {
-                val position = (pendingSeek ?: video.currentPosition.toLong())
+                val position = pendingSeek ?: positionNow()
                 showTime(position)
-                val cue = Srt.at(cues, position)
+                val cue = firstFrame.cue(cues, position)
                 subtitle.text = cue?.text
                 subtitle.visibility = if (cue == null) View.GONE else View.VISIBLE
             }
@@ -154,6 +163,9 @@ class PlayerActivity : GdActivity() {
         video.isFocusable = false
         video.isFocusableInTouchMode = false
         val audio = kind == FileKind.AUDIO
+        startWaiting()
+        // La música no dibuja cuadros: no hay nada que esperar.
+        if (audio) stopWaiting { arrived() }
         findViewById<View>(R.id.audio_panel).visibility = if (audio) View.VISIBLE else View.GONE
         if (audio) bindAudio()
         hudHint.setText(R.string.player_hint_media)
@@ -164,7 +176,16 @@ class PlayerActivity : GdActivity() {
             resume.forget(current.absolutePath)
             if (index < playlist.lastIndex) step(1) else closeScreen()
         }
+        video.setOnInfoListener { _, what, _ ->
+            if (what == MediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START) {
+                rendered = true
+                tryArrive()
+            }
+            false
+        }
         video.setOnErrorListener { _, _, _ ->
+            pendingNotice = null
+            stopWaiting { failed() }
             onCannotPlay()
             true
         }
@@ -193,14 +214,64 @@ class PlayerActivity : GdActivity() {
     private fun onPrepared(player: MediaPlayer) {
         prepared = true
         this.player = player
+        // Se volvió a preparar (la pantalla se recreó): vuelve a haber un negro que cubrir.
+        if (!firstFrame.waiting && kind == FileKind.VIDEO) startWaiting()
         if (resumeAt > 0) {
+            startSeeking = firstFrame.waiting
+            player.setOnSeekCompleteListener {
+                startSeeking = false
+                tryArrive()
+            }
             seekExact(resumeAt)
-            notice(getString(R.string.player_resumed, Time.clock(resumeAt)))
+            val text = getString(R.string.player_resumed, Time.clock(resumeAt))
+            if (firstFrame.waiting) {
+                startAt = resumeAt
+                // El aviso espera al primer cuadro: si no, corre su tiempo detrás de la cinta.
+                pendingNotice = text
+            } else {
+                notice(text)
+            }
             resumeAt = 0
         }
         if (wasPlaying) video.start()
         setHud(true)
     }
+
+    /** Hay cuadro dibujado y la búsqueda terminó: se deja pasar un instante para que quede en pantalla. */
+    private fun tryArrive() {
+        if (!rendered || startSeeking) return
+        main.removeCallbacks(frameShown)
+        main.postDelayed(frameShown, SETTLE_MS)
+    }
+
+    private fun startWaiting() {
+        firstFrame = FirstFrame()
+        startSeeking = false
+        rendered = false
+        main.removeCallbacks(giveUpWaiting)
+        main.postDelayed(giveUpWaiting, FIRST_FRAME_MS)
+    }
+
+    /**
+     * Termina la espera del primer cuadro (llegó, falló o pasó el tope): recién ahí se destapa la
+     * cinta, se muestran los subtítulos y sale el aviso de «Seguimos desde».
+     */
+    private fun stopWaiting(end: FirstFrame.() -> Unit) {
+        main.removeCallbacks(giveUpWaiting)
+        main.removeCallbacks(frameShown)
+        val was = firstFrame.waiting
+        firstFrame.end()
+        startAt = null
+        pendingNotice?.let { notice(it) }
+        pendingNotice = null
+        if (was) tape.uncover()
+    }
+
+    /** Se llama desde `setContentView`, antes de que `kind` esté leído: por eso mira el pedido. */
+    override fun holdsCover(): Boolean =
+        intent.getStringExtra(EXTRA_KIND) == FileKind.VIDEO.name && firstFrame.waiting
+
+    private fun positionNow(): Long = startAt ?: video.currentPosition.toLong()
 
     /** Los avisos suben por encima de la barra cuando se ve: ahí abajo está su línea de ayuda. */
     private fun notice(text: String, style: Notice.Kind = Notice.Kind.INFO) {
@@ -258,7 +329,7 @@ class PlayerActivity : GdActivity() {
 
     private fun seekBy(deltaMs: Long) {
         if (!prepared) return
-        val base = pendingSeek ?: video.currentPosition.toLong()
+        val base = pendingSeek ?: positionNow()
         val target = (base + deltaMs).coerceIn(0L, video.duration.toLong())
         pendingSeek = target
         showTime(target)
@@ -442,7 +513,7 @@ class PlayerActivity : GdActivity() {
 
     private fun saveProgress() {
         if (kind == FileKind.VIDEO && prepared) {
-            resume.update(current.absolutePath, video.currentPosition.toLong(), video.duration.toLong())
+            resume.update(current.absolutePath, positionNow(), video.duration.toLong())
         }
     }
 
@@ -461,7 +532,7 @@ class PlayerActivity : GdActivity() {
         main.removeCallbacks(tick)
         if (prepared) {
             saveProgress()
-            resumeAt = video.currentPosition.toLong()
+            resumeAt = positionNow()
             wasPlaying = video.isPlaying
             video.pause()
         }
@@ -480,6 +551,9 @@ class PlayerActivity : GdActivity() {
         const val EXTRA_KIND = "kind"
         private const val TICK_MS = 200L
         private const val HUD_MS = 3500L
+        /** Tope de la espera del primer cuadro: pasado esto se destapa igual. */
+        private const val FIRST_FRAME_MS = 2500L
+        private const val SETTLE_MS = 120L
         private const val SEEK_DELAY_MS = 280L
         private const val SLIDE_MS = 6000L
         private const val MAX_PLAYERS = 3

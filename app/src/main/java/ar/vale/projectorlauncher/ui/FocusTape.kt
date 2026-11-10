@@ -112,14 +112,17 @@ class FocusTape(context: Context) : View(context) {
 
     // --- Transición entre pantallas ---
 
-    /** La pantalla arranca tapada (venimos de otra que se fue con la cinta encima). */
-    fun startCovered(title: CharSequence?) {
+    /**
+     * La pantalla arranca tapada (venimos de otra que se fue con la cinta encima). Con [hold] sigue
+     * tapada hasta que la pantalla pida [uncover]: así no se ve lo que todavía no está listo.
+     */
+    fun startCovered(title: CharSequence?, hold: Boolean = false) {
         titleText = title
         buildTitle()
         mode = Mode.COVERED
         cur.set(full)
         arrivedCovered = true
-        pendingUncover = true
+        pendingUncover = !hold
         invalidate()
     }
 
