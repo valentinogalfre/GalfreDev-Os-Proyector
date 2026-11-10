@@ -3,6 +3,7 @@ package ar.vale.projectorlauncher.ui
 import android.content.Context
 import android.graphics.drawable.Drawable
 import android.view.LayoutInflater
+import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.BaseAdapter
@@ -87,6 +88,20 @@ class RowAdapter(context: Context) : BaseAdapter() {
     }
 }
 
+/** Cómo se acomoda una lista al moverse con las flechas para no dejar una fila cortada arriba. */
+object RowSnap {
+    /**
+     * Cuántos píxeles correr el contenido hacia arriba (negativo: hacia abajo) para que la fila de
+     * arriba [firstTop, firstBottom] no quede cortada contra el borde [viewTop]. Se muestra entera
+     * si la fila elegida (que termina en [selBottom]) sigue cabiendo antes de [viewBottom]; si no, se esconde.
+     */
+    fun correction(firstTop: Int, firstBottom: Int, selBottom: Int, viewTop: Int, viewBottom: Int): Int {
+        if (firstTop >= viewTop || firstBottom <= viewTop) return 0
+        val reveal = viewTop - firstTop
+        return if (selBottom + reveal <= viewBottom) -reveal else firstBottom - viewTop
+    }
+}
+
 /** Conecta una lista con sus filas: OK corre la acción y mantener OK, la secundaria. */
 fun ListView.bindRows(adapter: RowAdapter) {
     this.adapter = adapter
@@ -97,6 +112,24 @@ fun ListView.bindRows(adapter: RowAdapter) {
         long()
         true
     }
+    // Con las flechas la lista corre lo justo para que se vea la fila elegida, y deja la de arriba
+    // cortada a la mitad contra el título fijo: después de cada paso se acomoda a filas enteras.
+    setOnKeyListener { _, keyCode, event ->
+        if (event.action != KeyEvent.ACTION_DOWN || (keyCode != KeyEvent.KEYCODE_DPAD_UP && keyCode != KeyEvent.KEYCODE_DPAD_DOWN)) {
+            return@setOnKeyListener false
+        }
+        val handled = onKeyDown(keyCode, event)
+        if (handled) snapRows()
+        handled
+    }
+}
+
+private fun ListView.snapRows() {
+    val first = getChildAt(0) ?: return
+    val selected = selectedView ?: return
+    if (first === selected) return
+    val move = RowSnap.correction(first.top, first.bottom, selected.bottom, paddingTop, height - paddingBottom)
+    if (move != 0) scrollListBy(move)
 }
 
 /**
