@@ -25,6 +25,9 @@ class Row(
 
     companion object {
         fun header(title: CharSequence) = Row(title)
+
+        /** Posición de la primera fila que se puede elegir. */
+        fun firstSelectable(rows: List<Row>): Int = rows.indexOfFirst { !it.isHeader }.coerceAtLeast(0)
     }
 }
 
@@ -33,6 +36,8 @@ class RowAdapter(context: Context) : BaseAdapter() {
 
     private val inflater = LayoutInflater.from(context)
     private var items: List<Row> = emptyList()
+
+    val rows: List<Row> get() = items
 
     fun submit(rows: List<Row>) {
         items = rows
@@ -91,5 +96,29 @@ fun ListView.bindRows(adapter: RowAdapter) {
         val long = adapter.getItem(position).longAction ?: return@setOnItemLongClickListener false
         long()
         true
+    }
+}
+
+/**
+ * Vuelve al principio de la lista. Un encabezado no se puede elegir: `setSelection(0)` deja arriba
+ * la primera fila que sí, y el rótulo de la sección queda fuera de vista, sin forma de llegar a él.
+ */
+fun ListView.selectFirst() {
+    val adapter = adapter as RowAdapter
+    val first = Row.firstSelectable(adapter.rows)
+    setSelection(first)
+    if (first == 0) return
+    // Recién con la lista medida se sabe cuánto ocupan los encabezados de arriba.
+    post {
+        var above = 0
+        for (i in 0 until first) {
+            val header = adapter.getView(i, null, this)
+            header.measure(
+                View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+            )
+            above += header.measuredHeight
+        }
+        setSelectionFromTop(first, above)
     }
 }

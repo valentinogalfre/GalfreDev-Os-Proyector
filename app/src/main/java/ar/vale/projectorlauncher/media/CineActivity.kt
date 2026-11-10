@@ -21,6 +21,7 @@ import ar.vale.projectorlauncher.ui.Notice
 import ar.vale.projectorlauncher.ui.Row
 import ar.vale.projectorlauncher.ui.RowAdapter
 import ar.vale.projectorlauncher.ui.bindRows
+import ar.vale.projectorlauncher.ui.selectFirst
 import java.io.File
 
 /**
@@ -132,7 +133,7 @@ class CineActivity : GdActivity() {
         }
         setNote(if (rows.none { !it.isHeader }) getString(R.string.files_empty_roots) else null)
         adapter.submit(rows)
-        list.setSelection(0)
+        list.selectFirst()
     }
 
     private fun showDir(target: File) {
@@ -144,7 +145,7 @@ class CineActivity : GdActivity() {
         val items = Storage.list(target, apkOnly)
         setNote(if (items.isEmpty()) getString(if (apkOnly) R.string.apk_empty_dir else R.string.files_empty_dir) else null)
         adapter.submit(items.map(::rowFor))
-        list.setSelection(0)
+        list.selectFirst()
     }
 
     private fun rowFor(item: FileItem): Row {
