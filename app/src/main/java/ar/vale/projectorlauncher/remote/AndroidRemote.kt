@@ -6,7 +6,6 @@ import android.content.Intent
 import android.graphics.RectF
 import android.media.AudioManager
 import android.net.Uri
-import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.view.KeyEvent
@@ -51,7 +50,7 @@ class AndroidRemote(private val context: Context) : RemoteDevice {
     override fun state(): JSONObject {
         val size = Screen.realSize(context)
         return JSONObject()
-            .put("name", Build.MODEL)
+            .put("name", DeviceName.of(context))
             .put("resolution", "${size.x} × ${size.y}")
             .put("full_control", RemoteAccessibility.instance != null)
             .put("claude_key", KeyVault.has(context))
