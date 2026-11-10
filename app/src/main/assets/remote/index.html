@@ -503,13 +503,15 @@ function said(label, text) {
 let claudeTimer = 0;
 async function watchClaude() {
   clearTimeout(claudeTimer);
-  if (tab !== 'claude' || !isOwner) return;
+  if (tab !== 'claude' || !isOwner || document.hidden) return;
   const response = await fetch('/api/claude/state', { headers: { Authorization: bearer() } }).catch(() => null);
   const state = response && response.ok ? await response.json().catch(() => null) : null;
   if (!state) return;
   $('#stop').hidden = !state.busy;
-  if (state.question) said(state.question, state.status);
-  if (state.busy) claudeTimer = setTimeout(watchClaude, 900);
+  // Sin pedido (la pared empezó de nuevo) el cuadro se esconde: no queda el intercambio anterior.
+  if (!hearing) said(state.question, state.status);
+  // En reposo se sigue mirando, de a poco: el pedido pudo salir de la pared y no de este celular.
+  claudeTimer = setTimeout(watchClaude, state.busy ? 900 : 4000);
 }
 $('#stop').onclick = async () => { await post('claude/stop', {}); watchClaude(); };
 

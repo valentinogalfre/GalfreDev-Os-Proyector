@@ -181,14 +181,20 @@ class AndroidRemote(private val context: Context) : RemoteDevice {
         // Con otra app delante, lo más probable es que el pedido sea sobre esa app: pausá, buscá,
         // poné el siguiente. Traer nuestra pantalla al frente se la sacaría de las manos a Claude,
         // así que trabaja ahí mismo y lo cuenta en un renglón encima.
-        if (GdActivity.current == null && RemoteAccessibility.instance != null) {
+        // El celular consulta el estado apenas recibe el OK, y el pedido recién arranca en el hilo
+        // principal o cuando abre la pantalla: hasta entonces el estado tiene que decir que ya está en curso.
+        if (KeyVault.has(context)) ClaudeRuntime.announce(text)
+        val result = if (GdActivity.current == null && RemoteAccessibility.instance != null) {
             main.post {
                 val asked = ClaudeRuntime.ask(context, text)
                 if (!asked) runCatching { context.startActivity(screen.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
             }
-            return RemoteDevice.Result.OK
+            RemoteDevice.Result.OK
+        } else {
+            start(screen)
         }
-        return start(screen)
+        if (result != RemoteDevice.Result.OK) main.post { ClaudeRuntime.unannounce() }
+        return result
     }
 
     override fun claudeState(): JSONObject {
