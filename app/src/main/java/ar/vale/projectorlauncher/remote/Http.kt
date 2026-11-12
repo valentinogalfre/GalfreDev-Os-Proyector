@@ -9,6 +9,16 @@ import java.net.URLDecoder
 
 class HttpError(val status: Int, message: String) : Exception(message)
 
+/**
+ * Una coordenada del puntero, de cero a uno: lo que cae afuera se trae al borde. «NaN» pasa por
+ * número y no lo es, y a quien dibuja el puntero le rompe la cuenta: se rechaza.
+ */
+internal fun JSONObject.unit(name: String): Float {
+    val value = getDouble(name)
+    if (value.isNaN()) throw HttpError(400, "invalid")
+    return value.toFloat().coerceIn(0f, 1f)
+}
+
 class HttpRequest(
     val method: String,
     val path: String,
@@ -116,8 +126,13 @@ class HttpResponse(
     private val bytes: ByteArray? = null,
     private val stream: InputStream? = null,
     private val length: Long = bytes?.size?.toLong() ?: -1L,
-    private val cacheSeconds: Int = 0
+    private val cacheSeconds: Int = 0,
+    /** El único otro origen al que la página puede hablarle, si hay alguno. */
+    private val reach: String? = null
 ) {
+    /** La misma respuesta, pero dejando que la página consulte también ese origen. */
+    fun reaching(origin: String) = HttpResponse(status, type, bytes, stream, length, cacheSeconds, origin)
+
     fun write(out: OutputStream) {
         val head = StringBuilder("HTTP/1.1 $status ${reason(status)}\r\n")
         head.append("Content-Type: $type\r\n")
@@ -127,7 +142,8 @@ class HttpResponse(
         head.append("X-Content-Type-Options: nosniff\r\n")
         head.append("X-Frame-Options: DENY\r\n")
         head.append("Referrer-Policy: no-referrer\r\n")
-        head.append("Content-Security-Policy: default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'\r\n")
+        val connect = reach?.let { " connect-src 'self' $it;" }.orEmpty()
+        head.append("Content-Security-Policy: default-src 'self';$connect style-src 'self' 'unsafe-inline'; script-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'\r\n")
         head.append("\r\n")
         out.write(head.toString().toByteArray(Charsets.ISO_8859_1))
         if (bytes != null) out.write(bytes)

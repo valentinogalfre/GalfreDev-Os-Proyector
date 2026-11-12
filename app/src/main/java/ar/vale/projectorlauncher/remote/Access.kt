@@ -82,6 +82,9 @@ class Access(
     /** Hasta dónde llega este pase, o null si no existe o todavía espera. */
     fun level(header: String?): Level? = find(header)?.level
 
+    /** El número de un pase aprobado. La juntada lo usa para que con cada pase entre una sola persona. */
+    fun pass(header: String?): Int? = find(header)?.takeIf { it.level != null }?.id
+
     /** Para el celular que espera: "pending", el nivel que le dieron, o null si el pase no existe. */
     fun status(header: String?): String? = find(header)?.let { it.level?.wire ?: PENDING }
 

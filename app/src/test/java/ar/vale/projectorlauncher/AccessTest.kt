@@ -44,6 +44,8 @@ class AccessTest {
         override fun swipe(fromX: Float, fromY: Float, toX: Float, toY: Float) = RemoteDevice.Result.OK.also { calls.add("swipe") }
         override fun apps() = JSONObject().also { calls.add("apps") }
         override fun open(pkg: String) = RemoteDevice.Result.OK.also { calls.add("open:$pkg") }
+        override fun cast() = (if (receives) RemoteDevice.Result.OK else RemoteDevice.Result.NOT_INSTALLED).also { calls.add("cast") }
+        var receives = true
         override fun fits(length: Long) = true
         override fun privateScreen() = private
     }
@@ -81,7 +83,7 @@ class AccessTest {
     )
     private val control = listOf(
         "POST" to "/api/key", "POST" to "/api/text", "POST" to "/api/pointer", "POST" to "/api/tap", "POST" to "/api/swipe",
-        "POST" to "/api/open", "GET" to "/api/state", "GET" to "/api/apps"
+        "POST" to "/api/open", "POST" to "/api/cast", "GET" to "/api/state", "GET" to "/api/apps"
     )
 
     // --- Pedir ---
@@ -162,6 +164,18 @@ class AccessTest {
         assertEquals(200, call("/api/apps", "", pass, method = "GET").status)
         assertEquals(200, call("/api/juntada/join", """{"name":"Ana"}""", pass).status)
         assertEquals(listOf("key:down", "tap", "swipe", "text", "pointer", "open:com.netflix.mediaclient", "apps"), device.calls)
+    }
+
+    @Test
+    fun `contrato - poner la pared a recibir una pantalla es parte del control, y avisa si el equipo no puede`() {
+        val pass = approved(Access.Level.CONTROL)
+        assertEquals(200, call("/api/cast", token = pass).status)
+        assertEquals(200, call("/api/cast", token = pairing.token).status)
+        assertEquals(listOf("cast", "cast"), device.calls)
+        device.receives = false
+        val none = call("/api/cast", token = pairing.token)
+        assertEquals(404, none.status)
+        assertEquals("not_installed", none.json().getString("error"))
     }
 
     @Test

@@ -136,7 +136,7 @@ class AndroidTools(private val context: Context) : ToolRunner {
     private fun inService(intent: Intent): String? {
         val pm = context.packageManager
         val service = Streaming.byHost(intent.data?.host) ?: return null
-        val pkg = Streaming.installed(service) { StreamingLauncher.isInstalled(context, it) } ?: return null
+        val pkg = StreamingLauncher.current(context, service) ?: return null
         intent.setPackage(pkg)
         if (intent.resolveActivity(pm) != null) return service.name
         intent.setPackage(null)

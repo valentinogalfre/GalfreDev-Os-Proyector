@@ -59,8 +59,11 @@ class RemoteService : Service() {
         val prefs = Prefs(this)
         val pairing = RemoteState.pairing
             ?: Pairing(prefs.remoteToken, { prefs.remoteToken = it }).also { RemoteState.pairing = it }
-        val party = JuntadaRoutes(JuntadaHub.get(this), JuntadaHub.source(this))
-        val router = Router(pairing, AndroidRemote(applicationContext), party, AccessHub.get(this), RemotePage(applicationContext))
+        val party = JuntadaRoutes(JuntadaHub.get(this), JuntadaHub.source(this), JuntadaHub.files(this))
+        val router = Router(
+            pairing, AndroidRemote(applicationContext), party, AccessHub.get(this),
+            { RemoteState.securePort }, RemotePage(applicationContext)
+        )
         val created = RemoteServer(router)
         try {
             RemoteState.port = created.start()

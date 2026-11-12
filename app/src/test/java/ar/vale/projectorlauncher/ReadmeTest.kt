@@ -5,7 +5,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 
-/** El README no promete más de lo que hay: ni tests que no existen, ni pruebas en un proyector que no se hicieron. */
+/** El README no promete más de lo que hay: ni tests que no existen, ni pruebas en el proyector que no se hicieron. */
 class ReadmeTest {
 
     private val readme get() = File("../README.md").readText()
@@ -24,8 +24,13 @@ class ReadmeTest {
         assertEquals("el README dice $said y hay ${testCount()}: actualizar la línea de testDebugUnitTest", testCount(), said)
     }
 
+    /**
+     * Desde noviembre de 2026 corre en un Fika P8, así que ya no puede decir que nada se probó en
+     * un equipo. Lo que no puede faltar es el aviso de que no todo se vio ahí, y dónde está la lista.
+     */
     @Test
-    fun `contrato - el README dice que todavia no se probo en un proyector real`() {
-        assertTrue(readme, readme.contains("Nada de esto se probó todavía en un proyector real"))
+    fun `contrato - el README avisa que no todo se vio en el proyector y dice donde esta lo que falta`() {
+        assertTrue(readme, readme.contains("No todo se vio todavía en el equipo"))
+        assertTrue(readme, readme.contains("ROADMAP.md"))
     }
 }

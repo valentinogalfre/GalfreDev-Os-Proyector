@@ -210,6 +210,9 @@ abstract class GdActivity : Activity() {
     /** El teclado en pantalla abierto, si lo hay. */
     val keyboard: Keyboard? get() = overlays.lastOrNull() as? Keyboard
 
+    /** True mientras la cinta tapa la pantalla o está por hacerlo: lo que se abra ahora no puede pasar por ella. */
+    val covering: Boolean get() = ::tape.isInitialized && tape.isBusy
+
     companion object {
         @Volatile private var foreground: WeakReference<GdActivity>? = null
 

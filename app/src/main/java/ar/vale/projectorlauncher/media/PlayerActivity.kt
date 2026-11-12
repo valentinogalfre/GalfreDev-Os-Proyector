@@ -21,6 +21,7 @@ import android.widget.TextView
 import android.widget.VideoView
 import ar.vale.projectorlauncher.FileKind
 import ar.vale.projectorlauncher.R
+import ar.vale.projectorlauncher.juntada.JuntadaHub
 import ar.vale.projectorlauncher.store.StoreActivity
 import ar.vale.projectorlauncher.ui.GdActivity
 import ar.vale.projectorlauncher.ui.LineProgress
@@ -29,6 +30,7 @@ import ar.vale.projectorlauncher.ui.Notice
 import ar.vale.projectorlauncher.ui.Screen
 import ar.vale.projectorlauncher.ui.Sheet
 import java.io.File
+import java.lang.ref.WeakReference
 import java.util.concurrent.Executors
 
 /**
@@ -36,6 +38,9 @@ import java.util.concurrent.Executors
  *
  * Las flechas hacen lo mismo en todos: izquierda y derecha mueven (10 segundos, o una foto, o una
  * página), arriba y abajo cambian de archivo, OK pausa o arranca el pase automático.
+ *
+ * También es el escenario de la fila de presentaciones ([EXTRA_STAGE]): muestra el archivo de quien
+ * presenta, y cerrarlo con Atrás o Inicio le termina el turno.
  */
 class PlayerActivity : GdActivity() {
 
@@ -48,6 +53,7 @@ class PlayerActivity : GdActivity() {
     private lateinit var hudTime: TextView
     private lateinit var hudLine: LineProgress
     private lateinit var hudHint: TextView
+    private lateinit var pageMark: TextView
     private lateinit var resume: ResumeStore
 
     private val main = Handler(Looper.getMainLooper())
@@ -68,16 +74,29 @@ class PlayerActivity : GdActivity() {
     private var pendingSeek: Long? = null
     private var player: MediaPlayer? = null
     private var failed = false
+
+    /** True si el archivo no se pudo reproducir: lo que queda delante es el aviso, no la presentación. */
+    val unplayable: Boolean get() = failed
     private var slideshow = false
     private var pdf: PdfRenderer? = null
     private var pdfFd: ParcelFileDescriptor? = null
     private var pdfPage = 0
     @Volatile private var imageJob = 0
 
+    /** La presentación de la fila que se está mostrando, o cero si es un archivo cualquiera. */
+    var stageId = 0
+        private set
+
+    private val presenting: Boolean get() = stageId != 0
+
+    /** La cerró la fila, que ya sabe que terminó: no hace falta avisarle. */
+    private var leaving = false
+
     /** De a una: mantener apretada una flecha no puede juntar varias fotos en memoria. */
     private val decoder = Executors.newSingleThreadExecutor()
 
     private val hideHud = Runnable { setHud(false) }
+    private val hideMark = Runnable { pageMark.visibility = View.GONE }
     private val giveUpWaiting = Runnable { stopWaiting { gaveUp() } }
     private val frameShown = Runnable { stopWaiting { arrived() } }
     private val tick = object : Runnable {
@@ -116,6 +135,7 @@ class PlayerActivity : GdActivity() {
         hudTime = findViewById(R.id.hud_time)
         hudLine = findViewById(R.id.hud_line)
         hudHint = findViewById(R.id.hud_hint)
+        pageMark = findViewById(R.id.page_mark)
         resume = ResumeStore(this)
 
         val path = intent.getStringExtra(EXTRA_PATH)
@@ -124,15 +144,19 @@ class PlayerActivity : GdActivity() {
             return
         }
         val file = File(path)
+        stageId = intent.getIntExtra(EXTRA_STAGE, 0)
+        if (stageId != 0) staged = WeakReference(this)
         kind = runCatching { FileKind.valueOf(intent.getStringExtra(EXTRA_KIND).orEmpty()) }.getOrDefault(FileKind.VIDEO)
         playlist = Storage.siblings(file, kind).ifEmpty { listOf(file) }
         // Recrear la pantalla (el tema cambia solo a la noche) no vuelve al primer archivo.
         index = savedInstanceState?.getInt(STATE_INDEX, -1)?.takeIf { it in playlist.indices }
             ?: playlist.indexOf(file).coerceAtLeast(0)
         pdfPage = savedInstanceState?.getInt(STATE_PAGE) ?: 0
+        // La ayuda de teclas es para el control de la pared: quien presenta maneja desde su celular.
+        if (presenting) hudHint.visibility = View.GONE
         slideshow = savedInstanceState?.getBoolean(STATE_SLIDES) ?: false
         openCurrent()
-        if (PlayerRules.hudOnOpen(kind)) setHud(true)
+        if (PlayerRules.hudOnOpen(kind, presenting)) setHud(true)
         scheduleSlide()
     }
 
@@ -146,7 +170,8 @@ class PlayerActivity : GdActivity() {
     private val current: File get() = playlist[index]
 
     private fun openCurrent() {
-        hudTitle.text = current.nameWithoutExtension
+        // En escena la barra dice qué se presenta, no cómo se llama el archivo que llegó del celular.
+        hudTitle.text = intent.getStringExtra(EXTRA_TITLE) ?: current.nameWithoutExtension
         when (kind) {
             FileKind.IMAGE -> showImage()
             FileKind.PDF -> showPdf()
@@ -170,9 +195,15 @@ class PlayerActivity : GdActivity() {
         if (audio) bindAudio()
         hudHint.setText(R.string.player_hint_media)
         cues = if (audio) emptyList() else loadSubtitles()
-        resumeAt = if (audio) 0L else resume.position(current.absolutePath)
+        // Una presentación arranca siempre desde el principio.
+        resumeAt = if (audio || stageId != 0) 0L else resume.position(current.absolutePath)
         video.setOnPreparedListener(::onPrepared)
         video.setOnCompletionListener {
+            // En escena el video no cierra la pantalla al terminar: quien presenta sigue hablando.
+            if (stageId != 0) {
+                setHud(true)
+                return@setOnCompletionListener
+            }
             resume.forget(current.absolutePath)
             if (index < playlist.lastIndex) step(1) else closeScreen()
         }
@@ -234,7 +265,7 @@ class PlayerActivity : GdActivity() {
             resumeAt = 0
         }
         if (wasPlaying) video.start()
-        setHud(true)
+        if (PlayerRules.hudOnStart(presenting)) setHud(true)
     }
 
     /** Hay cuadro dibujado y la búsqueda terminó: se deja pasar un instante para que quede en pantalla. */
@@ -423,24 +454,43 @@ class PlayerActivity : GdActivity() {
         renderPage(pdfPage)
     }
 
+    /**
+     * Un PDF sin páginas, o con una página que el sistema no puede dibujar, se avisa y nada más.
+     * El archivo lo pudo mandar cualquiera, y esta pantalla corre en el mismo proceso que el inicio:
+     * si se cae, se cae todo.
+     */
     private fun renderPage(number: Int) {
         val renderer = pdf ?: return
-        pdfPage = number.coerceIn(0, renderer.pageCount - 1)
-        val page = renderer.openPage(pdfPage)
-        // Se mide la pantalla y no la vista: antes de la primera página la vista está oculta y mide cero.
-        val screen = Screen.realSize(this)
-        val scale = minOf(screen.x.toFloat() / page.width, screen.y.toFloat() / page.height)
-        val bitmap = Bitmap.createBitmap(
-            (page.width * scale).toInt().coerceAtLeast(1),
-            (page.height * scale).toInt().coerceAtLeast(1),
-            Bitmap.Config.ARGB_8888
-        )
-        bitmap.eraseColor(Color.WHITE)
-        page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
-        page.close()
+        val target = PlayerRules.page(number, renderer.pageCount)
+        val bitmap = target?.let { runCatching { draw(renderer, it) }.getOrNull() }
+        if (target == null || bitmap == null) {
+            notice(getString(R.string.player_pdf_error), Notice.Kind.ERROR)
+            return
+        }
+        pdfPage = target
         crossfade(bitmap)
         hudTime.text = "${pdfPage + 1} / ${renderer.pageCount}"
         hudLine.value = (pdfPage + 1f) / renderer.pageCount
+    }
+
+    private fun draw(renderer: PdfRenderer, number: Int): Bitmap {
+        val page = renderer.openPage(number)
+        try {
+            // Se mide la pantalla y no la vista: antes de la primera página la vista está oculta y mide cero.
+            val screen = Screen.realSize(this)
+            val scale = minOf(screen.x.toFloat() / page.width, screen.y.toFloat() / page.height)
+            val bitmap = Bitmap.createBitmap(
+                (page.width * scale).toInt().coerceAtLeast(1),
+                (page.height * scale).toInt().coerceAtLeast(1),
+                Bitmap.Config.ARGB_8888
+            )
+            bitmap.eraseColor(Color.WHITE)
+            page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+            return bitmap
+        } finally {
+            // Una página que queda abierta no deja abrir ninguna otra.
+            page.close()
+        }
     }
 
     // --- Teclas ---
@@ -474,14 +524,24 @@ class PlayerActivity : GdActivity() {
             KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_MEDIA_PREVIOUS, KeyEvent.KEYCODE_PAGE_UP -> step(-1)
             KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.KEYCODE_MEDIA_NEXT, KeyEvent.KEYCODE_PAGE_DOWN -> step(1)
             KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE, KeyEvent.KEYCODE_SPACE -> {
-                if (media) togglePlay() else if (kind == FileKind.IMAGE) toggleSlideshow() else setHud(true)
+                if (media) togglePlay() else if (PlayerRules.slideshow(kind, playlist.size)) toggleSlideshow()
             }
             KeyEvent.KEYCODE_MEDIA_PLAY -> if (media && !video.isPlaying) togglePlay()
             KeyEvent.KEYCODE_MEDIA_PAUSE -> if (media && video.isPlaying) togglePlay()
             else -> return super.onKeyDown(keyCode, event)
         }
-        setHud(true)
+        if (PlayerRules.hudOnKey(media, presenting)) setHud(true) else markPage()
         return true
+    }
+
+    /** En escena la barra no tapa la diapositiva: alcanza con decir por cuál va. */
+    private fun markPage() {
+        val pages = pdf?.pageCount ?: 0
+        if (!PlayerRules.pageMark(kind, presenting, pages)) return
+        pageMark.text = getString(R.string.player_page, pdfPage + 1, pages)
+        pageMark.visibility = View.VISIBLE
+        main.removeCallbacks(hideMark)
+        main.postDelayed(hideMark, MARK_MS)
     }
 
     private fun toggleSlideshow() {
@@ -502,7 +562,7 @@ class PlayerActivity : GdActivity() {
             }
             subtitle.translationY = -hudHeight().toFloat()
             val media = kind == FileKind.VIDEO || kind == FileKind.AUDIO
-            if (PlayerRules.hudAutoHides(media, video.isPlaying)) main.postDelayed(hideHud, HUD_MS)
+            if (PlayerRules.hudAutoHides(media, video.isPlaying, presenting)) main.postDelayed(hideHud, HUD_MS)
         } else {
             hud.visibility = View.INVISIBLE
             subtitle.translationY = 0f
@@ -511,8 +571,15 @@ class PlayerActivity : GdActivity() {
 
     // --- Ciclo de vida ---
 
+    /** La fila terminó este turno: se cierra sin cinta, porque enseguida vuelve el tablero. */
+    fun leaveStage() {
+        leaving = true
+        finish()
+        noTransition()
+    }
+
     private fun saveProgress() {
-        if (kind == FileKind.VIDEO && prepared) {
+        if (stageId == 0 && kind == FileKind.VIDEO && prepared) {
             resume.update(current.absolutePath, positionNow(), video.duration.toLong())
         }
     }
@@ -539,6 +606,11 @@ class PlayerActivity : GdActivity() {
     }
 
     override fun onDestroy() {
+        if (stageId != 0) {
+            if (staged?.get() === this) staged = null
+            // Cerrada con Atrás o con Inicio: el turno termina ahí. Si solo se recrea, sigue.
+            if (isFinishing && !leaving) JuntadaHub.get(this).demoLeft(stageId)
+        }
         decoder.shutdownNow()
         main.removeCallbacksAndMessages(null)
         runCatching { pdf?.close() }
@@ -549,8 +621,17 @@ class PlayerActivity : GdActivity() {
     companion object {
         const val EXTRA_PATH = "path"
         const val EXTRA_KIND = "kind"
+        const val EXTRA_STAGE = "stage"
+        const val EXTRA_TITLE = "title"
+
+        private var staged: WeakReference<PlayerActivity>? = null
+
+        /** El reproductor que está mostrando esa presentación, si sigue abierto. */
+        fun onStage(id: Int): PlayerActivity? =
+            staged?.get()?.takeIf { it.stageId == id && !it.isFinishing && !it.isDestroyed }
         private const val TICK_MS = 200L
         private const val HUD_MS = 3500L
+        private const val MARK_MS = 1800L
         /** Tope de la espera del primer cuadro: pasado esto se destapa igual. */
         private const val FIRST_FRAME_MS = 2500L
         private const val SETTLE_MS = 120L

@@ -102,7 +102,7 @@ object RowSnap {
     }
 }
 
-/** Conecta una lista con sus filas: OK corre la acción y mantener OK, la secundaria. */
+/** Conecta una lista con sus filas: OK corre la acción, y mantener OK o Menú, la secundaria. */
 fun ListView.bindRows(adapter: RowAdapter) {
     this.adapter = adapter
     itemsCanFocus = false
@@ -115,6 +115,11 @@ fun ListView.bindRows(adapter: RowAdapter) {
     // Con las flechas la lista corre lo justo para que se vea la fila elegida, y deja la de arriba
     // cortada a la mitad contra el título fijo: después de cada paso se acomoda a filas enteras.
     setOnKeyListener { _, keyCode, event ->
+        if (keyCode == KeyEvent.KEYCODE_MENU) {
+            val long = (selectedItem as? Row)?.longAction ?: return@setOnKeyListener false
+            if (event.action == KeyEvent.ACTION_UP) long()
+            return@setOnKeyListener true
+        }
         if (event.action != KeyEvent.ACTION_DOWN || (keyCode != KeyEvent.KEYCODE_DPAD_UP && keyCode != KeyEvent.KEYCODE_DPAD_DOWN)) {
             return@setOnKeyListener false
         }

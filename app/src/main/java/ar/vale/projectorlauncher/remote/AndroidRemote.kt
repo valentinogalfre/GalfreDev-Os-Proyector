@@ -3,7 +3,6 @@ package ar.vale.projectorlauncher.remote
 import android.app.Instrumentation
 import android.content.Context
 import android.content.Intent
-import android.graphics.RectF
 import android.media.AudioManager
 import android.net.Uri
 import android.os.Handler
@@ -14,6 +13,7 @@ import ar.vale.projectorlauncher.AppRepository
 import ar.vale.projectorlauncher.FileKind
 import ar.vale.projectorlauncher.LauncherActivity
 import ar.vale.projectorlauncher.MediaTypes
+import ar.vale.projectorlauncher.Prefs
 import ar.vale.projectorlauncher.R
 import ar.vale.projectorlauncher.apps.Streaming
 import ar.vale.projectorlauncher.apps.StreamingLauncher
@@ -22,6 +22,9 @@ import ar.vale.projectorlauncher.claude.ClaudeRuntime
 import ar.vale.projectorlauncher.claude.ClaudeSettings
 import ar.vale.projectorlauncher.claude.KeyVault
 import ar.vale.projectorlauncher.device.BlackoutActivity
+import ar.vale.projectorlauncher.device.Casting
+import ar.vale.projectorlauncher.device.DeviceReport
+import ar.vale.projectorlauncher.juntada.JuntadaHub
 import ar.vale.projectorlauncher.media.CineActivity
 import ar.vale.projectorlauncher.media.Storage
 import ar.vale.projectorlauncher.ui.GdActivity
@@ -33,6 +36,7 @@ import org.json.JSONObject
 import java.io.File
 import java.io.IOException
 import java.io.InputStream
+import java.util.Locale
 
 /** Conecta los pedidos del celular con el equipo. */
 class AndroidRemote(private val context: Context) : RemoteDevice {
@@ -40,12 +44,6 @@ class AndroidRemote(private val context: Context) : RemoteDevice {
     private val main = Handler(Looper.getMainLooper())
     private val audio = context.getSystemService(AudioManager::class.java)
     private val instrumentation = Instrumentation()
-    private var pointerX = 0f
-    private var pointerY = 0f
-    private val hidePointer = Runnable {
-        GdActivity.current?.tape?.unpin()
-        RemoteAccessibility.instance?.hideCursor()
-    }
 
     override fun state(): JSONObject {
         val size = Screen.realSize(context)
@@ -152,6 +150,8 @@ class AndroidRemote(private val context: Context) : RemoteDevice {
      */
     private fun announce(file: File) {
         val activity = GdActivity.current ?: return
+        // Con alguien presentando, lo que llega se guarda en Cine sin aparecer encima de su pantalla.
+        if (JuntadaHub.get(context).staged) return
         val kind = MediaTypes.kindOf(file)
         val options = ArrayList<Sheet.Option>()
         when (kind) {
@@ -202,40 +202,21 @@ class AndroidRemote(private val context: Context) : RemoteDevice {
             .put("busy", state.busy)
             .put("question", state.question)
             .put("status", ClaudeSettings.status(context, state) ?: JSONObject.NULL)
+            // Cómo terminó: el celular lee en voz alta una respuesta, y no un error.
+            .put("end", state.end?.name?.lowercase(Locale.ROOT) ?: JSONObject.NULL)
     }
 
     override fun stopClaude() {
         main.post { ClaudeRuntime.cancel() }
     }
 
-    /**
-     * En nuestras pantallas el puntero es la cinta: un bloque chico que sigue al dedo, y sigue
-     * habiendo una sola. Sobre otra app la cinta no existe, y lo dibuja el control total.
-     */
-    override fun pointer(x: Float, y: Float, visible: Boolean) {
-        main.post {
-            main.removeCallbacks(hidePointer)
-            if (!visible) {
-                hidePointer.run()
-                return@post
-            }
-            val activity = GdActivity.current
-            if (activity != null) pin(activity, x, y) else RemoteAccessibility.instance?.showCursor(x, y)
-            main.postDelayed(hidePointer, POINTER_TIMEOUT_MS)
-        }
+    override fun newClaude() {
+        main.post { ClaudeRuntime.reset() }
     }
 
-    private fun pin(activity: GdActivity, x: Float, y: Float) {
-        pointerX = x
-        pointerY = y
-        val half = activity.resources.displayMetrics.density * POINTER_DP / 2
-        val tape = activity.tape
-        tape.pin(knockout = false) {
-            val cx = pointerX * tape.width
-            val cy = pointerY * tape.height
-            RectF(cx - half, cy - half, cx + half, cy + half)
-        }
-    }
+    override fun report(): JSONObject = DeviceReport.json(context)
+
+    override fun pointer(x: Float, y: Float, visible: Boolean) = WallPointer.move(x, y, visible)
 
     override fun tap(x: Float, y: Float): RemoteDevice.Result = touching { it.tap(x, y) }
 
@@ -253,9 +234,17 @@ class AndroidRemote(private val context: Context) : RemoteDevice {
         AppRepository.names(context)
             .filter { (_, pkg) -> Streaming.byPackage(pkg) == null }
             .forEach { (name, pkg) -> others.put(JSONObject().put("name", name).put("package", pkg)) }
+        // Si el equipo recibe la pantalla de un celular, se dice con qué: el celular ofrece abrirlo.
+        val receiver = Casting.best(context)
         return JSONObject()
-            .put("services", Streaming.forPhone { StreamingLauncher.isInstalled(context, it) })
+            .put("services", Streaming.forPhone({ Prefs(context).serviceApp(it) }) { StreamingLauncher.isInstalled(context, it) })
             .put("apps", others)
+            .put("cast", receiver?.let { JSONObject().put("name", it.name) } ?: JSONObject.NULL)
+    }
+
+    override fun cast(): RemoteDevice.Result {
+        val receiver = Casting.best(context) ?: return RemoteDevice.Result.NOT_INSTALLED
+        return start(receiver.intent)
     }
 
     /** Un servicio que no está se busca en el proyector: la instalación la confirma una persona. */
@@ -268,8 +257,6 @@ class AndroidRemote(private val context: Context) : RemoteDevice {
 
     private companion object {
         const val SPACE_MARGIN = 150L * 1024 * 1024
-        const val POINTER_DP = 22
-        const val POINTER_TIMEOUT_MS = 2500L
 
         val NAVIGATION = mapOf(
             "up" to KeyEvent.KEYCODE_DPAD_UP,

@@ -6,8 +6,9 @@ entero con el control remoto y lleva la marca de punta a punta.
 No es una ROM y no toca el firmware. Es un solo APK de 1,5 MB que reemplaza la pantalla
 de inicio del fabricante. Si algo falla, el inicio original sigue en el equipo.
 
-Nada de esto se probó todavía en un proyector real. Lo probamos en emulador, con
-Android 9 y 11. Lo que falta comprobar en hardware está en [`ROADMAP.md`](ROADMAP.md).
+Corre en un Fika P8 desde noviembre de 2026. Cada versión se prueba antes en emulador, con
+Android 9 y 11, y con celulares simulados. No todo se vio todavía en el equipo: lo que falta
+está en [`ROADMAP.md`](ROADMAP.md).
 
 ## Qué tiene
 
@@ -15,10 +16,10 @@ Android 9 y 11. Lo que falta comprobar en hardware está en [`ROADMAP.md`](ROADM
 |---|---|
 | Inicio | Ocho palabras grandes y, al lado, lo que importa de cada una: seguí viendo, apps recientes, recomendaciones |
 | Apps | Grilla con búsqueda, favoritas, app principal y desinstalar |
-| Cine | Netflix y compañía, y video, música, fotos y PDF desde la memoria, un pendrive o el celular. Retoma donde dejaste, con subtítulos |
+| Cine | Netflix y compañía, servicios gratis, la pantalla del celular, y video, música, fotos y PDF desde la memoria, un pendrive o el celular. Retoma donde dejaste, con subtítulos |
 | Tienda | 21 apps elegidas para proyector, bajadas de su fuente oficial y comprobadas antes de instalar |
 | Claude | Hablale desde el celular y usa las apps por vos: abre, busca, escribe y le da reproducir. La respuesta sale en la pared |
-| Juntada | Todos se suman desde su celular con un código: trivia que escribe Claude, votaciones y las cuentas de la casa |
+| Juntada | Todos se suman desde su celular con un código: una fila de presentaciones, trivia que escribe Claude, votaciones y las cuentas de la casa |
 | Pared | La hora en palabras, la hora grande o una retícula. Arranca sola si dejás de usarlo |
 | Celular | Tu celular como control, trackpad y teclado de cualquier app, sin instalar nada |
 | Ajustes | Lo del sistema que este equipo de verdad tiene, más tema, animaciones y temporizador |
@@ -33,9 +34,13 @@ Android 9 y 11. Lo que falta comprobar en hardware está en [`ROADMAP.md`](ROADM
 - **Claude usa las apps.** Le decís «abrí YouTube y poné música para programar» y lo hace:
   lee lo que hay en pantalla, mueve el puntero, toca, escribe y vuelve a mirar. En la pared se
   ve cada paso. Marca con la cinta la palabra que resume la respuesta.
-- **Se le habla.** En el celular hay un botón de micrófono: decís el pedido y sale.
+- **Se le habla.** En el celular hay un botón de micrófono: decís el pedido, sale, y la
+  respuesta también se escucha.
 - **La juntada.** La pared como tablero y cada celular como control, sin instalar nada. Una
   trivia sobre el tema que quieran, votaciones, y quién le debe a quién al final del asado.
+- **Una muestra de demos.** Cada uno se anota en la fila y manda su PDF, su imagen o su video
+  desde el celular, o muestra su pantalla. Mientras presenta, la pared es suya: pasa las
+  páginas, señala y pausa desde su celular, y nadie más la toca. Al final, aplausos y podio.
 - **Una Tienda que sabe de proyectores.** Elige la variante de 32 o 64 bits, compara
   hashes y firmas, y avisa si tenés una versión con malware.
 - **Calibración.** Patrones de foco, geometría y niveles para dejar bien la imagen.
@@ -46,7 +51,8 @@ Android 9 y 11. Lo que falta comprobar en hardware está en [`ROADMAP.md`](ROADM
 
 - Flechas: mueven la cinta.
 - OK: abre. En el reproductor, pausa.
-- Menú, o mantener OK sobre una app: principal, favorita, información y desinstalar.
+- Menú, o mantener OK sobre una app: principal, favorita, información y desinstalar. Sobre un
+  servicio de Cine: actualizarlo, bajar su otra versión o sacarlo de la lista.
 - Atrás: vuelve. En Claude, si está respondiendo, detiene la respuesta.
 
 ## Instalar en un proyector
@@ -97,10 +103,12 @@ no leer ni tocar. Tampoco escribe en campos de contraseña.
 Una tarea se corta sola a los treinta pasos. Cada toque es un pedido a la API: buscar una
 película y darle reproducir son unos diez, y tarda cerca de medio minuto.
 
-**Para hablarle** desde el celular hay dos caminos. El micrófono del teclado funciona siempre.
-El botón de micrófono de la página necesita que el navegador confíe en ella, y para eso el
-proyector la sirve también por HTTPS, en el puerto 8696, con un certificado que firma él mismo:
-el navegador avisa una vez y hay que aceptarlo. La transcripción la hace el celular.
+**Para hablarle** desde el celular está el botón de micrófono de la pestaña Claude. El
+navegador solo presta el micrófono a una página segura, y para eso el proyector la sirve también
+por HTTPS, en el puerto 8696, con un certificado que firma él mismo. La primera vez el botón
+lleva a esa versión en la misma pestaña: el navegador avisa una vez y hay que aceptarlo. Después
+la página pasa sola. La transcripción la hace el celular, que prueba varias variantes del
+castellano hasta dar con la que su navegador reconoce, y lee la respuesta en voz alta.
 
 ### La juntada
 
@@ -116,13 +124,24 @@ respuesta correcta no viaja a los celulares hasta que la pregunta cierra. La gen
 cuentas se guardan en el equipo; «Empezar de cero» borra todo, saca a los invitados y cambia
 el código.
 
+Las votaciones pueden ser con voto secreto y cerrarse solas a un tiempo; un empate se define
+al azar. La trivia tiene dificultad, tiempo por pregunta, rachas y una última pregunta que vale
+doble.
+
+**Las presentaciones** son una fila. Cada invitado se anota y manda su archivo (PDF, imagen o
+video), o avisa que va a mostrar su pantalla. Los archivos entran de a uno y en orden: si dos
+mandan a la vez, el segundo espera, y cada uno queda en su propia carpeta. El dueño da los
+turnos. Mientras alguien presenta, solo esa persona y el dueño manejan la pared: los invitados
+con control quedan en espera hasta que termine. Cada turno puede tener un tiempo, que avisa y no
+corta; al final hay aplausos, un voto del 1 al 5 y un podio.
+
 ## Compilar
 
 Hace falta JDK 17 y el Android SDK con la plataforma 35.
 
 ```sh
 ./gradlew assembleDebug        # el APK queda en app/build/outputs/apk/debug/
-./gradlew testDebugUnitTest    # 352 tests de contrato
+./gradlew testDebugUnitTest    # 444 tests de contrato
 ./gradlew lintDebug            # los errores frenan la compilación
 ```
 
@@ -164,7 +183,7 @@ un estado, y arriba de la cinta solo va carbón.
 | `apps/`, `media/`, `store/`, `wall/` | Una pantalla o módulo cada una |
 | `device/` | Lo del equipo: funciones del fabricante, temporizador, calibración |
 | `claude/` | Protocolo de la API, sesión, herramientas, clave, lectura y manejo de otras apps |
-| `juntada/` | Trivia, votación y cuentas; la pantalla de la pared y el banco de preguntas |
+| `juntada/` | Presentaciones, trivia, votación y cuentas; la pantalla de la pared y el banco de preguntas |
 | `remote/` | Servidor HTTP y HTTPS, emparejado, invitados, control por accesibilidad |
 
 Más detalle en el [diseño](docs/superpowers/specs/2026-11-06-galfredev-os-design.md), en
@@ -177,9 +196,11 @@ Más detalle en el [diseño](docs/superpowers/specs/2026-11-06-galfredev-os-desi
   trae esas pantallas, las encontramos y las abrimos. No las podemos reemplazar.
 - La animación de arranque del sistema necesita root. La nuestra arranca después.
 - Netflix, Prime Video, Disney+ y HBO Max no están pensadas para estos equipos. Algunos las
-  traen de fábrica. Si faltan, Cine las busca en Aurora Store, y el celular las maneja, pero
-  pueden verse en baja calidad o no abrir. Si querés buena imagen, conectá un Google TV Streamer
-  o un Fire TV Stick por HDMI.
+  traen de fábrica. Cine las actualiza o las busca en Aurora Store, en su versión de TV o de
+  celular, y el celular las maneja, pero pueden verse en baja calidad o no abrir. Si querés
+  buena imagen, conectá un Google TV Streamer o un Fire TV Stick por HDMI.
+- Duplicar la pantalla del celular sirve para YouTube, fotos, la web y una demo. Los servicios
+  pagos salen en negro: lo bloquean ellos. El proyector no es un Chromecast.
 - La conexión con el celular es HTTP dentro de tu red, sin cifrar. Usala en una red de confianza.
   La versión por HTTPS existe para el micrófono, y su certificado no lo avala nadie.
 - Claude no ve la imagen. Si una app no describe sus botones, o es un video a pantalla
