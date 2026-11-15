@@ -3,7 +3,8 @@
 Estudio hecho el 2026-11-06 para armar la Tienda. El catálogo vive en
 `app/src/main/assets/catalog.json` y se revisa con `scripts/store/check_catalog.py`.
 
-Nada de esto se probó en un proyector real. Lo probado en emulador está marcado.
+Lo que se vio en un proyector real, un Fika P8, está dicho en cada parte. El resto se probó
+en emulador, y está marcado.
 
 ## La conclusión
 
@@ -24,14 +25,82 @@ oficial, comprobar y usar con el control, y dice con claridad lo que no se puede
 
 ## Netflix y compañía
 
-Cine lista nueve servicios: Netflix, YouTube, Prime Video, Disney+, HBO Max, Paramount+, Pluto
-TV, ViX y Spotify. Si están instalados los abre, primero la versión de TV. Si no, los busca en
-Aurora Store. Son
-las apps oficiales de Google Play, sin tocar. No esquivamos ninguna protección: si un
-servicio decide no andar en un equipo sin certificar, no anda.
+Cine conoce doce servicios. Con suscripción: Netflix, Prime Video, Disney+, HBO Max, Paramount+
+y Spotify. Gratis, con publicidad: YouTube, Pluto TV, Mercado Play, ViX, Plex y Canela.TV.
 
-Las versiones de celular no conocen el control remoto. Para eso está el trackpad del
-celular, que necesita el control total.
+En la lista de Cine aparecen los que están instalados. El resto queda en «Más servicios»,
+separado en gratis y con suscripción. Son las apps oficiales de Google Play, sin tocar. No
+esquivamos ninguna protección: si un servicio decide no andar en un equipo sin certificar, no
+anda.
+
+### Qué se ve en el Fika P8
+
+El 2026-11-11, en el Fika P8 del dueño andan YouTube y Netflix. Prime Video, HBO Max y Disney+
+no. galfredev OS no interviene: solo abre la app que está instalada. Las causas probables, sin
+confirmar todavía en el equipo:
+
+1. **La versión de fábrica quedó vieja.** El servicio exige actualizarse y la tienda del equipo
+   no ofrece la actualización. Es lo que cuentan compradores con Disney+.
+2. **La variante equivocada.** El equipo se presenta como televisor y no tiene pantalla táctil:
+   Google Play le ofrece las apps de TV y le esconde las de celular. Varias apps de TV solo
+   andan en equipos certificados.
+3. **El equipo no está certificado.** Widevine L3 y sin HDCP: algunos servicios bajan la
+   calidad y otros directamente no reproducen.
+
+Para saber cuál es, el celular tiene un informe: pestaña Apps, «Diagnóstico del equipo». Dice
+cómo se presenta el equipo, el nivel de Widevine, si tiene Play Store, qué versión de cada
+servicio hay, si es la de fábrica y de qué año, y qué apps reciben la pantalla del celular.
+«Copiar el informe» lo deja listo para pegar.
+
+### Qué se puede hacer con un servicio
+
+En Cine, sobre un servicio, la tecla Menú (o mantener OK) abre sus opciones:
+
+| Opción | Cuándo aparece | Qué hace |
+|---|---|---|
+| Abrir | Está instalado | Lo abre |
+| Actualizarla con Aurora | Está instalado y hay Aurora Store | Abre su ficha en Aurora para bajar la versión nueva |
+| Bajar la versión para TV | El servicio tiene app de TV y el equipo se presenta como televisor | Abre esa ficha en Aurora |
+| Bajar la versión de celular | El servicio tiene las dos | Abre esa ficha en Aurora |
+| Usar la versión de celular, o la de TV | Están instaladas las dos | Abre esa, y desde ahí el servicio abre siempre esa |
+| Buscarla en Aurora Store | Falta, y tiene una sola versión | Abre su ficha en Aurora |
+| Instalar Aurora Store | Falta Aurora | Abre su ficha en la Tienda |
+| Conectar el celular | Siempre | Para manejar con el trackpad una app de celular |
+| Sacarlo de la lista | Está instalado | Lo saca de Cine. Queda en «Más servicios» y se puede volver a mostrar |
+
+Con dos versiones instaladas se abre la última que pediste, por «Bajar la versión…» o por
+«Usar la versión…». Vale en Cine, desde el celular y cuando la abre Claude. Si nunca elegiste,
+se abre la de TV.
+
+Qué versión se pide primero:
+
+- En un equipo que se presenta como televisor, la de TV. La de celular queda como alternativa.
+- Netflix es la excepción: su app de TV solo anda en equipos certificados, y la que anda en
+  estos proyectores es la de celular. Es la que el Fika P8 trae de fábrica.
+- Disney+, HBO Max, Paramount+, Pluto TV, ViX y Plex tienen un solo paquete para todo. Mercado
+  Play existe solo para TV.
+
+Las versiones de celular no conocen el control remoto. Para eso está el trackpad del celular,
+que necesita el control total.
+
+Los nombres de paquete se revisaron contra Google Play el 2026-11-11: los doce existen. Que
+cada servicio se instale y reproduzca en el Fika P8 no se comprobó: depende del servicio.
+
+### Transmitir desde el celular
+
+Cine tiene «Transmitir desde el celular», y la pestaña Apps del celular tiene el mismo botón.
+Abre en la pared la app que recibe la pantalla: la que trae el equipo, si trae una, o CastBay,
+que se instala desde la Tienda y recibe AirPlay y DLNA. Después, en el celular: en iPhone,
+Centro de control y Duplicar pantalla; en Android, Transmitir o Smart View.
+
+Sirve para YouTube, fotos, videos propios, la web y para mostrar una demo. **No sirve para
+Netflix, Disney+, Prime Video ni HBO Max: al duplicar salen en negro.** Lo bloquean ellos, y no
+hay forma legítima de esquivarlo. El proyector tampoco es un Chromecast: los servicios pagos
+solo le mandan video a un receptor certificado.
+
+Qué app recibe la pantalla en el Fika P8 no se sabe todavía: sale en el diagnóstico. Probado en
+emulador con una app de reemplazo: la pared la abre desde Cine, desde el celular y desde el
+turno de quien presenta su pantalla.
 
 Probado el 2026-11-06 en un emulador con Android 11, 1280×720 a 240 dpi, sin pantalla táctil
 y sin servicios de Google:
@@ -62,7 +131,10 @@ emulador, sin poder comprobarlo. Compradores del Fika P8 cuentan que en el equip
 el emulador no sirve para esta prueba: hay que hacerla en el proyector.
 
 Netflix indica que su app solo funciona en marcas asociadas y que, para las demás, hay que
-conectar un dispositivo compatible por HDMI. Sigue siendo nuestra recomendación.
+conectar un dispositivo compatible por HDMI. Sigue siendo nuestra recomendación, y vale para
+Disney+, HBO Max y Prime Video: un Google TV Streamer o un Fire TV Stick en la entrada HDMI es
+lo único que los muestra bien. Cine tiene la fila «Entrada HDMI» para pasar a esa entrada, si
+el equipo la expone.
 
 ## Qué ofrece la Tienda
 

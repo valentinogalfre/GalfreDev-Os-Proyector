@@ -2,13 +2,38 @@
 
 ## Dónde estamos
 
-El sistema está completo y probado en emulador, con Android 9 y 11 y pantallas de 720p y 1080p.
-**Falta probarlo en un proyector real.** Eso es lo primero. El equipo es un Fika P8.
+El sistema corre en un Fika P8 desde el 2026-11-06, y la 1.2.0 desde el 2026-11-09. En ese
+equipo ya se vio: instalar por pendrive, quedar como inicio, el celular por Wi-Fi, Control
+total, el HTTPS propio y Claude con una clave real.
+
+La 1.3.0 (presentaciones, voz, servicios y transmitir) se probó en emulador con Android 9, con
+celulares simulados y con un Claude de mentira. Está instalada en el Fika P8 desde el
+2026-11-12: la página nueva responde por HTTP y por HTTPS, y Control total quedó activo.
+**Falta verla andar en el equipo.**
+
+## Lo de la 1.3.0, que falta ver en el equipo
+
+1. Leer el diagnóstico (celular, Apps, «Diagnóstico del equipo»): cómo se presenta el equipo,
+   Widevine, y qué versión de cada servicio trae. Con eso se sabe por qué Prime Video, HBO Max
+   y Disney+ no andan.
+2. Probar «Actualizarla con Aurora» y la otra versión de cada servicio que no abre.
+3. Probar los servicios gratis: Pluto TV, Mercado Play, ViX, Plex y Canela.TV.
+4. Ver qué app del equipo recibe la pantalla del celular, y si «Transmitir desde el celular» la
+   encuentra. Si no trae ninguna, probar CastBay con un iPhone.
+5. El botón Hablar en el celular del dueño: aceptar el certificado en la misma pestaña, dictar
+   y escuchar la respuesta. Hasta ahora solo se probó con reconocimientos de voz simulados.
+6. Una muestra con celulares de verdad: mandar un PDF y un video de varios megas a la vez, y
+   presentar. Ver si pasar de página responde rápido con 1 GB de memoria.
+7. Quien muestra su pantalla: «Sin cable» y «Por HDMI» con lo que el equipo tenga.
 
 ## En el primer proyector
 
 Por orden, y con [`docs/instalar.md`](docs/instalar.md) y
 [`docs/proyectores.md`](docs/proyectores.md) a mano. No reiniciar con Depuración USB activada.
+
+De esta lista ya se hizo: instalar por pendrive y dejarla como inicio (1 y 2), el celular por
+Wi-Fi (6) y Claude con una clave real (7). Netflix abre (8), sin saber con qué calidad. El resto
+no se midió.
 
 1. Instalar por pendrive, sin tocar el inicio del fabricante, y recorrer todas las pantallas.
 2. Fijar el inicio con el selector de Android, apagar y prender. Comprobar que el Wi-Fi sigue.
@@ -19,7 +44,7 @@ Por orden, y con [`docs/instalar.md`](docs/instalar.md) y
 5. Probar el temporizador: `lockNow()` probablemente apaga la lámpara, sin confirmar.
 6. Probar el celular por Wi-Fi de verdad. En el emulador fue por un túnel de adb. Medir si
    el trackpad responde rápido.
-7. Usar Claude con una clave real. Hasta ahora solo habló con un servidor de mentira.
+7. Usar Claude con una clave real. Hecho el 2026-11-09: contesta. Falta verlo manejar una app.
 8. Probar el Netflix que trae el equipo con el Trackpad. En los emuladores se mata sola a los
    pocos segundos, con y sin nuestro permiso. Falta ver si se queda abierta, si se puede entrar a
    la cuenta, si se ve derecha y con qué calidad.
@@ -34,12 +59,14 @@ todavía en el Fika P8:
    sola, así que se probó con otras apps. Depende de que Netflix describa sus botones.
 2. Cuánto tarda cada paso con la API real. Si es lento, probar Sonnet o Haiku en los ajustes.
 3. El botón Hablar en un iPhone: aceptar el certificado, dar los permisos y dictar.
-4. Que el equipo pueda crear la clave del certificado. Si no puede, no hay HTTPS y queda el
-   micrófono del teclado.
+4. Que el equipo pueda crear la clave del certificado. Visto el 2026-11-09: el HTTPS del
+   puerto 8696 responde en el Fika P8.
 5. La juntada con diez o más celulares a la vez en el Wi-Fi de la casa.
 6. Pedir permiso desde un celular de verdad y aprobarlo desde el del dueño y desde la pared.
-7. Por qué el reconocimiento de voz del navegador no terminaba en el celular del dueño. La
-   página ya no depende de ese aviso, pero no se sabe si ese navegador devuelve palabras.
+7. Por qué el reconocimiento de voz del navegador no andaba en el celular del dueño. En la
+   1.2.0 la página terminaba mandándolo al micrófono del teclado. La 1.3.0 prueba varias
+   variantes del castellano y dice qué falló, pero sigue sin saberse si ese navegador devuelve
+   palabras: hay que probarlo ahí.
 
 ## Después
 
@@ -48,6 +75,7 @@ todavía en el Fika P8:
 - Cine: listar una carpeta de un pendrive lento se hace en el hilo de la pantalla.
 - El tiempo fijo de la cinta al abrir algo (280 ms antes de arrancar) se puede acortar.
 - Juntada: una cola de música o de videos que arme la gente desde el celular.
+- Presentaciones: que quien presenta vea sus notas y la página que sigue en el celular.
 - Que Claude vea la imagen. En Android 11 en adelante un servicio de accesibilidad puede sacar
   capturas; en Android 9, no.
 

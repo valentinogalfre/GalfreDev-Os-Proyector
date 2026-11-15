@@ -2,8 +2,10 @@ package ar.vale.projectorlauncher
 
 import ar.vale.projectorlauncher.store.Abi
 import ar.vale.projectorlauncher.store.Catalog
+import ar.vale.projectorlauncher.store.DetailPlan
 import ar.vale.projectorlauncher.store.Fetch
 import ar.vale.projectorlauncher.store.Recommendations
+import ar.vale.projectorlauncher.store.Release
 import ar.vale.projectorlauncher.store.ResolveException
 import ar.vale.projectorlauncher.store.Resolver
 import ar.vale.projectorlauncher.store.Source
@@ -224,6 +226,43 @@ class StoreTest {
         val banned = Regex("plataforma|solución integral|ecosistema|potenciado por IA|a la brevedad|usted", RegexOption.IGNORE_CASE)
         val texts = catalog.apps.flatMap { listOfNotNull(it.summary, it.details, it.caveat) } + catalog.notOffered.map { it.reason }
         texts.forEach { assertFalse(it, banned.containsMatchIn(it)) }
+    }
+
+    private val release = Release("2.0", "https://g/a.apk", null, null)
+
+    @Test
+    fun `contrato - mientras consulta la ficha lo dice y no ofrece reintentar`() {
+        val p = DetailPlan.plan(30, 21, null, DetailPlan.Phase.CHECKING, null)
+        assertEquals(DetailPlan.Status.CHECKING, p.status)
+        assertFalse(DetailPlan.Action.RETRY in p.actions)
+        assertTrue(p.actions.isEmpty())
+    }
+
+    @Test
+    fun `contrato - consultando, una app instalada conserva Abrir y Desinstalar`() {
+        val p = DetailPlan.plan(30, 21, "1.0", DetailPlan.Phase.CHECKING, null)
+        assertEquals(DetailPlan.Status.CHECKING, p.status)
+        assertEquals(listOf(DetailPlan.Action.OPEN, DetailPlan.Action.UNINSTALL), p.actions)
+    }
+
+    @Test
+    fun `contrato - el error y Reintentar salen solo si la consulta fallo`() {
+        val p = DetailPlan.plan(30, 21, null, DetailPlan.Phase.FAILED, null)
+        assertEquals(DetailPlan.Status.NO_NETWORK, p.status)
+        assertEquals(listOf(DetailPlan.Action.RETRY), p.actions)
+    }
+
+    @Test
+    fun `contrato - con la version consultada se ofrece instalar o actualizar`() {
+        assertEquals(listOf(DetailPlan.Action.INSTALL), DetailPlan.plan(30, 21, null, DetailPlan.Phase.DONE, release).actions)
+        val up = DetailPlan.plan(30, 21, "1.0", DetailPlan.Phase.DONE, release)
+        assertEquals(DetailPlan.Status.VERSIONS, up.status)
+        assertEquals(listOf(DetailPlan.Action.OPEN, DetailPlan.Action.UPDATE, DetailPlan.Action.UNINSTALL), up.actions)
+    }
+
+    @Test
+    fun `contrato - un Android viejo lo dice aunque siga consultando`() {
+        assertEquals(DetailPlan.Status.NEEDS_ANDROID, DetailPlan.plan(20, 21, null, DetailPlan.Phase.CHECKING, null).status)
     }
 
     @Test

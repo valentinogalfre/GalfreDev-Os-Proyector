@@ -27,7 +27,12 @@ interface ScreenDriver {
  * Cada acción devuelve la pantalla que quedó, así no hace falta un pedido más para verla. Los
  * números de los elementos valen solo para esa última pantalla.
  */
-class ScreenTools(private val driver: ScreenDriver, private val enabled: () -> Boolean = { true }) {
+class ScreenTools(
+    private val driver: ScreenDriver,
+    /** Se llama cuando el gesto ya está hecho y lo que sigue es mirar cómo quedó la pantalla. */
+    private val onLooking: () -> Unit = {},
+    private val enabled: () -> Boolean = { true }
+) {
 
     private var last: ScreenText.Listing? = null
 
@@ -104,8 +109,12 @@ class ScreenTools(private val driver: ScreenDriver, private val enabled: () -> B
         return listing.text
     }
 
-    /** Espera a que la pantalla deje de cambiar, con tope: un video o un reloj no se quedan quietos nunca. */
+    /**
+     * Espera a que la pantalla deje de cambiar, con tope: un video o un reloj no se quedan quietos nunca.
+     * El gesto ya está hecho: lo que dura esto es mirar, y así lo cuenta el renglón de estado.
+     */
     private fun settled(): String {
+        onLooking()
         driver.pause(FIRST_LOOK_MS)
         var previous = read()
         repeat(MAX_LOOKS) {

@@ -7,10 +7,11 @@ galfredev OS no reemplaza el sistema del proyector. Es una app que se pone como 
 inicio, y el inicio del fabricante queda en el equipo. Si algo sale mal, se desinstala y el
 proyector vuelve a estar como antes.
 
-Todavía no lo probamos en el proyector. Lo probamos en un emulador con Android 9 y sin pantalla
-táctil. Lo que sabemos del firmware viene de lo que publicó
-[el dueño de un Chowa P8](https://github.com/aguara-guazu/-chowa-p8-virtual-remote), así que tu
-equipo puede ser distinto. Si tu inicio de fábrica sí muestra los Ajustes, mejor: usalos.
+Está instalado en un Fika P8 desde noviembre de 2026. Cada versión se prueba antes en un
+emulador con Android 9 y sin pantalla táctil. Lo que sabemos del firmware viene de ese equipo y
+de lo que publicó
+[el dueño de un Chowa P8](https://github.com/aguara-guazu/-chowa-p8-virtual-remote), así que el
+tuyo puede ser distinto. Si tu inicio de fábrica sí muestra los Ajustes, mejor: usalos.
 
 > **No reinicies con Depuración USB activada.** En el Chowa P8, si el equipo arranca con esa
 > opción prendida, dejan de funcionar el Wi-Fi y el Bluetooth. Activarla con el equipo ya
@@ -136,7 +137,7 @@ Forzar la detención de la app apaga este permiso. Si pasa, volvé a activarlo.
 | Pestaña | Para qué |
 |---|---|
 | Control | Flechas o Trackpad, más Atrás, Inicio, Pausa y volumen |
-| Apps | Abrir cualquier app en el proyector, y Netflix y compañía |
+| Apps | Abrir cualquier app en el proyector, Netflix y compañía, y poner la pared a recibir tu pantalla |
 | Escribir | Mandar texto a un campo, por ejemplo usuario y contraseña |
 | Archivos | Mandar videos, fotos, música, PDF o apps a Cine |
 | Claude | Preguntarle algo y cargar la clave |
@@ -152,9 +153,25 @@ La conexión con el celular no va cifrada. Usala en tu Wi-Fi de casa, no en una 
 
 ## 9. Netflix y compañía
 
-Esto es lo que cuentan compradores del Fika P8, y no lo pudimos comprobar: Netflix y YouTube
-andan, Netflix viene en su versión de celular, y otras apps, como Disney+, piden actualizarse y
-no dejan.
+En el Fika P8 andan Netflix y YouTube. Netflix viene en su versión de celular. Prime Video, HBO
+Max y Disney+ no andan con lo que trae de fábrica: piden actualizarse y no dejan, o no abren.
+
+Cine muestra los servicios que están instalados. Los demás están en «Más servicios», separados
+en gratis y con suscripción. Pluto TV, Mercado Play, ViX, Plex y Canela.TV son gratis, con
+publicidad, y son los que más chances tienen de andar, porque no suelen exigir un equipo
+certificado. En el Fika P8 todavía no los probamos.
+
+Sobre un servicio, la tecla Menú del control (o mantener OK) abre sus opciones: abrirlo,
+actualizarlo con Aurora, bajar su otra versión (la de TV o la de celular) o sacarlo de la lista.
+
+Si uno no abre, probá en este orden:
+
+1. «Actualizarla con Aurora». Una versión de fábrica vieja es la causa más probable.
+2. La otra versión: si tenés la de celular, la de TV, y al revés. Cuando termina de instalarse,
+   el servicio abre esa. Para volver a la anterior, en sus opciones elegí «Usar la versión…».
+3. El diagnóstico: en el celular, pestaña Apps, «Diagnóstico del equipo». Dice por qué ese
+   equipo puede no andar con un servicio. «Copiar el informe» sirve para pedir ayuda.
+4. Un dispositivo por HDMI, que es lo que anda siempre.
 
 ### Si Netflix ya está
 
@@ -200,9 +217,23 @@ Aurora también está hecha para pantallas táctiles: manejala con el Trackpad d
 5. Volvé a Cine y elegí el servicio otra vez. Ahora abre su ficha.
 6. Si pregunta, elegí Open. Después elegí Instalar, o Actualizar, y confirmá con el control.
 
+### Transmitir desde el celular
+
+En Cine, «Transmitir desde el celular» abre en la pared la app que recibe la pantalla. Desde el
+celular se hace lo mismo en la pestaña Apps. Si el equipo no trae ninguna, ofrece instalar
+CastBay desde la Tienda, que recibe AirPlay y DLNA.
+
+1. El celular y el proyector, en la misma red Wi-Fi.
+2. Abrí la app que recibe, en la pared.
+3. En iPhone: Centro de control, Duplicar pantalla, y elegí el proyector. En Android:
+   Transmitir, Smart View o Duplicar pantalla.
+
+Se ven bien YouTube, las fotos, los videos propios, la web y cualquier demo. **Netflix, Disney+,
+Prime Video y HBO Max salen en negro al duplicar:** lo bloquean ellos, y no tiene arreglo.
+
 ### Lo que no sirve
 
-- **Duplicar la pantalla del celular.** Se suele ver el menú, pero el video queda en negro.
+- **Duplicar la pantalla para ver un servicio pago.** Se ve el menú, y el video queda en negro.
 - **APK modificados que prometen más calidad.** Saltean la protección de los servicios y pueden
   traer malware. No los recomendamos.
 
@@ -224,15 +255,24 @@ nunca se probó en un equipo real.
 
 ### Hablarle
 
-- **Lo que anda siempre:** tocá el campo de texto, después el micrófono del teclado del celular,
-  decí el pedido y elegí Preguntar.
-- **Con un solo toque:** tocá Hablar. La primera vez aparece un enlace a la versión segura de la
-  página. Abrilo. El navegador avisa que no conoce el certificado: es el del proyector. En el
-  iPhone, elegí Mostrar detalles y después Visitar este sitio web. En Android, Configuración
-  avanzada y Continuar. Guardá esa página en favoritos. Desde ahí, Hablar escucha, transcribe y
-  manda el pedido cuando hacés una pausa o tocás de nuevo. Si el navegador no devuelve ninguna
-  palabra, la página lo avisa y deja listo el micrófono del teclado. El iPhone pide permiso para el micrófono y para el
-  reconocimiento de voz, y necesita tener el dictado activado.
+En la pestaña Claude hay un botón grande. Se le habla ahí mismo, sin abrir otra página:
+
+1. **La primera vez dice «Activar el micrófono».** El navegador solo presta el micrófono a una
+   página segura, y la del proyector lleva un certificado propio. Tocá el botón: en esa misma
+   pestaña aparece el aviso del navegador. En iPhone, Mostrar detalles y después «visitar este
+   sitio web». En Android, Configuración avanzada y el enlace para continuar. Se hace una sola
+   vez por celular: después, al entrar a Claude, la página pasa sola a la versión segura.
+2. **Tocá Hablar y decí el pedido.** Se ve lo que va entendiendo. Lo manda cuando hacés una
+   pausa, o cuando tocás de nuevo.
+3. **Si el pedido fue hablado, la respuesta también se escucha** en el celular, además de
+   salir en la pared. Se apaga con «Respuesta en voz alta».
+
+El iPhone pide permiso para el micrófono y para el reconocimiento de voz, y necesita tener el
+dictado activado (Ajustes, General, Teclado). En iPhone anda en Safari; en Android, en Chrome.
+El reconocimiento lo hace el celular y necesita internet.
+
+Si algo falla, la página dice qué pasó y qué tocar, con una línea en letra chica que sirve
+para avisarnos. Escribir el pedido sigue andando siempre.
 
 ### Que use las apps
 
@@ -256,14 +296,46 @@ otras apps.
 
 1. En el proyector, entrá a Juntada. Si el celular estaba apagado, elegí Activar.
 2. Cada invitado escanea el código de esa pantalla y pone su nombre. No instalan nada. Entra
-   cuando lo dejás pasar: desde tu celular, o en la pared con el control (paso 7).
+   cuando lo dejás pasar: desde tu celular, o en la pared con el control (paso 7). Cada celular
+   invitado es una sola persona: no puede sumar otro nombre para votar dos veces.
 3. **Trivia.** Elegí Armar una trivia y un tema, o pedísela a Claude. Las preguntas salen en la
-   pared, cada uno responde en su celular, y responder rápido vale más.
-4. **Votación.** Cualquiera la arma desde su celular, en Votación. El resultado se ve en vivo.
+   pared, cada uno responde en su celular, y responder rápido vale más. Los puntos aparecen
+   cuando la pregunta cierra: antes, nadie sabe si acertó.
+4. **Votación.** Cualquiera la arma desde su celular, en Votación. Hay atajos para «Sí o no»,
+   «Del 1 al 5» y «La mejor demo». Puede cerrarse sola a un tiempo, y puede ser con voto
+   secreto: se ve cuántos votaron, y qué eligieron recién al cerrar. Si hay empate, quien la
+   armó puede desempatar al azar. Si nadie votó, no hay ganador.
 5. **Cuentas.** Cada uno anota lo que pagó y entre quiénes se reparte. La pared muestra quién le
    paga a quién para quedar a mano. Quedan guardadas aunque apagues el proyector.
 6. Al terminar, elegí Empezar de cero: borra todo, saca a los invitados y el código viejo deja
    de servir.
+
+En la trivia, desde tu celular se elige el tema, cuántas preguntas, la dificultad y cuánto dura
+cada una. Acertar seguido suma una racha, y la última pregunta vale doble.
+
+### Presentaciones
+
+Para una muestra de demos, la juntada tiene una fila. Está en la pestaña Demos de cada celular.
+
+1. Cada uno se anota con el título de lo que va a mostrar. Elige entre mandar un archivo (PDF,
+   imagen o video) o mostrar su propia pantalla.
+2. El archivo se manda antes, desde el celular, y queda guardado para ese turno. Si dos mandan
+   a la vez, entran de a uno y en orden de llegada: el segundo espera y no se pisan. Nada se
+   abre en la pared hasta que le toque a cada uno. Se puede cambiar el archivo hasta que
+   empiece el turno; después, la pared sigue con el que tenía. Si sacás a alguien de la fila
+   mientras está mandando, la subida se corta y pasa el que esperaba.
+3. Vos decidís el orden y le das el turno a cada uno: desde tu celular, o en la pared con
+   «Empezar la que sigue». En «Ajustes de la fila» se pone un tiempo por presentación y se
+   cierra la fila para que no se anote nadie más.
+4. **Con alguien en escena, la pared es suya.** Pasa las páginas, pausa el video, señala con el
+   dedo y pone la imagen en negro desde su celular. Los invitados con control no pueden tocar
+   nada hasta que termine. Vos sí, por si hay que ayudar.
+5. Quien muestra su pantalla elige por dónde entra: «Sin cable» abre la app que recibe la
+   pantalla, y «Por HDMI» pasa a esa entrada. Aparece lo que el equipo tenga.
+6. Al terminar hay medio minuto de aplausos, y cada uno vota del 1 al 5. Cumplido el tiempo,
+   la pared avisa y no corta a nadie.
+7. Cuando presentaron todos, la pared muestra el podio. Si empatan en votos, definen los
+   aplausos.
 
 ## Camino con ADB, solo si hace falta
 

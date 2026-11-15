@@ -75,18 +75,20 @@ object ClaudeSettings {
     }
 
     /** Qué está haciendo, dicho para quien mira la pared. */
-    fun activityLabel(context: Context, tool: String?): String = context.getString(
-        when (tool) {
-            null -> R.string.claude_thinking
-            "web_search" -> R.string.claude_searching
-            "ver_pantalla", "esperar" -> R.string.claude_looking
-            "tocar" -> R.string.claude_tapping
-            "escribir" -> R.string.claude_typing
-            "tecla", "deslizar" -> R.string.claude_moving
-            "abrir_app", "abrir_enlace" -> R.string.claude_opening
-            else -> R.string.claude_acting
-        }
-    )
+    fun activityLabel(context: Context, tool: String?): String = context.getString(activityRes(tool))
+
+    /** El texto de cada herramienta. Va aparte para poder probar el mapeo sin un Context. */
+    fun activityRes(tool: String?): Int = when (tool) {
+        null -> R.string.claude_thinking
+        "web_search" -> R.string.claude_searching
+        "ver_pantalla" -> R.string.claude_looking
+        "esperar" -> R.string.claude_waiting
+        "tocar" -> R.string.claude_tapping
+        "escribir" -> R.string.claude_typing
+        "tecla", "deslizar" -> R.string.claude_moving
+        "abrir_app", "abrir_enlace" -> R.string.claude_opening
+        else -> R.string.claude_acting
+    }
 
     /**
      * El estado en una línea, para el renglón sobre otra app y para el celular: lo que hace

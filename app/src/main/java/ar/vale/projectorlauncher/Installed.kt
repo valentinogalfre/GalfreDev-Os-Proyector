@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import ar.vale.projectorlauncher.device.Casting
 import ar.vale.projectorlauncher.device.Functions
 
 /**
@@ -19,6 +20,7 @@ object Installed {
     @Volatile private var packages: Set<String>? = null
     @Volatile private var functions: List<Functions.Found>? = null
     @Volatile private var apps: List<AppInfo>? = null
+    @Volatile private var receivers: List<Casting.Receiver>? = null
     @Volatile private var watching = false
 
     /** Cambia cada vez que cambia lo instalado: quien guardó una lista sabe si quedó vieja. */
@@ -44,6 +46,12 @@ object Installed {
         return functions ?: Functions.detect(context.applicationContext).also { functions = it }
     }
 
+    /** Las apps que reciben la pantalla de un celular. Leer el nombre de cada app instalada tarda. */
+    fun receivers(context: Context): List<Casting.Receiver> {
+        watch(context)
+        return receivers ?: Casting.detect(context.applicationContext).also { receivers = it }
+    }
+
     /** La lista con íconos que ya cargó alguien, si sigue vigente. Cargarla tarda: va en otro hilo. */
     fun apps(): List<AppInfo>? = apps
 
@@ -62,6 +70,7 @@ object Installed {
             launchable(app)
             packages(app)
             functions(app)
+            receivers(app)
         }, "gd-installed").start()
     }
 
@@ -71,6 +80,7 @@ object Installed {
         packages = null
         functions = null
         apps = null
+        receivers = null
     }
 
     /** Vive lo que vive el proceso: una app se puede instalar con otra pantalla delante. */

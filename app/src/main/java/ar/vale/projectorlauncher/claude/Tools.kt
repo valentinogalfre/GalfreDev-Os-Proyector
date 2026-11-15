@@ -197,4 +197,11 @@ class ToolOutcome(val text: String, val isError: Boolean = false)
 
 fun interface ToolRunner {
     fun run(name: String, input: JSONObject): ToolOutcome
+
+    /**
+     * Igual, pero la herramienta puede ir contando en qué fase está (con el nombre de otra
+     * herramienta: «ver_pantalla» es mirar), para que el renglón de estado no siga diciendo
+     * lo que ya terminó.
+     */
+    fun run(name: String, input: JSONObject, phase: (String) -> Unit): ToolOutcome = run(name, input)
 }

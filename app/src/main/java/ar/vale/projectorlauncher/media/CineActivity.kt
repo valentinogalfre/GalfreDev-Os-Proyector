@@ -12,15 +12,19 @@ import ar.vale.projectorlauncher.ApkInstaller
 import ar.vale.projectorlauncher.FileItem
 import ar.vale.projectorlauncher.FileKind
 import ar.vale.projectorlauncher.MediaTypes
+import ar.vale.projectorlauncher.Prefs
 import ar.vale.projectorlauncher.R
 import ar.vale.projectorlauncher.apps.Streaming
 import ar.vale.projectorlauncher.apps.StreamingLauncher
+import ar.vale.projectorlauncher.device.Casting
 import ar.vale.projectorlauncher.device.Functions
 import ar.vale.projectorlauncher.ui.GdActivity
 import ar.vale.projectorlauncher.ui.Notice
 import ar.vale.projectorlauncher.ui.Row
 import ar.vale.projectorlauncher.ui.RowAdapter
+import ar.vale.projectorlauncher.ui.Sheet
 import ar.vale.projectorlauncher.ui.bindRows
+import ar.vale.projectorlauncher.ui.selectFirst
 import java.io.File
 
 /**
@@ -35,6 +39,19 @@ class CineActivity : GdActivity() {
     private lateinit var resume: ResumeStore
     private var dir: File? = null
     private var apkOnly = false
+
+    /** True mientras se ve «Más servicios»: lo que falta instalar y lo que se sacó de la lista. */
+    private var more = false
+
+    /** La fila que estaba elegida al volver a esta pantalla, y a qué altura, o null si la lista es otra. */
+    private var keep: Spot? = null
+
+    /** Desde qué fila se entró a «Más servicios»: al salir, se vuelve a ella. */
+    private var moreFrom: Spot? = null
+
+    private class Spot(val position: Int, val top: Int)
+
+    private fun spot() = Spot(list.selectedItemPosition, (list.selectedView?.top ?: list.paddingTop) - list.paddingTop)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -59,16 +76,32 @@ class CineActivity : GdActivity() {
 
     private fun title() = getString(if (apkOnly) R.string.apk_title else R.string.word_cine)
 
+    /**
+     * A la vista quedan los servicios instalados. Lo que falta, y lo que se sacó porque en este
+     * equipo no anda, va detrás de «Más servicios»: la lista de Cine muestra lo que funciona.
+     */
     private fun addServices(rows: MutableList<Row>) {
+        val (shown, rest) = Streaming.split(Prefs(this).hiddenServices) { StreamingLauncher.isInstalled(this, it) }
         rows.add(Row.header(getString(R.string.cine_services)))
-        Streaming.ALL.forEach { service ->
-            val installed = Streaming.installed(service) { StreamingLauncher.isInstalled(this, it) } != null
-            rows.add(Row(
-                service.name,
-                value = if (installed) null else getString(R.string.streaming_missing),
-                icon = R.drawable.ic_play
-            ) { StreamingLauncher.open(this, service) })
-        }
+        shown.forEach { rows.add(serviceRow(it, manage = false)) }
+        // Siempre está: es donde se arregla un servicio que no abre, y donde se suman los que faltan.
+        val free = rest.count { it.free }
+        rows.add(Row(
+            getString(R.string.cine_more),
+            subtitle = getString(R.string.cine_more_sub),
+            value = if (free > 0) getString(R.string.cine_more_free, free) else null,
+            icon = R.drawable.ic_store
+        ) {
+            moreFrom = spot()
+            showMore()
+        })
+        rows.add(Row.header(getString(R.string.cine_other)))
+        val receiver = Casting.best(this)
+        rows.add(Row(
+            getString(R.string.cast_title),
+            subtitle = if (receiver != null) getString(R.string.cast_sub, receiver.name) else getString(R.string.cast_sub_none),
+            icon = R.drawable.ic_phone
+        ) { Casting.offer(this) })
         Installed.functions(this).firstOrNull { it.kind == Functions.Kind.HDMI }?.let { hdmi ->
             rows.add(Row(
                 getString(hdmi.kind.label),
@@ -78,12 +111,78 @@ class CineActivity : GdActivity() {
         }
     }
 
+    /**
+     * En Cine, OK lo abre, y mantener OK o Menú da las salidas: actualizarlo, la otra versión,
+     * sacarlo de la lista. En «Más servicios» ([manage]), OK ya da las salidas.
+     */
+    private fun serviceRow(service: Streaming.Service, manage: Boolean): Row {
+        val prefs = Prefs(this)
+        val installed = Streaming.installed(service) { StreamingLauncher.isInstalled(this, it) } != null
+        val hidden = service.name in prefs.hiddenServices
+        val value = when {
+            !installed -> getString(if (service.free) R.string.streaming_missing_free else R.string.streaming_missing)
+            hidden -> getString(R.string.streaming_hidden)
+            service.free -> getString(R.string.streaming_free)
+            else -> null
+        }
+        val toggle = Sheet.Option(getString(if (hidden) R.string.streaming_show else R.string.streaming_hide), R.drawable.ic_display) {
+            prefs.hiddenServices = if (hidden) prefs.hiddenServices - service.name else prefs.hiddenServices + service.name
+            refresh()
+        }
+        val options = { StreamingLauncher.options(this, service, if (installed) listOf(toggle) else emptyList()) }
+        return Row(service.name, value = value, icon = R.drawable.ic_play, longAction = options) {
+            if (manage) options() else StreamingLauncher.open(this, service)
+        }
+    }
+
+    private fun showMore() {
+        if (!more) keep = null
+        more = true
+        setHead(getString(R.string.cine_more), title())
+        val (shown, rest) = Streaming.split(Prefs(this).hiddenServices) { StreamingLauncher.isInstalled(this, it) }
+        val rows = ArrayList<Row>()
+        // Primero lo que falta y se ve sin pagar: es lo que más suma donde lo pago anda a medias.
+        listOf(
+            R.string.cine_more_free_head to rest.filter { it.free },
+            R.string.cine_more_paid_head to rest.filter { !it.free },
+            R.string.cine_more_listed to shown
+        ).forEach { (head, group) ->
+            if (group.isEmpty()) return@forEach
+            rows.add(Row.header(getString(head)))
+            group.forEach { rows.add(serviceRow(it, manage = true)) }
+        }
+        setNote(getString(R.string.cine_more_note))
+        adapter.submit(rows)
+        place()
+    }
+
+    /** Vuelve a armar la misma lista, sin mover la elección. */
     private fun refresh() {
-        dir?.let { showDir(it) } ?: showRoots()
+        keep = spot()
+        when {
+            more -> showMore()
+            dir != null -> showDir(dir!!)
+            else -> showRoots()
+        }
+    }
+
+    /**
+     * Una lista nueva arranca arriba. La misma lista, al volver de otra pantalla, queda donde
+     * estaba: quien probó un servicio que no abrió no tiene que bajar de nuevo hasta él.
+     */
+    private fun place() {
+        val at = keep
+        keep = null
+        if (at != null && at.position > 0 && at.position < adapter.count && adapter.isEnabled(at.position)) {
+            list.setSelectionFromTop(at.position, at.top)
+        } else {
+            list.selectFirst()
+        }
     }
 
     private fun showRoots() {
         dir = null
+        more = false
         setHead(title())
         val rows = ArrayList<Row>()
         val access = Storage.access(this)
@@ -132,20 +231,19 @@ class CineActivity : GdActivity() {
         }
         setNote(if (rows.none { !it.isHeader }) getString(R.string.files_empty_roots) else null)
         adapter.submit(rows)
-        list.setSelection(0)
+        place()
     }
 
     private fun showDir(target: File) {
         dir = target
-        if (target == Storage.inbox(this)) {
-            setHead(getString(R.string.cine_inbox))
-        } else {
-            setHead(target.name.ifEmpty { title() }, target.parent)
-        }
+        // Lo recibido va primero: vive dentro de la memoria interna y si no se lo confundiría con una carpeta más.
+        val inbox = FileItem(Storage.inbox(this), FileKind.DIR, getString(R.string.cine_inbox))
+        val place = Storage.place(target, listOf(inbox) + Storage.roots(this))
+        setHead(place.title.ifEmpty { title() }, place.where)
         val items = Storage.list(target, apkOnly)
         setNote(if (items.isEmpty()) getString(if (apkOnly) R.string.apk_empty_dir else R.string.files_empty_dir) else null)
         adapter.submit(items.map(::rowFor))
-        list.setSelection(0)
+        place()
     }
 
     private fun rowFor(item: FileItem): Row {
@@ -183,6 +281,11 @@ class CineActivity : GdActivity() {
     @Deprecated("Deprecated in Java")
     @Suppress("MissingSuperCall", "DEPRECATION")
     override fun onBackPressed() {
+        if (more && !hasOverlay) {
+            keep = moreFrom
+            showRoots()
+            return
+        }
         val current = dir
         if (hasOverlay || current == null) {
             super.onBackPressed()

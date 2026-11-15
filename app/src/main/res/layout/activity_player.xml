@@ -6,8 +6,8 @@
 
     <VideoView
         android:id="@+id/video"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
         android:layout_gravity="center"
         android:visibility="gone" />
 
@@ -71,6 +71,24 @@
         android:paddingBottom="4dp"
         android:textColor="@color/hueso"
         android:textSize="24sp"
+        android:visibility="gone" />
+
+    <!-- En escena: por qué página va, sin tapar la diapositiva. -->
+    <TextView
+        android:id="@+id/page_mark"
+        style="@style/Gd.Data"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="@dimen/margin_h"
+        android:layout_marginBottom="@dimen/margin_v"
+        android:background="@color/carbon"
+        android:paddingStart="10dp"
+        android:paddingTop="6dp"
+        android:paddingEnd="10dp"
+        android:paddingBottom="6dp"
+        android:textColor="@color/hueso"
+        android:textSize="16sp"
         android:visibility="gone" />
 
     <LinearLayout

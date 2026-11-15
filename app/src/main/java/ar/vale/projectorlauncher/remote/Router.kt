@@ -21,11 +21,20 @@ interface RemoteDevice {
     /** Qué está haciendo Claude y qué respondió, para verlo también en el celular. */
     fun claudeState(): JSONObject
     fun stopClaude()
+
+    /** Charla nueva: Claude se olvida de lo conversado hasta acá. */
+    fun newClaude() {}
+
+    /** Qué equipo es y qué puede reproducir, para saber por qué una app no anda. Solo para el dueño. */
+    fun report(): JSONObject = JSONObject()
     fun pointer(x: Float, y: Float, visible: Boolean)
     fun tap(x: Float, y: Float): Result
     fun swipe(fromX: Float, fromY: Float, toX: Float, toY: Float): Result
     fun apps(): JSONObject
     fun open(pkg: String): Result
+
+    /** Abre en la pared la app que recibe la pantalla de un celular, si el equipo tiene una. */
+    fun cast(): Result = Result.NOT_INSTALLED
     fun fits(length: Long): Boolean
 
     /**
@@ -47,15 +56,26 @@ class Router(
     private val access: Access = Access(),
     /** Quién atiende a los volantes de la carrera. Sin esto, la ruta no existe. */
     private val race: SocketHandler? = null,
+    /** El puerto de la misma página por HTTPS, o 0 si no lo hay. */
+    private val securePort: () -> Int = { 0 },
     private val files: StaticFiles
 ) {
 
     /** Una a la vez: varias en paralelo pasarían cada una por separado el control de espacio. */
     private val uploading = AtomicBoolean()
 
-    /** Una subida autorizada tarda lo que tarde el archivo. Ningún otro pedido tiene por qué demorar. */
-    fun isLong(r: HttpRequest): Boolean =
-        r.path == "/api/upload" && pairing.authorized(r.header("authorization"))
+    /**
+     * Una subida autorizada tarda lo que tarde el archivo. Ningún otro pedido tiene por qué demorar.
+     * El archivo de una presentación lo manda también un invitado, pero solo uno al que dejaron pasar.
+     */
+    fun isLong(r: HttpRequest): Boolean {
+        val header = r.header("authorization")
+        return when (r.path) {
+            "/api/upload" -> pairing.authorized(header)
+            DEMO_UPLOAD -> party != null && (pairing.authorized(header) || access.level(header) != null)
+            else -> false
+        }
+    }
 
     /**
      * Si el pedido es un volante que quiere dejar la conexión abierta, quién lo atiende. No lleva
@@ -79,7 +99,8 @@ class Router(
     private fun route(r: HttpRequest): HttpResponse {
         if (!r.path.startsWith("/api/")) {
             if (r.method != "GET") return HttpResponse.error(405, "method")
-            return files.open(r.path) ?: HttpResponse.error(404, "not_found")
+            val page = files.open(r.path) ?: return HttpResponse.error(404, "not_found")
+            return twin(r)?.let(page::reaching) ?: page
         }
         if (r.method != "POST" && r.path !in READS) return HttpResponse.error(405, "method")
         if (!sameOrigin(r)) return HttpResponse.error(403, "origin")
@@ -96,15 +117,19 @@ class Router(
         // Un pase sin aprobar no abre nada. Aprobado, llega hasta donde el dueño dijo.
         val level = if (owner) null else access.level(header) ?: return HttpResponse.error(401, "unauthorized")
         if (party != null && r.path.startsWith(JuntadaRoutes.PREFIX)) {
-            return party.handle(r.path.removePrefix(JuntadaRoutes.PREFIX), json(r), owner)
+            if (r.path == DEMO_UPLOAD) return party.upload(r, owner)
+            return party.handle(r.path.removePrefix(JuntadaRoutes.PREFIX), json(r), owner, if (owner) null else access.pass(header))
         }
         if (!owner && (level != Access.Level.CONTROL || r.path !in CONTROL)) return HttpResponse.error(403, "owner")
+        // Con alguien en escena la pared es de quien presenta: el control prestado espera a que termine.
+        if (!owner && r.path in HANDS && party?.staged() == true) return HttpResponse.error(403, "stage")
         // Con el control prestado se maneja lo que se ve, salvo las pantallas que son solo del dueño.
         val hands = { leaving: Boolean -> if (!owner && !leaving && device.privateScreen()) throw HttpError(403, "private") }
         return when (r.path) {
             "/api/state" -> HttpResponse.ok(device.state())
             "/api/apps" -> HttpResponse.ok(device.apps())
             "/api/open" -> result(open(json(r).getString("package"), owner))
+            "/api/cast" -> result(device.cast())
             "/api/tap" -> json(r).let {
                 hands(false)
                 result(device.tap(spot(it, "x"), spot(it, "y")))
@@ -138,16 +163,30 @@ class Router(
                 device.stopClaude()
                 HttpResponse.ok()
             }
+            "/api/claude/new" -> {
+                device.newClaude()
+                HttpResponse.ok()
+            }
+            "/api/report" -> HttpResponse.ok(device.report())
             "/api/pointer" -> json(r).let {
-                device.pointer(
-                    it.getDouble("x").toFloat().coerceIn(0f, 1f),
-                    it.getDouble("y").toFloat().coerceIn(0f, 1f),
-                    it.optBoolean("visible", true)
-                )
+                device.pointer(it.unit("x"), it.unit("y"), it.optBoolean("visible", true))
                 HttpResponse.ok()
             }
             else -> HttpResponse.error(404, "not_found")
         }
+    }
+
+    /**
+     * La versión segura de esta misma página, si la hay. La página común le consulta si el
+     * navegador ya confía en su certificado, para pasar sola a ella cuando hace falta el
+     * micrófono. Es el único otro origen al que puede hablarle, y el nombre sale de un Host que
+     * solo puede ser un nombre o una dirección: nada de lo que mande el navegador llega tal cual.
+     */
+    private fun twin(r: HttpRequest): String? {
+        val port = securePort()
+        if (r.secure || port <= 0) return null
+        val host = r.header("host")?.substringBefore(':')?.takeIf(HOST::matches) ?: return null
+        return "https://$host:$port"
     }
 
     /** Un punto de la pantalla, de 0 a 1. Un toque que cae afuera no se corrige: no se hace. */
@@ -245,13 +284,20 @@ class Router(
         const val OWNER = "owner"
         const val NONE = "none"
         const val SOCKET_PATH = "/api/carrera/socket"
-        val READS = setOf("/api/state", "/api/apps", "/api/claude/state", "/api/access/list")
+        val READS = setOf("/api/state", "/api/apps", "/api/claude/state", "/api/access/list", "/api/report")
+        const val DEMO_UPLOAD = JuntadaRoutes.PREFIX + JuntadaRoutes.UPLOAD
 
         /** Lo que alcanza un invitado con control: lo mismo que el control remoto, y nada más. */
-        val CONTROL = setOf("/api/state", "/api/apps", "/api/open", "/api/tap", "/api/swipe", "/api/key", "/api/text", "/api/pointer")
+        val CONTROL = setOf(
+            "/api/state", "/api/apps", "/api/open", "/api/cast", "/api/tap", "/api/swipe", "/api/key", "/api/text", "/api/pointer"
+        )
+
+        /** De eso, lo que mueve la pared. Mirar qué hay sigue permitido con alguien en escena. */
+        val HANDS = CONTROL - setOf("/api/state", "/api/apps")
 
         /** Salir se puede siempre, también de una pantalla que no se maneja. */
         val LEAVING = setOf("back", "home")
         val PACKAGE = Regex("[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+")
+        val HOST = Regex("[A-Za-z0-9.-]{1,253}")
     }
 }

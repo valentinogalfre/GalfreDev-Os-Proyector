@@ -91,6 +91,19 @@ class Prefs(ctx: Context) {
         get() = sp.getBoolean(KEY_AURORA_STARTED, false)
         set(v) = sp.edit().putBoolean(KEY_AURORA_STARTED, v).apply()
 
+    /** Servicios que se sacaron de Cine porque en este equipo no andan. Siguen en «Más servicios». */
+    var hiddenServices: Set<String>
+        get() = sp.getStringSet(KEY_HIDDEN_SERVICES, emptySet()).orEmpty().toSet()
+        set(v) = sp.edit().putStringSet(KEY_HIDDEN_SERVICES, v).apply()
+
+    /**
+     * La versión de un servicio que se eligió en este equipo, para cuando hay más de una
+     * instalada: la que anda. Vale mientras siga instalada.
+     */
+    fun serviceApp(service: String): String? = sp.getString(KEY_SERVICE_APP + service, null)
+
+    fun chooseServiceApp(service: String, pkg: String) = sp.edit().putString(KEY_SERVICE_APP + service, pkg).apply()
+
     /** El servidor local solo corre si lo pediste: por defecto el equipo no escucha nada. */
     var remoteEnabled: Boolean
         get() = sp.getBoolean(KEY_REMOTE, false)
@@ -139,6 +152,8 @@ class Prefs(ctx: Context) {
         private const val KEY_WALL_MODE = "wall_mode"
         private const val KEY_WALL_IDLE = "wall_idle_minutes"
         private const val KEY_AURORA_STARTED = "aurora_started"
+        private const val KEY_HIDDEN_SERVICES = "hidden_services"
+        private const val KEY_SERVICE_APP = "service_app_"
         private const val KEY_REMOTE = "remote_enabled"
         private const val KEY_REMOTE_TOKEN = "remote_token"
         private const val KEY_CLAUDE_MODEL = "claude_model"
