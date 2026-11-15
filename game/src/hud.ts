@@ -21,9 +21,19 @@ export interface HudState {
   done: boolean;
 }
 
-function clockText(seconds: number): string {
+function clockText(seconds: number, digits: number): string {
   const t = Math.max(0, seconds), m = Math.floor(t / 60);
-  return `${m}:${(t - m * 60).toFixed(2).padStart(5, '0')}`;
+  return `${m}:${(t - m * 60).toFixed(digits).padStart(3 + digits, '0')}`;
+}
+
+/** Escribe en la página solo si el valor cambió: cada escritura le cuesta al proyector rehacer el tablero. */
+function writer<T>(apply: (value: T) => void): (value: T) => void {
+  let last: T | undefined;
+  return (value) => {
+    if (value === last) return;
+    last = value;
+    apply(value);
+  };
 }
 
 /**
@@ -45,17 +55,25 @@ export function mountHud(look: HudLook): { update(state: HudState): void; show(o
     <p class="count"></p>`;
   document.body.appendChild(hud);
   const time = hud.querySelector('.time')!, lap = hud.querySelector('.lap b')!, count = hud.querySelector<HTMLElement>('.count')!;
-  const rows = [...hud.querySelectorAll('li')].map((li) => ({
-    li, n: li.querySelector('.n')!, chip: li.querySelector<HTMLElement>('i')!, name: li.querySelector('b')!, gap: li.querySelector('.gap')!, tank: li.querySelector<HTMLElement>('s')!,
-  }));
+  const rows = [...hud.querySelectorAll('li')].map((li) => {
+    const n = li.querySelector('.n')!, chip = li.querySelector<HTMLElement>('i')!, name = li.querySelector('b')!, gap = li.querySelector('.gap')!, tank = li.querySelector<HTMLElement>('s')!;
+    return {
+      cls: writer<string>((v) => { li.className = v; }), n: writer<string>((v) => { n.textContent = v; }), chip: writer<number>((v) => { chip.style.background = `#${v.toString(16).padStart(6, '0')}`; }),
+      name: writer<string>((v) => { name.textContent = v; }), gap: writer<string>((v) => { gap.textContent = v; }),
+      // La barra se estira con una transformación, que no obliga a recalcular la disposición.
+      tank: writer<number>((v) => { tank.style.transform = `scaleX(${v / 20})`; }),
+    };
+  });
+  const writeTime = writer<string>((v) => { time.textContent = v; }), writeLap = writer<string>((v) => { lap.textContent = v; });
   let shown = '';
   return {
     show(on) {
       hud.style.display = on ? 'block' : 'none';
     },
     update(state) {
-      time.textContent = clockText(state.clock);
-      lap.textContent = `${Math.min(look.laps, state.lap + 1)}/${look.laps}`;
+      // En carrera el reloj va en décimas: las centésimas obligaban a redibujar el tablero en cada cuadro.
+      writeTime(clockText(state.clock, state.done ? 2 : 1));
+      writeLap(`${Math.min(look.laps, state.lap + 1)}/${look.laps}`);
       const text = state.done ? 'Final' : state.clock < 0 ? String(Math.ceil(-state.clock)) : state.clock < 1 ? 'Ya' : '';
       if (text !== shown) {
         shown = text;
@@ -64,12 +82,12 @@ export function mountHud(look: HudLook): { update(state: HudState): void; show(o
       }
       state.order.forEach((player, place) => {
         const row = rows[place], who = look.players[player];
-        row.li.className = place === 0 ? (look.cinta ? 'first cinta' : 'first') : '';
-        row.n.textContent = String(place + 1);
-        row.chip.style.background = `#${who.paint.toString(16).padStart(6, '0')}`;
-        row.name.textContent = who.name;
-        row.gap.textContent = place === 0 ? 'LÍDER' : `+${state.gap[player].toFixed(2)}`;
-        row.tank.style.width = `${Math.round(state.nitro[player] * 100)}%`;
+        row.cls(place === 0 ? (look.cinta ? 'first cinta' : 'first') : '');
+        row.n(String(place + 1));
+        row.chip(who.paint);
+        row.name(who.name);
+        row.gap(place === 0 ? 'LÍDER' : `+${state.gap[player].toFixed(1)}`);
+        row.tank(Math.round(state.nitro[player] * 20));
       });
     },
   };

@@ -35,7 +35,7 @@ canvas { display: block; width: 100%; height: 100%; }
 #hud li.first .n, #hud li.first .gap { color: var(--carbon); }
 /* El tanque de nitro de cada uno: un filete al pie de su renglón. */
 #hud li u { position: absolute; left: 0; right: 0; bottom: 0; height: .35em; background: var(--linea-oscura); }
-#hud li s { display: block; height: 100%; background: var(--hueso); }
+#hud li s { display: block; height: 100%; background: var(--hueso); transform-origin: 0 50%; -webkit-transform-origin: 0 50%; }
 #hud li.first u { background: rgba(17, 17, 17, .25); }
 #hud li.first s { background: var(--carbon); }
 /* La cuenta regresiva y el final: una cifra grande sobre su bloque liso. */

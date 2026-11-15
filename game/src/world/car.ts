@@ -57,14 +57,41 @@ export function halo(color: number, size: number, opacity = 1): THREE.Sprite {
   return s;
 }
 
+/**
+ * El brillo de los autos en el proyector: una esfera pulida fotografiada una vez con el entorno real de la pista.
+ * Cada auto lee de esa foto según hacia dónde mira su chapa, en lugar de calcular el reflejo en cada píxel.
+ */
+export function bakeMatcap(renderer: THREE.WebGLRenderer, surroundings: THREE.Texture): THREE.Texture {
+  const size = 256;
+  const target = new THREE.WebGLRenderTarget(size, size, { type: THREE.HalfFloatType, generateMipmaps: true, minFilter: THREE.LinearMipmapLinearFilter });
+  const stage = new THREE.Scene();
+  stage.environment = surroundings;
+  const ball = new THREE.Mesh(new THREE.SphereGeometry(1, 48, 24), new THREE.MeshPhysicalMaterial({ color: 0xffffff, metalness: 0.45, roughness: 0.34, clearcoat: 1, clearcoatRoughness: 0.06 }));
+  stage.add(ball);
+  const lens = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
+  // La foto se toma como mira la cámara de carrera: desde atrás y un poco de arriba.
+  lens.position.set(0, 1.2, -3).normalize().multiplyScalar(3);
+  lens.lookAt(0, 0, 0);
+  const before = renderer.getRenderTarget();
+  renderer.setRenderTarget(target);
+  renderer.render(stage, lens);
+  renderer.setRenderTarget(before);
+  ball.geometry.dispose();
+  (ball.material as THREE.Material).dispose();
+  return target.texture;
+}
+
 const shared = new Map<string, THREE.Material>();
 
 /** Los materiales que no cambian de un auto a otro se crean una sola vez. */
-function common(role: string, ao: THREE.Texture | null): THREE.Material {
+function common(role: string, ao: THREE.Texture | null, matcap: THREE.Texture | null): THREE.Material {
   let material = shared.get(role);
   if (material) return material;
-  const lit = (color: number, metalness: number, roughness: number, envMapIntensity = 1) =>
-    new THREE.MeshStandardMaterial({ color, metalness, roughness, envMapIntensity, aoMap: ao });
+  // Con la foto del entorno, lo pulido la usa y lo opaco queda difuso; ninguno calcula reflejos.
+  const lit = (color: number, metalness: number, roughness: number, envMapIntensity = 1): THREE.Material =>
+    !matcap ? new THREE.MeshStandardMaterial({ color, metalness, roughness, envMapIntensity, aoMap: ao })
+      : roughness < 0.4 ? new THREE.MeshMatcapMaterial({ color: role === 'glass' ? 0x2b3037 : new THREE.Color(color).lerp(new THREE.Color(0xffffff), metalness * 0.35), matcap })
+        : new THREE.MeshLambertMaterial({ color, aoMap: ao });
   // Las luces pasan de 1 a propósito: es lo que hace que el resplandor las encuentre.
   const lamp = (color: number, gain: number) => new THREE.MeshBasicMaterial({ color: new THREE.Color(color).multiplyScalar(gain), fog: false });
   switch (role) {
@@ -82,14 +109,15 @@ function common(role: string, ao: THREE.Texture | null): THREE.Material {
 }
 
 /** Un auto listo para la pista: mira hacia +Z y apoya las ruedas en y = 0. */
-export function buildCar(kit: CarKit, style: CarStyle, fine: boolean, night: boolean): THREE.Group {
+export function buildCar(kit: CarKit, style: CarStyle, fine: boolean, night: boolean, matcap: THREE.Texture | null = null): THREE.Group {
   const car = new THREE.Group();
   const ao = kit.body.find((part) => part.role === 'paint')?.ao ?? null;
   const paint = fine
     ? new THREE.MeshPhysicalMaterial({ color: style.paint, metalness: 0.4, roughness: 0.5, clearcoat: 1, clearcoatRoughness: 0.05, aoMap: ao, envMapIntensity: 1.0 })
-    : new THREE.MeshStandardMaterial({ color: style.paint, metalness: 0.5, roughness: 0.3, aoMap: ao, envMapIntensity: 1.0 });
-  const caliper = new THREE.MeshStandardMaterial({ color: style.accent, metalness: 0.3, roughness: 0.5 });
-  const pick = (part: Part) => (part.role === 'paint' ? paint : part.role === 'caliper' ? caliper : common(part.role, part.ao));
+    : matcap ? new THREE.MeshMatcapMaterial({ color: style.paint, matcap })
+      : new THREE.MeshStandardMaterial({ color: style.paint, metalness: 0.5, roughness: 0.3, aoMap: ao, envMapIntensity: 1.0 });
+  const caliper = matcap ? new THREE.MeshLambertMaterial({ color: style.accent }) : new THREE.MeshStandardMaterial({ color: style.accent, metalness: 0.3, roughness: 0.5 });
+  const pick = (part: Part) => (part.role === 'paint' ? paint : part.role === 'caliper' ? caliper : common(part.role, part.ao, matcap));
   const mesh = (part: Part) => {
     const m = new THREE.Mesh(part.geometry, pick(part));
     part.matrix.decompose(m.position, m.quaternion, m.scale);
@@ -100,7 +128,7 @@ export function buildCar(kit: CarKit, style: CarStyle, fine: boolean, night: boo
   const body = new THREE.Group();
   car.add(body);
   // Las luces de freno son de cada auto: se encienden más cuando ese auto frena.
-  const tail = (common('tail', null) as THREE.MeshBasicMaterial).clone();
+  const tail = (common('tail', null, matcap) as THREE.MeshBasicMaterial).clone();
   kit.body.forEach((part) => {
     const m = mesh(part);
     if (part.role === 'tail') m.material = tail;
@@ -155,7 +183,7 @@ export function buildCar(kit: CarKit, style: CarStyle, fine: boolean, night: boo
 
 /** Cambia la pintura de un auto ya armado: elegir otro no rehace el modelo. */
 export function repaint(car: THREE.Group, style: CarStyle): void {
-  const { paint, caliper, fire, under } = car.userData as { paint: THREE.MeshStandardMaterial; caliper: THREE.MeshStandardMaterial; fire: THREE.MeshBasicMaterial; under?: THREE.MeshBasicMaterial };
+  const { paint, caliper, fire, under } = car.userData as { paint: THREE.MeshMatcapMaterial; caliper: THREE.MeshLambertMaterial; fire: THREE.MeshBasicMaterial; under?: THREE.MeshBasicMaterial };
   paint.color.set(style.paint);
   caliper.color.set(style.accent);
   fire.color.set(style.underglow ?? 0x6ad0ff).multiplyScalar(4);
