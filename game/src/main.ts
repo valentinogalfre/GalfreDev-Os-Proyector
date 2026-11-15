@@ -5,7 +5,7 @@ import { mountLobby } from './host/lobby';
 import { Session } from './host/session';
 import type { Command, Shared } from './net/protocol';
 import { Race, TUNING, type RaceEvent } from './sim/race';
-import { animate, bakeMatcap, buildCar, repaint, loadCarKit } from './world/car';
+import { animate, bakeMatcap, buildCar, Fleet, repaint, loadCarKit } from './world/car';
 import { Puffs } from './world/spray';
 import { buildTrack, curvature, place } from './world/track';
 import { cinta } from './themes/cinta';
@@ -85,7 +85,7 @@ async function start(): Promise<void> {
   pmrem.dispose();
   // En el proyector el reflejo por píxel es lo más caro del cuadro (medido: de 13 a 28 cuadros por segundo al sacarlo).
   // El entorno se fotografía igual, pero una sola vez sobre una esfera, y los autos toman el brillo de esa foto.
-  const matcap = fine ? null : bakeMatcap(renderer, surroundings.texture);
+  const matcap = fine ? null : bakeMatcap(renderer, surroundings.texture, theme.night ?? false);
   if (fine) scene.environment = surroundings.texture; else surroundings.dispose();
   if (!fine && query.get('mat') !== 'std') {
     // Sin entorno que reflejar, el material con brillo no aporta: se cambia por el difuso, que cuesta una fracción.
@@ -115,6 +115,8 @@ async function start(): Promise<void> {
   /** Qué auto lleva cada lugar de la grilla. */
   let livery: number[] = [];
   const styleOf = (i: number) => liveries[livery[i] ?? i % liveries.length];
+  const fleet = matcap ? new Fleet(kit, matcap, theme.night ?? false, liveries.some((look) => look.underglow !== undefined), 8) : null;
+  if (fleet) scene.add(fleet.group);
   const showHud = query.get('hud') !== '0';
   const cars: THREE.Group[] = [];
   /** Quién maneja cada auto de la grilla: el número de jugador en la sala, o null si es un bot. */
@@ -131,7 +133,7 @@ async function start(): Promise<void> {
     race = new Race(course, LAPS, grid.map((id) => id === null));
     while (cars.length > grid.length) scene.remove(cars.pop()!);
     while (cars.length < grid.length) {
-      const car = buildCar(kit, styleOf(cars.length), fine, theme.night ?? false, matcap);
+      const car = buildCar(kit, styleOf(cars.length), fine, theme.night ?? false, fleet !== null);
       cars.push(car);
       scene.add(car);
     }
@@ -191,6 +193,9 @@ async function start(): Promise<void> {
     scene.add(trail);
   }
 
+  /** Lo que acompaña a la cámara. Se busca una vez: recorrer la escena entera en cada cuadro era trabajo tirado. */
+  const skies: THREE.Object3D[] = [];
+  scene.traverse((o) => { if (o.name === 'sky') skies.push(o); });
   let shake = 0, eye = GRID_S, eyeLane = 0, span = 0, fov = 60, clock = 0, snap = true;
   const at = new THREE.Vector3();
 
@@ -384,6 +389,7 @@ async function start(): Promise<void> {
         smoke.emit(at.copy(probe.position).setY(probe.position.y + 0.2), 0, 0.8, 0, 1.2);
       }
     });
+    fleet?.sync(cars);
     smoke.update(dt);
     dust?.update(dt);
     sparks.update(dt);
@@ -446,7 +452,7 @@ async function start(): Promise<void> {
       sun.target.position.copy(probe.position);
       sun.position.copy(probe.position).addScaledVector(sunDir, 300);
     }
-    scene.traverse((o) => { if (o.name === 'sky') o.position.copy(camera.position); });
+    for (const dome of skies) dome.position.copy(camera.position);
     hud?.update({
       order, lap: me.lap, clock: race.clock, done: race.phase === 'done',
       gap: race.cars.map((car) => (lead.s - car.s) / Math.max(20, car.v)), nitro: race.cars.map((car) => car.nitro),
