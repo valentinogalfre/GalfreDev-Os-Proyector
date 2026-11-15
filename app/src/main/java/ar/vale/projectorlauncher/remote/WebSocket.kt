@@ -18,6 +18,9 @@ interface Channel {
     fun send(text: String): Boolean
 
     fun close()
+
+    /** Lo cierra porque el mismo jugador entró desde otro lado: al que queda afuera se le avisa que no insista. */
+    fun replace() = close()
 }
 
 /** Quien atiende una conexión abierta. Vuelve cuando la conexión termina. */
@@ -80,6 +83,10 @@ class WebSocket(private val input: InputStream, private val output: OutputStream
 
     override fun close() {
         fail(NORMAL)
+    }
+
+    override fun replace() {
+        fail(REPLACED)
     }
 
     private fun queue(frame: ByteArray): Boolean = open && outbox.offer(frame)
@@ -145,6 +152,9 @@ class WebSocket(private val input: InputStream, private val output: OutputStream
         private const val PROTOCOL = 1002
         private const val UNSUPPORTED = 1003
         private const val TOO_BIG = 1009
+
+        /** De los códigos que el estándar deja libres. La página del volante lo conoce y no reintenta. */
+        const val REPLACED = 4001
         private const val GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 
         /** True si el pedido quiere pasar a WebSocket y viene bien formado. */

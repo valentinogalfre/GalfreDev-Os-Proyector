@@ -124,7 +124,7 @@ class Carrera(private val random: SecureRandom = SecureRandom(), private val now
             player.channel = channel
             catchUp = lastForAll
         }
-        old?.close()
+        old?.replace()
         channel.send(JSONObject().put("t", "joined").put("id", player.id).put("key", player.key).put("name", player.name).toString())
         catchUp?.let(channel::send)
         tellHost(roster().toString())

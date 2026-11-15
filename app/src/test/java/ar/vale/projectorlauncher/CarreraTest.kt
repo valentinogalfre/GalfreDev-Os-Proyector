@@ -31,6 +31,7 @@ private class FakeChannel : Channel {
     private val incoming = LinkedBlockingQueue<String>()
     val heard = LinkedBlockingQueue<String>()
     @Volatile var closed = false
+    @Volatile var replaced = false
 
     fun say(json: JSONObject) = incoming.put(json.toString())
     fun hangUp() = incoming.put(END)
@@ -47,6 +48,11 @@ private class FakeChannel : Channel {
     override fun close() {
         closed = true
         incoming.offer(END)
+    }
+
+    override fun replace() {
+        replaced = true
+        close()
     }
 
     private companion object {
@@ -192,6 +198,24 @@ class CarreraTest {
         val players = last!!.getJSONArray("players")
         assertEquals(1, players.length())
         assertTrue(players.getJSONObject(0).getBoolean("on"))
+    }
+
+    @Test
+    fun `sala - el mismo volante abierto dos veces deja uno solo, y al otro se le avisa que no insista`() {
+        val room = carrera.open()
+        val first = join(room, "Vale")
+        val key = first.next("joined").getString("key")
+        val second = join(room, "Vale", key = key)
+        second.next("joined")
+        assertTrue(first.replaced)
+        assertFalse(second.closed)
+        // En el cable el aviso es el código de cierre, que el navegador le entrega a la página.
+        val out = ByteArrayOutputStream()
+        val socket = WebSocket(ByteArrayInputStream(ByteArray(0)), out)
+        socket.replace()
+        socket.read()
+        Thread.sleep(100)
+        assertEquals(listOf(0x88.toByte(), 2.toByte(), (WebSocket.REPLACED shr 8).toByte(), WebSocket.REPLACED.toByte()), out.toByteArray().toList())
     }
 
     @Test

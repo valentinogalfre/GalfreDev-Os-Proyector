@@ -40,7 +40,7 @@ export interface RosterEntry { id: number; name: string; on: boolean }
 
 export type FromRoom =
   | { t: 'joined'; id: number; key: string; name: string }
-  | { t: 'error'; code: 'room' | 'name' | 'full' }
+  | { t: 'error'; code: 'room' | 'name' | 'full' | 'moved' }
   | { t: 'all'; d: Shared }
   | { t: 'you'; d: Mine }
   | { t: 'host'; on: boolean }

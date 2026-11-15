@@ -54,6 +54,9 @@ function overBridge(host: Bridge, hello: () => object, onMessage: (message: From
   };
 }
 
+/** El código con que la sala cierra la conexión que otra reemplazó. */
+const REPLACED = 4001;
+
 function overSocket(hello: () => object, onMessage: (message: FromRoom) => void, onLine: (up: boolean) => void): Link {
   let socket: WebSocket | null = null;
   let closed = false;
@@ -74,10 +77,12 @@ function overSocket(hello: () => object, onMessage: (message: FromRoom) => void,
         // Un mensaje que no se entiende no tira la conexión.
       }
     };
-    ws.onclose = () => {
+    ws.onclose = (event) => {
       if (socket !== ws) return;
       socket = null;
       onLine(false);
+      // El mismo volante se abrió en otro lado: volver a entrar solo sería pelearle el auto.
+      if (event.code === REPLACED) return onMessage({ t: 'error', code: 'moved' });
       setTimeout(open, wait);
       wait = Math.min(wait * 2, 3000);
     };

@@ -53,7 +53,7 @@ function onMessage(message: FromRoom): void {
     store('room', room);
     store('key', message.key);
   } else if (message.t === 'error') {
-    problem = { room: 'Esta sala ya cerró. Escaneá de nuevo el código de la pared.', name: 'Ese nombre no sirve. Probá con otro.', full: 'La sala está llena.' }[message.code];
+    problem = { room: 'Esta sala ya cerró. Escaneá de nuevo el código de la pared.', name: 'Ese nombre no sirve. Probá con otro.', full: 'La sala está llena.', moved: 'Este volante se abrió en otra pestaña. Entrá de nuevo para manejar desde acá.' }[message.code];
     link?.close();
     link = null;
     me = null;
