@@ -8,7 +8,7 @@ de Khronos Group, publicado bajo [CC BY 4.0](https://creativecommons.org/license
 Ese modelo parte a su vez de un modelo de dominio público de Unity Fan.
 
 Cambios hechos acá: se quitaron el interior y las piezas chicas, se redujo la malla a unos
-19 mil triángulos, se unieron las piezas por material y quedó una sola textura de oclusión.
+46 mil triángulos (17 mil en la versión liviana), se unieron las piezas por material y quedó una sola textura de oclusión.
 El paso está en `tools/car/build.mjs` y se repite con el `CarConcept.glb` original al lado:
 
 ```sh

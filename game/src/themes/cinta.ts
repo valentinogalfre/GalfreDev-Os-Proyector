@@ -21,7 +21,7 @@ export const cinta: Theme = {
   ],
   half: 7,
   start: 900,
-  grade: { bloom: [0.2, 0.6, 1.1], vignette: 0.55, speed: 0.04 },
+  grade: { bloom: [0.2, 0.6, 1.1], vignette: 0.55, speed: 0.11 },
   trail: CINTA,
   cars: [
     { paint: 0xd9d5cc, accent: CARBON },

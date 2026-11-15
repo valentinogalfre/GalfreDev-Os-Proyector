@@ -33,7 +33,7 @@ export const neon: Theme = {
   ],
   half: 8,
   start: 60,
-  grade: { bloom: [1.0, 0.72, 0.85], vignette: 0.6, speed: 0.05 },
+  grade: { bloom: [1.0, 0.72, 0.85], vignette: 0.6, speed: 0.11 },
   night: true,
   spray: { color: 0xa9c6ff, opacity: 0.13, size: 2.6, additive: true },
   cars: [

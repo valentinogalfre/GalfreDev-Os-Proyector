@@ -13,7 +13,8 @@ class LensEffect extends Effect {
       void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
         vec2 d = uv - 0.5;
         float r2 = dot(d, d);
-        float k = blur * smoothstep(0.06, 0.5, r2);
+        // Solo abajo y a los costados, donde pasa el piso: el horizonte queda nítido.
+        float k = blur * smoothstep(0.06, 0.5, r2) * smoothstep(0.62, 0.18, uv.y);
         vec2 split = d * fringe * r2 * 4.0;
         vec3 sum = vec3(0.0);
         for (int i = 0; i < 6; i++) {

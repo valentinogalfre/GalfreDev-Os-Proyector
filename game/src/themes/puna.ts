@@ -44,7 +44,7 @@ export const puna: Theme = {
   ],
   half: 6.5,
   start: 820,
-  grade: { bloom: [0.35, 0.6, 1.25], vignette: 0.5, speed: 0.045 },
+  grade: { bloom: [0.35, 0.6, 1.25], vignette: 0.5, speed: 0.11 },
   spray: { color: 0xc9a27e, opacity: 0.2, size: 2.6, additive: false },
   cars: [
     { paint: 0xb3261e, accent: 0xf1ede6 },

@@ -14,7 +14,8 @@ const doc = await io.read(src);
 const root = doc.getRoot();
 const scene = root.listScenes()[0];
 
-const DROP = /^(Interior|Engine|BodyHoodInterior|BodyWindshieldWipers|License|Axles|BodyHoodUnder)/;
+// El interior no se ve tras el vidrio oscuro; lo de atrás sí, porque cierra la cola del auto.
+const DROP = /^(Interior(?!Rear)|Engine|BodyHoodInterior|BodyWindshieldWipers|License|Axles)/;
 const SPARE_WHEELS = /^Wheel(FrontR|RearL|RearR)$/;
 
 // Las pinzas de freno no giran: pasan al cuerpo antes de sacar tres de las cuatro ruedas.
@@ -64,11 +65,14 @@ for (const mat of root.listMaterials()) if (!roles.has(mat.getName()) || roles.g
 await doc.transform(dedup({ propertyTypes: [PropertyType.ACCESSOR, PropertyType.TEXTURE] }), weld());
 
 await MeshoptSimplifier.ready;
-const RATIO = { paint: 0.22, trim: 0.18, dark: 0.2, glass: 0.25, rim: 0.06, tyre: 1, caliper: 0.04, tail: 1, head: 1, signal: 1 };
+const RATIO = { paint: 0.55, trim: 0.5, dark: 0.5, glass: 0.4, rim: 0.1, tyre: 1, caliper: 0.04, tail: 1, head: 1, signal: 1 };
 for (const mesh of root.listMeshes()) {
   for (const prim of mesh.listPrimitives()) {
-    const ratio = Math.min(1, RATIO[prim.getMaterial().getName()] * scale);
-    if (ratio < 1) simplifyPrimitive(prim, { simplifier: MeshoptSimplifier, ratio, error: 0.02 });
+    const role = prim.getMaterial().getName();
+    const ratio = Math.min(1, RATIO[role] * scale);
+    // Las piezas chicas y repetidas aguantan más error que los paneles, donde se nota en el reflejo.
+    const error = scale < 1 || role === 'rim' || role === 'caliper' ? 0.012 : 0.002;
+    if (ratio < 1) simplifyPrimitive(prim, { simplifier: MeshoptSimplifier, ratio, error, lockBorder: true });
   }
 }
 

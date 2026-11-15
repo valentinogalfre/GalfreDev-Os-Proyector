@@ -140,6 +140,12 @@ async function start(): Promise<void> {
       camera.position.copy(probe.position).add(new THREE.Vector3(0, 6.2, 0));
       camera.lookAt(cars[1].position);
       camera.fov = 30;
+    } else if (view === 'foto') {
+      // De cerca y a la altura del auto, para juzgar el modelo y la pintura.
+      place(track, s - 5.2, -4.4, probe);
+      camera.position.copy(probe.position).add(new THREE.Vector3(0, 1.25, 0));
+      camera.lookAt(cars[0].position.x, cars[0].position.y + 0.6, cars[0].position.z);
+      camera.fov = 38;
     } else {
       place(track, s - 7.6, -1.5, probe);
       place(track, s + 18, 0, ahead);

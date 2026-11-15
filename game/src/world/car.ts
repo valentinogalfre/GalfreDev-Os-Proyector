@@ -75,7 +75,7 @@ function common(role: string, ao: THREE.Texture | null): THREE.Material {
     case 'tail': material = lamp(0xff1a0a, 8); break;
     case 'head': material = lamp(0xfff0d8, 4); break;
     case 'signal': material = lit(0x3a1400, 0, 0.3); break;
-    default: material = lit(0x080808, 0.1, 0.8);
+    default: material = lit(0x161616, 0.3, 0.6);
   }
   shared.set(role, material);
   return material;
