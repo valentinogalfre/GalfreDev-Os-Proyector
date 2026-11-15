@@ -87,6 +87,8 @@ async function start(): Promise<void> {
   // El entorno se fotografía igual, pero una sola vez sobre una esfera, y los autos toman el brillo de esa foto.
   const matcap = fine ? null : bakeMatcap(renderer, surroundings.texture, theme.night ?? false);
   if (fine) scene.environment = surroundings.texture; else surroundings.dispose();
+  if (query.get('niebla') === '0') scene.fog = null;
+  if (query.get('salida') === 'lineal') renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
   if (!fine && query.get('mat') !== 'std') {
     // Sin entorno que reflejar, el material con brillo no aporta: se cambia por el difuso, que cuesta una fracción.
     const cheap = new Map<THREE.Material, THREE.Material>();
@@ -95,7 +97,10 @@ async function start(): Promise<void> {
       if (!from.isMeshStandardMaterial) return m;
       let to = cheap.get(m);
       if (!to) {
-        to = new THREE.MeshLambertMaterial({
+        to = query.get('mat') === 'basico' ? new THREE.MeshBasicMaterial({
+          color: from.color, map: from.map, transparent: from.transparent, opacity: from.opacity, side: from.side, vertexColors: from.vertexColors, fog: from.fog,
+          alphaTest: from.alphaTest, depthWrite: from.depthWrite,
+        }) : new THREE.MeshLambertMaterial({
           color: from.color, map: from.map, transparent: from.transparent, opacity: from.opacity, side: from.side, vertexColors: from.vertexColors, fog: from.fog,
           alphaTest: from.alphaTest, depthWrite: from.depthWrite, emissive: from.emissive, emissiveMap: from.emissiveMap, emissiveIntensity: from.emissiveIntensity,
         });
@@ -179,7 +184,7 @@ async function start(): Promise<void> {
   }
   // El posprocesado solo se baja en calidad alta: el proyector no carga ni compila esa librería.
   const composer = fine ? (await import('./render/fx')).buildComposer(renderer, scene, camera, theme.grade, world.rays) : null;
-  if (!composer) renderer.toneMapping = query.get('tone') === 'aces' ? THREE.ACESFilmicToneMapping : THREE.LinearToneMapping;
+  if (!composer) renderer.toneMapping = query.get('tone') === 'aces' ? THREE.ACESFilmicToneMapping : query.get('tone') === 'no' ? THREE.NoToneMapping : THREE.LinearToneMapping;
 
   // La estela del que va primero: una cinta apoyada en el asfalto, que se rehace cada cuadro.
   const TRAIL = 40;
