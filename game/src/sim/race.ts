@@ -80,10 +80,14 @@ export class Race {
   phase: Phase = 'grid';
   /** Segundos desde la largada; negativo durante la cuenta regresiva. */
   clock = -TUNING.countdown;
+  readonly course: Course;
+  readonly laps: number;
   private carry = 0;
   private placed = 0;
 
-  constructor(readonly course: Course, readonly laps: number, bots: boolean[]) {
+  constructor(course: Course, laps: number, bots: boolean[]) {
+    this.course = course;
+    this.laps = laps;
     // Grilla de a dos, escalonada, detrás de la línea.
     bots.forEach((bot, i) => {
       this.cars.push({
