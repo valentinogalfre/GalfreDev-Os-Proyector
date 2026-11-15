@@ -59,8 +59,8 @@ async function start(): Promise<void> {
   // Los rótulos se pintan en texturas: la tipografía tiene que estar cargada antes.
   const [kit] = await Promise.all([loadCarKit(fine), document.fonts.load('800 64px Archivo'), document.fonts.load('500 16px "Geist Mono"')]);
 
-  const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('view') as HTMLCanvasElement, antialias: !fine, powerPreference: 'high-performance' });
-  renderer.setPixelRatio(fine ? Math.min(devicePixelRatio, 1.5) : 1);
+  const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('view') as HTMLCanvasElement, antialias: query.has('aa') ? query.get('aa') !== '0' : !fine, powerPreference: 'high-performance' });
+  renderer.setPixelRatio(query.has('px') ? Number(query.get('px')) : fine ? Math.min(devicePixelRatio, 1.5) : 1);
   renderer.setSize(innerWidth, innerHeight, false);
   renderer.toneMappingExposure = theme.exposure;
   {
@@ -80,9 +80,33 @@ async function start(): Promise<void> {
   place(track, theme.start, 0, probe);
   probe.position.y += 1.6;
   scene.traverse((o) => { if (o.name === 'sky') o.position.copy(probe.position); });
-  const pmrem = new THREE.PMREMGenerator(renderer);
-  scene.environment = pmrem.fromScene(scene, 0, 0.3, 5000, { position: probe.position }).texture;
-  pmrem.dispose();
+  if (query.get('env') !== '0') {
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    scene.environment = pmrem.fromScene(scene, 0, 0.3, 5000, { position: probe.position }).texture;
+    pmrem.dispose();
+  }
+  // Diagnóstico: cambia los materiales con brillo y reflejo por otros más baratos de dibujar.
+  const cheap = new Map<THREE.Material, THREE.Material>();
+  const cheapen = (root: THREE.Object3D): void => {
+    const kind = query.get('mat');
+    if (!kind) return;
+    const swap = (m: THREE.Material): THREE.Material => {
+      const s = m as THREE.MeshStandardMaterial;
+      if (!s.isMeshStandardMaterial) return m;
+      let to = cheap.get(m);
+      if (!to) {
+        const p = { color: s.color, map: s.map, transparent: s.transparent, opacity: s.opacity, side: s.side, vertexColors: s.vertexColors, fog: s.fog, alphaTest: s.alphaTest, depthWrite: s.depthWrite };
+        to = kind === 'basic' ? new THREE.MeshBasicMaterial(p) : new THREE.MeshLambertMaterial({ ...p, emissive: s.emissive, emissiveMap: s.emissiveMap, emissiveIntensity: s.emissiveIntensity });
+        cheap.set(m, to);
+      }
+      return to;
+    };
+    root.traverse((o) => {
+      const mesh = o as THREE.Mesh;
+      if (mesh.isMesh) mesh.material = Array.isArray(mesh.material) ? mesh.material.map(swap) : swap(mesh.material);
+    });
+  };
+  cheapen(scene);
 
   const course = { length: track.length, half: track.half, wall: theme.wall, curvature: (s: number) => curvature(track, s) };
   /** Los autos para elegir: los seis de la pista y dos más con otra pintura. */
@@ -107,6 +131,7 @@ async function start(): Promise<void> {
     while (cars.length > grid.length) scene.remove(cars.pop()!);
     while (cars.length < grid.length) {
       const car = buildCar(kit, styleOf(cars.length), fine, theme.night ?? false);
+      cheapen(car);
       cars.push(car);
       scene.add(car);
     }
@@ -150,7 +175,7 @@ async function start(): Promise<void> {
     for (const { flat, y, look } of world.mirrors ?? []) scene.add(mirror(flat, y, pixels, { ...look, fog: scene.fog as THREE.FogExp2 }));
   }
   const composer = fine ? buildComposer(renderer, scene, camera, theme.grade, world.rays) : null;
-  if (!composer) renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  if (!composer && query.get('tone') !== '0') renderer.toneMapping = THREE.ACESFilmicToneMapping;
 
   // La estela del que va primero: una cinta apoyada en el asfalto, que se rehace cada cuadro.
   const TRAIL = 40;
@@ -450,7 +475,7 @@ async function start(): Promise<void> {
   } else {
     // En calidad baja, si no alcanza, se dibuja con menos puntos antes que con menos cuadros.
     const meter = query.has('fps') ? document.body.appendChild(Object.assign(document.createElement('div'), { id: 'fps' })) : null;
-    let last = performance.now(), frames = 0, since = last, scale = 1;
+    let last = performance.now(), frames = 0, since = last, scale = query.has('px') ? Number(query.get('px')) : 1;
     renderer.setAnimationLoop(() => {
       const now = performance.now();
       frame(Math.min(0.1, (now - last) / 1000));
@@ -459,7 +484,7 @@ async function start(): Promise<void> {
       const fps = (frames * 1000) / (now - since);
       frames = 0;
       since = now;
-      if (!fine && fps < 26 && scale > 0.5) {
+      if (!fine && !query.has('px') && fps < 26 && scale > 0.5) {
         scale = Math.max(0.5, scale - 0.125);
         renderer.setPixelRatio(scale);
         resize();
