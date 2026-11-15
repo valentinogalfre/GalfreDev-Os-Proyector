@@ -49,7 +49,7 @@ async function start(): Promise<void> {
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.3, 6000);
   const track = buildTrack(theme.layout, theme.half);
-  const world = theme.build({ scene, track, anisotropy: Math.min(8, renderer.capabilities.getMaxAnisotropy()) });
+  const world = theme.build({ scene, track, anisotropy: Math.min(fine ? 8 : 2, renderer.capabilities.getMaxAnisotropy()), fine });
 
   // Los reflejos de la pintura salen del mundo de verdad, fotografiado una vez desde la pista.
   const probe = new THREE.Object3D(), ahead = new THREE.Object3D();

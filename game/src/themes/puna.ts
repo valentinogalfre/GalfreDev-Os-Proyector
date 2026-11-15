@@ -55,7 +55,9 @@ export const puna: Theme = {
     { paint: 0x2f5d3a, accent: 0xf1ede6 },
     { paint: 0x4a2b6b, accent: 0xf1ede6 },
   ],
-  build({ scene, track, anisotropy }: Stage): World {
+  build({ scene, track, anisotropy, fine }: Stage): World {
+    // En la calidad baja el paisaje lleva un tercio de las piezas y una malla más gruesa.
+    const few = fine ? 1 : 0.35;
     scene.fog = new THREE.FogExp2(0xdca88c, 0.00052);
     const sky = skyDome({
       top: 0x3f63b4, horizon: 0xf6b98a, ground: 0x9a6248, sun: SUN, sunColor: 0xffe2b4, curve: 0.5, gain: 1.25,
@@ -115,7 +117,7 @@ export const puna: Theme = {
 
     const sand = new THREE.Color(0xc08a5e), dust = new THREE.Color(0xd8b088), tint = new THREE.Color(), band = new THREE.Color();
     const land = ground(track, {
-      center: track.center, size: 3600, segments: 230, focus: 1.7, tile: 14, relief: 250, flat: 34, ramp: 520, scale: 0.0042, seed: 11,
+      center: track.center, size: 3600, segments: fine ? 230 : 110, focus: 1.7, tile: 14, relief: 250, flat: 34, ramp: 520, scale: 0.0042, seed: 11,
       material: new THREE.MeshLambertMaterial({ vertexColors: true, map: grit }),
       color: (h, x, z) => {
         // Abajo arena; hacia arriba aparecen los estratos, ondulados por el ruido.
@@ -144,7 +146,8 @@ export const puna: Theme = {
       }
     };
     const cacti = new THREE.InstancedMesh(cardon(), new THREE.MeshLambertMaterial({ color: 0x5a7440 }), 170);
-    scatter(170, 420, track.half + 8, (i) => {
+    cacti.count = Math.round(170 * few);
+    scatter(cacti.count, 420, track.half + 8, (i) => {
       dummy.scale.setScalar(0.6 + rand() * 0.9);
       dummy.updateMatrix();
       cacti.setMatrixAt(i, dummy.matrix);
@@ -152,7 +155,8 @@ export const puna: Theme = {
     cacti.castShadow = true;
     // Tolas y pastos duros: matas bajas que le dan escala al suelo.
     const bushes = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 6, 4), new THREE.MeshLambertMaterial(), 1000);
-    scatter(1000, 380, track.half + 7, (i) => {
+    bushes.count = Math.round(1000 * few);
+    scatter(bushes.count, 380, track.half + 7, (i) => {
       const w = 0.5 + rand() * 1.1;
       dummy.scale.set(w, w * (0.45 + rand() * 0.4), w);
       dummy.updateMatrix();
@@ -160,7 +164,8 @@ export const puna: Theme = {
       bushes.setColorAt(i, rand() < 0.6 ? tint.setHSL(0.1 + rand() * 0.03, 0.5, 0.2 + rand() * 0.1) : tint.setHSL(0.2 + rand() * 0.08, 0.3, 0.07 + rand() * 0.06));
     });
     const rocks = new THREE.InstancedMesh(new THREE.DodecahedronGeometry(1, 0), new THREE.MeshLambertMaterial({ flatShading: true }), 260);
-    scatter(260, 420, track.half + 7.5, (i) => {
+    rocks.count = Math.round(260 * few);
+    scatter(rocks.count, 420, track.half + 7.5, (i) => {
       dummy.rotation.set(rand() * 3, rand() * 6.28, rand() * 3);
       dummy.scale.set(0.5 + rand() * 2.6, 0.4 + rand() * 1.4, 0.5 + rand() * 2.6);
       dummy.updateMatrix();

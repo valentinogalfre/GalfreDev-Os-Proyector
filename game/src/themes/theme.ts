@@ -9,6 +9,8 @@ export interface Stage {
   scene: THREE.Scene;
   track: Track;
   anisotropy: number;
+  /** Falso en la calidad baja: el mundo se arma con menos piezas y menos malla. */
+  fine: boolean;
 }
 
 export interface World {

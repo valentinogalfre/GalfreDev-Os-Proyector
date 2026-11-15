@@ -45,7 +45,7 @@ export const neon: Theme = {
     { paint: 0xd98a1c, accent: 0x111111, underglow: AMBER },
     { paint: 0x13805a, accent: 0xffffff, underglow: 0x30ff9a },
   ],
-  build({ scene, track, anisotropy }: Stage): World {
+  build({ scene, track, anisotropy, fine }: Stage): World {
     scene.fog = new THREE.FogExp2(0x1a0d36, 0.0032);
     const sky = skyDome({ top: 0x05030f, horizon: 0x4a1a66, ground: 0x07040f, curve: 0.34, clouds: { dark: 0x0c0820, lit: 0x7a3090, cover: 0.55 } });
     scene.add(sky, stars(400, 4));
@@ -188,7 +188,9 @@ export const neon: Theme = {
     const rand = rng(31);
     const kinds: [number, number, 'homes' | 'grid' | 'bands'][] = [[22, 34, 'homes'], [26, 80, 'grid'], [30, 150, 'bands']];
     const lots: [number, number, number, number][] = [];
-    for (let gx = -22; gx <= 22; gx++) for (let gz = -22; gz <= 22; gz++) {
+    // En la calidad baja la ciudad llega menos lejos: la bruma tapa el resto.
+    const blocksOut = fine ? 22 : 12;
+    for (let gx = -blocksOut; gx <= blocksOut; gx++) for (let gz = -blocksOut; gz <= blocksOut; gz++) {
       const x = track.center[0] + gx * 36 + (rand() - 0.5) * 8, z = track.center[1] + gz * 36 + (rand() - 0.5) * 8;
       const d = land.distanceAt(x, z);
       if (d < h + 28) continue;

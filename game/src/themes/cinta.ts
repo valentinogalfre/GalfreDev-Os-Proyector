@@ -32,7 +32,7 @@ export const cinta: Theme = {
     { paint: 0x3a3a37, accent: HUESO },
     { paint: 0xb9b4aa, accent: CARBON },
   ],
-  build({ scene, track, anisotropy }: Stage): World {
+  build({ scene, track, anisotropy, fine }: Stage): World {
     scene.fog = new THREE.FogExp2(0x2a2927, 0.0015);
     const sky = skyDome({ top: 0x141413, horizon: 0x55524c, ground: 0x1b1b1a, curve: 0.5, gain: 1.15 });
     scene.add(sky);
@@ -99,7 +99,8 @@ export const cinta: Theme = {
         edgeColors.push(ink.r, ink.g, ink.b);
       }
     };
-    for (let gx = -9; gx <= 9; gx++) for (let gz = -9; gz <= 9; gz++) {
+    const blocksOut = fine ? 9 : 6;
+    for (let gx = -blocksOut; gx <= blocksOut; gx++) for (let gz = -blocksOut; gz <= blocksOut; gz++) {
       const bx = track.center[0] + gx * 44, bz = track.center[1] + gz * 44;
       const pieces = 1 + Math.floor(rand() * 3);
       for (let k = 0; k < pieces; k++) {
