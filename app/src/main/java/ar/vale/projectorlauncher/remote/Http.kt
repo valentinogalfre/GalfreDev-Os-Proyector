@@ -135,6 +135,11 @@ class HttpResponse(
     /** La misma respuesta, pero dejando que la página consulte también ese origen. */
     fun reaching(origin: String) = HttpResponse(status, type, bytes, stream, length, cacheSeconds, policy, origin)
 
+    /** La política con ese origen sumado a los que la página ya podía consultar, sin repetir la directiva. */
+    private fun allowing(origin: String): String =
+        if ("connect-src " in policy) policy.replaceFirst("connect-src ", "connect-src $origin ")
+        else policy.replaceFirst("default-src 'self';", "default-src 'self'; connect-src 'self' $origin;")
+
     fun write(out: OutputStream) {
         val head = StringBuilder("HTTP/1.1 $status ${reason(status)}\r\n")
         head.append("Content-Type: $type\r\n")
@@ -144,8 +149,7 @@ class HttpResponse(
         head.append("X-Content-Type-Options: nosniff\r\n")
         head.append("X-Frame-Options: DENY\r\n")
         head.append("Referrer-Policy: no-referrer\r\n")
-        val connect = reach?.let { " connect-src 'self' $it;" }.orEmpty()
-        head.append("Content-Security-Policy: ").append(policy.replaceFirst("default-src 'self';", "default-src 'self';$connect")).append("\r\n")
+        head.append("Content-Security-Policy: ").append(reach?.let(::allowing) ?: policy).append("\r\n")
         head.append("\r\n")
         out.write(head.toString().toByteArray(Charsets.ISO_8859_1))
         if (bytes != null) out.write(bytes)

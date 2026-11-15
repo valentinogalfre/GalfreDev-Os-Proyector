@@ -209,6 +209,12 @@ class RemoteSecurityTest {
             assertFalse(host, forged.contains("connect-src"))
             assertFalse(host, forged.contains("script-src *"))
         }
+        // La del juego ya podía abrir su conexión con la sala: el origen seguro se suma a esa lista, no la pisa.
+        val game = Router(pairing, device, securePort = { 8696 }) {
+            HttpResponse(200, "text/html", "<html>".toByteArray(), policy = HttpResponse.GAME_POLICY)
+        }.handle(HttpParser.parse(ByteArrayInputStream("GET / HTTP/1.1\r\nHost: 10.0.0.2:8686\r\n\r\n".toByteArray()))!!).text()
+        assertTrue(game, game.contains("connect-src https://10.0.0.2:8696 'self' ws: wss:"))
+        assertEquals(game, 1, Regex("connect-src").findAll(game).count())
     }
 
     @Test
