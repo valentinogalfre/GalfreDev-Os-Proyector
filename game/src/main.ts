@@ -98,6 +98,9 @@ async function start(): Promise<void> {
   if (query.get('salida') === 'lineal') renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
   if (!fine && query.get('luz') !== 'viva') bakeLight(scene);
 
+  // Para inspeccionar la escena desde las herramientas del navegador mientras se mide.
+  if (query.has('dbg')) (window as unknown as { dbg: unknown }).dbg = { scene, renderer };
+
   const course = { length: track.length, half: track.half, wall: theme.wall, curvature: (s: number) => curvature(track, s) };
   /** Los autos para elegir: los seis de la pista y dos más con otra pintura. */
   const liveries = [...theme.cars, ...EXTRA_PAINT.map((paint, k) => ({ ...theme.cars[k], paint }))];
@@ -474,7 +477,7 @@ async function start(): Promise<void> {
   } else {
     // En calidad baja, si no alcanza, se dibuja con menos puntos antes que con menos cuadros.
     const meter = query.has('fps') ? document.body.appendChild(Object.assign(document.createElement('div'), { id: 'fps' })) : null;
-    let last = performance.now(), frames = 0, since = last, scale = startScale, settled = false;
+    let last = performance.now(), frames = 0, since = last, scale = startScale, settled = false, slow = 0;
     // Perillas de medición: «sin=autos,mundo,cielo» apaga partes de la escena y «fin» espera a la GPU para saber cuánto tarda de verdad.
     const off = new Set((query.get('sin') ?? '').split(','));
     if (off.size > 1 || !off.has('')) for (const o of scene.children) {
@@ -496,10 +499,14 @@ async function start(): Promise<void> {
       frames = 0;
       since = now;
       // La primera tanda incluye la carga; recién después el número dice algo.
-      if (!fine && !query.has('px') && settled && fps < 50 && scale > 0.75) {
+      // Primero la fluidez: se baja la nitidez si no llega a 56, pero por debajo de la mitad de la pantalla solo si va
+      // realmente mal. Hacen falta dos tandas seguidas para que un tropiezo aislado no cueste resolución.
+      slow = settled && fps < (scale > 1 ? 56 : 48) ? slow + 1 : 0;
+      if (!fine && !query.has('px') && slow >= 2 && scale > 0.75) {
         scale = Math.max(0.75, scale - 0.25);
         renderer.setPixelRatio(scale);
         resize();
+        slow = 0;
       }
       settled = true;
       if (meter) meter.textContent = `${fps.toFixed(0)} FPS · ${Math.round(scale * 100)}% · ${renderer.info.render.triangles} TRI · ${renderer.info.render.calls} DIB · cpu ${(cpu / 90).toFixed(1)} · gpu ${(gpu / 90).toFixed(1)}`;

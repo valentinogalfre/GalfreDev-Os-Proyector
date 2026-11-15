@@ -1,9 +1,10 @@
 import * as THREE from 'three';
 
 /**
- * Hornea la luz en el paisaje. El sol y el cielo no se mueven y el paisaje tampoco, así que la luz de cada vértice se
- * calcula una vez al cargar y queda guardada como color. El proyector deja de calcularla en cada punto de la pantalla
- * (medido en el equipo: unos 2 ms por cuadro) y las piezas repetidas pasan a ser una sola malla.
+ * Hornea el paisaje. El sol y el cielo no se mueven y el paisaje tampoco, así que la luz de cada vértice se calcula
+ * una vez al cargar y queda guardada como color; el proyector deja de calcularla en cada punto de la pantalla (medido
+ * en el equipo: unos 2 ms por cuadro). Y como ya nada depende de dónde está cada pieza, todas las que comparten
+ * textura y mezcla se funden en una sola malla: una orden de dibujo en lugar de decenas.
  */
 export function bakeLight(scene: THREE.Scene): void {
   scene.updateMatrixWorld(true);
@@ -14,60 +15,75 @@ export function bakeLight(scene: THREE.Scene): void {
     if (sun.isDirectionalLight) suns.push({ dir: sun.position.clone().sub(sun.target.position).normalize(), color: sun.color.clone().multiplyScalar(sun.intensity / Math.PI) });
     if (dome.isHemisphereLight) skies.push({ up: dome.position.clone().normalize(), sky: dome.color.clone().multiplyScalar(dome.intensity / Math.PI), ground: dome.groundColor.clone().multiplyScalar(dome.intensity / Math.PI) });
   });
-  const flatOf = new Map<THREE.Material, THREE.MeshBasicMaterial>();
-  const unlit = (from: THREE.MeshLambertMaterial): THREE.MeshBasicMaterial => {
-    let to = flatOf.get(from);
-    if (!to) flatOf.set(from, to = new THREE.MeshBasicMaterial({
-      color: from.color, map: from.map, transparent: from.transparent, opacity: from.opacity, side: from.side, fog: from.fog,
-      alphaTest: from.alphaTest, depthWrite: from.depthWrite, vertexColors: true,
-    }));
-    return to;
-  };
+  type Source = THREE.MeshLambertMaterial | THREE.MeshBasicMaterial;
   const n = new THREE.Vector3(), p = new THREE.Vector3(), tint = new THREE.Color(), whole = new THREE.Matrix4(), turn = new THREE.Matrix3();
-  const todo: THREE.Mesh[] = [];
+  const batches = new Map<string, THREE.Mesh[]>();
+  const moving = (o: THREE.Object3D | null): boolean => o !== null && (o.name === 'sky' || moving(o.parent));
   scene.traverse((o) => {
-    const mesh = o as THREE.Mesh, m = mesh.material as THREE.MeshLambertMaterial;
-    if (mesh.isMesh && !Array.isArray(m) && (m.isMeshLambertMaterial || (m as unknown as THREE.MeshStandardMaterial).isMeshStandardMaterial) && mesh.geometry.attributes.normal) todo.push(mesh);
+    const mesh = o as THREE.Mesh, m = mesh.material as Source;
+    if (!mesh.isMesh || Array.isArray(m) || moving(mesh)) return;
+    const lit = (m as THREE.MeshLambertMaterial).isMeshLambertMaterial || (m as unknown as THREE.MeshStandardMaterial).isMeshStandardMaterial;
+    if (!lit && !(m as THREE.MeshBasicMaterial).isMeshBasicMaterial) return;
+    // Lo translúcido se ordena pieza por pieza según la distancia; fundirlo lo desordena. Lo aditivo no depende del orden.
+    if (m.transparent && m.blending !== THREE.AdditiveBlending) return;
+    const key = [m.map?.uuid, m.transparent, m.opacity, m.blending, m.side, m.fog, m.alphaTest, m.depthWrite, mesh.renderOrder].join();
+    const list = batches.get(key);
+    if (list) list.push(mesh); else batches.set(key, [mesh]);
   });
-  for (const mesh of todo) {
-    const from = mesh.material as THREE.MeshLambertMaterial, many = mesh as THREE.InstancedMesh;
-    const copies = many.isInstancedMesh ? many.count : 1;
-    let source = mesh.geometry;
-    if (from.flatShading && source.index) { source = source.toNonIndexed(); source.computeVertexNormals(); }
-    const at = source.attributes.position, normal = source.attributes.normal, uv = source.attributes.uv, own = from.vertexColors ? source.attributes.color : undefined;
-    const count = at.count, corners = source.index ? source.index.count : count;
-    const position = new Float32Array(copies * count * 3), color = new Float32Array(copies * count * 3), coord = uv ? new Float32Array(copies * count * 2) : null;
-    const index = new Uint32Array(copies * corners);
-    for (let c = 0; c < copies; c++) {
-      if (many.isInstancedMesh) { many.getMatrixAt(c, whole); whole.premultiply(mesh.matrixWorld); } else whole.copy(mesh.matrixWorld);
-      turn.getNormalMatrix(whole);
-      for (let i = 0; i < count; i++) {
-        const o = (c * count + i) * 3;
-        p.fromBufferAttribute(at, i).applyMatrix4(whole).toArray(position, o);
-        n.fromBufferAttribute(normal, i).applyMatrix3(turn).normalize();
-        let r = 0, g = 0, b = 0;
-        for (const { up, sky, ground } of skies) { const w = 0.5 * n.dot(up) + 0.5; r += ground.r + (sky.r - ground.r) * w; g += ground.g + (sky.g - ground.g) * w; b += ground.b + (sky.b - ground.b) * w; }
-        for (const { dir, color: shine } of suns) { const w = Math.max(0, n.dot(dir)); r += shine.r * w; g += shine.g * w; b += shine.b * w; }
-        if (own) { r *= own.getX(i); g *= own.getY(i); b *= own.getZ(i); }
-        if (many.instanceColor) { many.getColorAt(c, tint); r *= tint.r; g *= tint.g; b *= tint.b; }
-        color[o] = r; color[o + 1] = g; color[o + 2] = b;
-        if (coord) { coord[(c * count + i) * 2] = uv.getX(i); coord[(c * count + i) * 2 + 1] = uv.getY(i); }
+  for (const meshes of batches.values()) {
+    const first = meshes[0].material as Source;
+    const parts = meshes.map((mesh) => {
+      const from = mesh.material as Source, copies = (mesh as THREE.InstancedMesh).isInstancedMesh ? (mesh as THREE.InstancedMesh).count : 1;
+      let source = mesh.geometry;
+      if ((from as THREE.MeshLambertMaterial).flatShading && source.index) { source = source.toNonIndexed(); source.computeVertexNormals(); }
+      return { mesh, from, copies, source, count: source.attributes.position.count, corners: source.index ? source.index.count : source.attributes.position.count };
+    });
+    const points = parts.reduce((sum, part) => sum + part.copies * part.count, 0), corners = parts.reduce((sum, part) => sum + part.copies * part.corners, 0);
+    const position = new Float32Array(points * 3), color = new Float32Array(points * 3), coord = first.map ? new Float32Array(points * 2) : null;
+    const index = new Uint32Array(corners);
+    let v = 0, e = 0;
+    for (const { mesh, from, copies, source, count, corners: each } of parts) {
+      const many = mesh as THREE.InstancedMesh;
+      const at = source.attributes.position, normal = source.attributes.normal, uv = source.attributes.uv, own = from.vertexColors ? source.attributes.color : undefined;
+      const lit = !(from as THREE.MeshBasicMaterial).isMeshBasicMaterial && normal !== undefined;
+      for (let c = 0; c < copies; c++) {
+        if (many.isInstancedMesh) { many.getMatrixAt(c, whole); whole.premultiply(mesh.matrixWorld); } else whole.copy(mesh.matrixWorld);
+        turn.getNormalMatrix(whole);
+        if (many.instanceColor) many.getColorAt(c, tint); else tint.setRGB(1, 1, 1);
+        tint.multiply(from.color);
+        for (let i = 0; i < count; i++) {
+          const o = (v + i) * 3;
+          p.fromBufferAttribute(at, i).applyMatrix4(whole).toArray(position, o);
+          let r = 1, g = 1, b = 1;
+          if (lit) {
+            n.fromBufferAttribute(normal, i).applyMatrix3(turn).normalize();
+            r = g = b = 0;
+            for (const { up, sky, ground } of skies) { const w = 0.5 * n.dot(up) + 0.5; r += ground.r + (sky.r - ground.r) * w; g += ground.g + (sky.g - ground.g) * w; b += ground.b + (sky.b - ground.b) * w; }
+            for (const { dir, color: shine } of suns) { const w = Math.max(0, n.dot(dir)); r += shine.r * w; g += shine.g * w; b += shine.b * w; }
+          }
+          if (own) { r *= own.getX(i); g *= own.getY(i); b *= own.getZ(i); }
+          color[o] = r * tint.r; color[o + 1] = g * tint.g; color[o + 2] = b * tint.b;
+          if (coord && uv) { coord[(v + i) * 2] = uv.getX(i); coord[(v + i) * 2 + 1] = uv.getY(i); }
+        }
+        for (let j = 0; j < each; j++) index[e++] = v + (source.index ? source.index.getX(j) : j);
+        v += count;
       }
-      for (let j = 0; j < corners; j++) index[c * corners + j] = c * count + (source.index ? source.index.getX(j) : j);
+      mesh.removeFromParent();
+      if (source !== mesh.geometry) source.dispose();
+      mesh.geometry.dispose();
     }
     const baked = new THREE.BufferGeometry();
     baked.setAttribute('position', new THREE.BufferAttribute(position, 3));
     baked.setAttribute('color', new THREE.BufferAttribute(color, 3));
     if (coord) baked.setAttribute('uv', new THREE.BufferAttribute(coord, 2));
     baked.setIndex(new THREE.BufferAttribute(index, 1));
-    // La malla nueva ya está en su lugar del mundo: reemplaza a la original sin heredar su posición.
-    const still = new THREE.Mesh(baked, unlit(from));
-    still.name = mesh.name;
-    still.renderOrder = mesh.renderOrder;
+    // La malla nueva ya está en coordenadas del mundo: no hereda la posición de ninguna de las que reemplaza.
+    const still = new THREE.Mesh(baked, new THREE.MeshBasicMaterial({
+      map: first.map, transparent: first.transparent, opacity: first.opacity, blending: first.blending, side: first.side, fog: first.fog,
+      alphaTest: first.alphaTest, depthWrite: first.depthWrite, vertexColors: true,
+    }));
+    still.renderOrder = meshes[0].renderOrder;
     still.matrixAutoUpdate = false;
     scene.add(still);
-    mesh.removeFromParent();
-    if (source !== mesh.geometry) source.dispose();
-    mesh.geometry.dispose();
   }
 }
