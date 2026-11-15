@@ -10,6 +10,51 @@ export interface Link {
  * así un celular que perdió el Wi-Fi un segundo vuelve a su mismo auto.
  */
 export function connect(hello: () => object, onMessage: (message: FromRoom) => void, onLine: (up: boolean) => void): Link {
+  const host = (window as unknown as { CarreraHost?: Bridge }).CarreraHost;
+  return host ? overBridge(host, hello, onMessage, onLine) : overSocket(hello, onMessage, onLine);
+}
+
+/** Lo que el launcher le presta a la pared: está en el mismo equipo que la sala y no necesita la red. */
+interface Bridge {
+  open(): void;
+  send(text: string): void;
+  /** Los mensajes pendientes como una lista JSON, o `null` si el canal se cerró. */
+  poll(): string | null;
+}
+
+function overBridge(host: Bridge, hello: () => object, onMessage: (message: FromRoom) => void, onLine: (up: boolean) => void): Link {
+  let up = false;
+  const open = () => {
+    host.open();
+    host.send(JSON.stringify(hello()));
+    up = true;
+    onLine(true);
+  };
+  const timer = setInterval(() => {
+    if (!up) return;
+    const waiting = host.poll();
+    if (waiting === null || waiting === undefined) {
+      up = false;
+      onLine(false);
+      setTimeout(open, 500);
+      return;
+    }
+    if (waiting === '[]') return;
+    for (const message of JSON.parse(waiting) as FromRoom[]) onMessage(message);
+  }, 12);
+  open();
+  return {
+    send(message) {
+      if (up) host.send(JSON.stringify(message));
+    },
+    close() {
+      up = false;
+      clearInterval(timer);
+    },
+  };
+}
+
+function overSocket(hello: () => object, onMessage: (message: FromRoom) => void, onLine: (up: boolean) => void): Link {
   let socket: WebSocket | null = null;
   let closed = false;
   let wait = 300;

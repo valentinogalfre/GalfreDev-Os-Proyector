@@ -1,10 +1,13 @@
 package ar.vale.projectorlauncher
 
 import ar.vale.projectorlauncher.carrera.Carrera
+import ar.vale.projectorlauncher.carrera.CarreraActivity
+import ar.vale.projectorlauncher.carrera.Pipe
 import ar.vale.projectorlauncher.remote.Channel
 import ar.vale.projectorlauncher.remote.HttpParser
 import ar.vale.projectorlauncher.remote.HttpResponse
 import ar.vale.projectorlauncher.remote.Pairing
+import ar.vale.projectorlauncher.remote.Qr
 import ar.vale.projectorlauncher.remote.RemoteServer
 import ar.vale.projectorlauncher.remote.Router
 import ar.vale.projectorlauncher.remote.WebSocket
@@ -268,6 +271,58 @@ class CarreraTest {
         } finally {
             server.stop()
             carrera.close()
+        }
+    }
+
+    @Test
+    fun laParedHablaConLaSalaSinPasarPorLaRed() {
+        val carrera = Carrera()
+        val room = carrera.open()
+        val pipe = Pipe()
+        val serving = thread { carrera.serve(pipe, "127.0.0.1") }
+        pipe.push(JSONObject().put("t", "host").put("secret", room.hostSecret).toString())
+        val phone = FakeChannel()
+        thread { carrera.serve(phone, "192.168.0.7") }
+        phone.say(JSONObject().put("t", "join").put("room", room.code).put("name", "Vale").put("key", "k".repeat(24)))
+        phone.next("joined")
+        phone.say(JSONObject().put("t", "in").put("s", 0.5).put("n", true))
+
+        val heard = ArrayList<JSONObject>()
+        val until = System.currentTimeMillis() + 3000
+        while (heard.none { it.optString("t") == "in" } && System.currentTimeMillis() < until) {
+            val batch = org.json.JSONArray(pipe.drain())
+            for (i in 0 until batch.length()) heard.add(batch.getJSONObject(i))
+            Thread.sleep(5)
+        }
+        assertTrue(heard.any { it.optString("t") == "roster" })
+        assertEquals(0.5, heard.first { it.optString("t") == "in" }.getDouble("s"), 1e-9)
+
+        pipe.close()
+        serving.join(2000)
+        assertFalse(serving.isAlive)
+        assertNull(pipe.drain())
+    }
+
+    @Test
+    fun siLaParedDejaDeLeerElCanalSeCierra() {
+        val pipe = Pipe(limit = 3)
+        repeat(3) { assertTrue(pipe.send("{}")) }
+        assertFalse(pipe.send("{}"))
+        assertNull(pipe.drain())
+        assertNull(pipe.read())
+    }
+
+    @Test
+    fun elQrViajaComoLadoYModulosEnHexadecimal() {
+        val text = "http://192.168.0.20:8686/carrera/volante.html#r=0123456789abcdef"
+        val matrix = Qr.encode(text)
+        val (side, hex) = CarreraActivity.qr(text).split("-")
+        assertEquals(matrix.size, side.toInt())
+        assertEquals((matrix.size * matrix.size + 3) / 4, hex.length)
+        for (y in 0 until matrix.size) for (x in 0 until matrix.size) {
+            val at = y * matrix.size + x
+            val bit = (Character.digit(hex[at / 4], 16) shr (3 - at % 4)) and 1
+            assertEquals(matrix[x, y], bit == 1)
         }
     }
 }

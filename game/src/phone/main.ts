@@ -142,9 +142,8 @@ function buildDrive(): void {
   const pad = (id: string, label: string, hint: string) => `<div class="pad" data-pad="${id}"><small class="tag">${hint}</small>${label}<u></u></div>`;
   drive.innerHTML = `
     ${useTilt ? pad('brake', 'Freno', 'Mantené') : `<div class="steer">${pad('left', '‹', 'Izquierda')}${pad('right', '›', 'Derecha')}</div>`}
-    <div class="dash"><img src="${logoUrl}" alt="galfredev"><div><div class="place"></div><span class="tag lap"></span></div><div class="wheel"><i></i></div><span class="tag">${useTilt ? 'Tocá acá para centrar' : 'Volante'}</span></div>
-    ${useTilt ? pad('nitro', 'Nitro', 'Mantené') : `<div class="pads">${pad('nitro', 'Nitro', 'Mantené')}${pad('brake', 'Freno', 'Mantené')}</div>`}
-    <div class="note"></div>`;
+    <div class="dash"><img src="${logoUrl}" alt="galfredev"><div><div class="place"></div><span class="tag lap"></span></div><b class="note">Fuera de pista</b><div class="wheel"><i></i></div><span class="tag">${useTilt ? 'Tocá acá para centrar' : 'Volante'}</span></div>
+    ${useTilt ? pad('nitro', 'Nitro', 'Mantené') : `<div class="pads">${pad('nitro', 'Nitro', 'Mantené')}${pad('brake', 'Freno', 'Mantené')}</div>`}`;
   drive.querySelector('.dash')!.addEventListener('pointerdown', () => tilt.center());
   drive.querySelectorAll<HTMLElement>('.pad').forEach((el) => {
     const set = (down: boolean) => (event: Event) => {
@@ -162,7 +161,7 @@ function paintDrive(): void {
   const place = drive.querySelector('.place')!, lap = drive.querySelector('.lap')!, note = drive.querySelector('.note')!;
   place.innerHTML = mine ? `${mine.place}<sup>/${mine.of}</sup>` : '';
   lap.textContent = mine && shared ? `Vuelta ${Math.min(shared.laps, mine.lap + 1)}/${shared.laps}` : 'Preparados';
-  note.textContent = mine?.off ? 'Fuera de pista' : '';
+  note.classList.toggle('on', mine?.off === true);
   const tank = drive.querySelector<HTMLElement>('[data-pad="nitro"] u');
   if (tank) tank.style.height = `${Math.round((mine?.nitro ?? 0) * 100)}%`;
 }

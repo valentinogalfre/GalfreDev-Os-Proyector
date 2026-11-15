@@ -10,6 +10,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.view.KeyEvent
+import ar.vale.projectorlauncher.carrera.CarreraFiles
 import ar.vale.projectorlauncher.ApkInstaller
 import ar.vale.projectorlauncher.AppRepository
 import ar.vale.projectorlauncher.FileKind
@@ -298,20 +299,11 @@ class RemotePage(private val context: Context) : StaticFiles {
         else -> game(path)
     }
 
-    /**
-     * La carrera: lo que hay dentro de `assets/carrera`, y nada más. El nombre se arma solo con
-     * letras, números, punto, guion y a lo sumo una carpeta, así que no hay cómo salir de ahí.
-     */
+    /** La carrera: el volante que abre cada celular y, en una notebook, también la pared. */
     private fun game(path: String): HttpResponse? {
-        val name = GAME_FILE.matchEntire(path)?.groupValues?.get(1) ?: return null
-        val type = GAME_TYPES[name.substringAfterLast('.')] ?: return null
-        val bytes = try {
-            context.assets.open("carrera/$name").use { it.readBytes() }
-        } catch (e: java.io.IOException) {
-            return null
-        }
-        // Los archivos de `assets/` llevan su huella en el nombre: no cambian nunca. Las páginas sí.
-        return HttpResponse(200, type, bytes = bytes, cacheSeconds = if (name.startsWith("assets/")) CACHE_SECONDS else 0, policy = HttpResponse.GAME_POLICY)
+        if (!path.startsWith(GAME)) return null
+        val file = CarreraFiles(context).open(path.substring(GAME.length)) ?: return null
+        return HttpResponse(200, file.type, bytes = file.bytes, cacheSeconds = if (file.fixed) CACHE_SECONDS else 0, policy = HttpResponse.GAME_POLICY)
     }
 
     private fun asset(name: String, type: String, cacheSeconds: Int) =
@@ -325,10 +317,6 @@ class RemotePage(private val context: Context) : StaticFiles {
 
     private companion object {
         const val CACHE_SECONDS = 86400
-        val GAME_FILE = Regex("/carrera/((?:assets/)?[A-Za-z0-9_-]+(?:\\.[A-Za-z0-9]+)+)")
-        val GAME_TYPES = mapOf(
-            "html" to "text/html; charset=utf-8", "js" to "text/javascript; charset=utf-8", "css" to "text/css; charset=utf-8",
-            "svg" to "image/svg+xml", "ttf" to "font/ttf", "glb" to "model/gltf-binary"
-        )
+        const val GAME = "/carrera/"
     }
 }

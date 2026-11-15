@@ -12,7 +12,7 @@ html, body { margin: 0; height: 100%; background: var(--carbon); overflow: hidde
 canvas { display: block; width: 100%; height: 100%; }
 
 /* El selector es solo de la maqueta. */
-#pick { position: fixed; left: 50%; transform: translateX(-50%); bottom: 2vh; display: flex; gap: 8px; font: 500 14px 'Instrument Sans', system-ui, sans-serif; }
+#pick { position: fixed; left: 50%; transform: translateX(-50%); bottom: 2vh; display: flex; font: 500 14px 'Instrument Sans', system-ui, sans-serif; }
 #pick a { padding: 8px 14px; background: var(--carbon); color: var(--hueso); text-decoration: none; border: 1px solid var(--linea-oscura); }
 #pick a.on { background: var(--hueso); color: var(--carbon); }
 
@@ -44,14 +44,16 @@ canvas { display: block; width: 100%; height: 100%; }
 /* La sala: una lámina de carbón sobre la pista, con el código a la izquierda y la gente a la derecha. */
 #lobby { display: none; position: fixed; inset: 0; grid-template: 9em 1fr / 46em 1fr; color: var(--hueso); font-size: 1vh; pointer-events: none; }
 #lobby .tag { font: 500 1.8em 'Geist Mono', monospace; letter-spacing: .08em; color: var(--gris-oscuro); }
-#lobby header { grid-column: 1 / 3; display: flex; align-items: center; gap: 4em; padding: 0 5em; background: var(--carbon); border-bottom: 1px solid var(--linea-oscura); }
+#lobby header { grid-column: 1 / 3; display: flex; align-items: center; padding: 0 5em; background: var(--carbon); border-bottom: 1px solid var(--linea-oscura); }
 #lobby header img { height: 3.2em; }
-#lobby section { padding: 5em; display: flex; flex-direction: column; gap: 2em; }
+#lobby section { padding: 5em; display: flex; flex-direction: column; }
 #lobby .join { background: var(--carbon); border-right: 1px solid var(--linea-oscura); }
 #lobby h1 { margin: 0; font: 800 7em/1 'Archivo', system-ui, sans-serif; letter-spacing: -.01em; }
-#lobby .qr { width: 36em; height: 36em; margin-top: 1em; }
+#lobby .qr { width: 36em; height: 36em; }
 #lobby .qr svg { width: 100%; height: 100%; display: block; }
 #lobby .list { justify-content: flex-end; align-items: flex-start; }
+/* Sobre la pista los rótulos van en su bloque liso: sueltos no se leen contra el paisaje. */
+#lobby .list .tag { padding: .45em .7em; background: var(--carbon); }
 #lobby ol { margin: 0; padding: 0; list-style: none; width: 44em; background: var(--carbon-2); border: 1px solid var(--linea-oscura); }
 #lobby li { display: grid; grid-template-columns: 2.6em 1.6em 1fr auto; align-items: center; gap: 1.2em; padding: 1.1em 1.6em; border-top: 1px solid var(--linea-oscura); }
 #lobby li:first-child { border-top: 0; }
@@ -61,3 +63,12 @@ canvas { display: block; width: 100%; height: 100%; }
 #lobby li b { font: 500 2.6em 'Instrument Sans', system-ui, sans-serif; }
 #lobby .next { margin: 0; padding: .5em .8em; background: var(--cinta); color: var(--carbon); font: 800 3.2em/1.1 'Archivo', system-ui, sans-serif; }
 #fps { position: fixed; right: 1vh; bottom: 1vh; padding: .4em .7em; background: var(--carbon); color: var(--hueso); font: 500 1.8vh 'Geist Mono', monospace; }
+/* La separación va con márgenes y no con gap: el navegador de un proyector con Android 9 no lo conoce en flex.
+   Cada margen está en el em del propio elemento, por eso los que tienen otra letra llevan su cuenta. */
+#pick > * + * { margin-left: 8px; }
+#lobby header > .tag { margin-left: 2.2em; }
+#lobby section > * + * { margin-top: 2em; }
+#lobby section > * + .tag { margin-top: 1.1em; }
+#lobby section > h1 { margin-top: .29em; }
+#lobby section > .qr { margin-top: 3em; }
+#lobby section > .next { margin-top: .625em; }

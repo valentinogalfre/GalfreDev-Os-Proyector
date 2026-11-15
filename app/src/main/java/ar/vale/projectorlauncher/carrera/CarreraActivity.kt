@@ -3,31 +3,38 @@ package ar.vale.projectorlauncher.carrera
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.graphics.Typeface
-import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.KeyEvent
 import android.view.View
 import android.view.WindowManager
+import android.webkit.ConsoleMessage
+import android.webkit.JavascriptInterface
 import android.webkit.RenderProcessGoneDetail
+import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.FrameLayout
 import android.widget.TextView
 import ar.vale.projectorlauncher.Prefs
 import ar.vale.projectorlauncher.R
+import ar.vale.projectorlauncher.remote.HttpResponse
 import ar.vale.projectorlauncher.remote.Qr
 import ar.vale.projectorlauncher.remote.RemoteService
 import ar.vale.projectorlauncher.remote.RemoteState
+import java.io.ByteArrayInputStream
 
 /**
- * La carrera en la pared. La pantalla es una página que viene dentro del APK y que el propio
- * launcher se sirve a sí mismo: dibuja el 3D, corre la carrera y habla con los volantes por la
- * sala. Acá solo se abre la sala, se muestra la página y se le pasa el control remoto.
+ * La carrera en la pared. La pantalla es una página que viene dentro del APK: dibuja el 3D, corre
+ * la carrera y habla con los volantes por la sala. Acá se abre la sala, se muestra la página y se
+ * le pasa el control remoto. La página no toca la red: sus archivos salen del APK y con la sala
+ * habla por [Host], así que no depende del certificado ni de permitir tráfico sin cifrar.
  */
 class CarreraActivity : Activity() {
 
@@ -35,6 +42,7 @@ class CarreraActivity : Activity() {
     private lateinit var frame: FrameLayout
     private var web: WebView? = null
     private var waiting = false
+    private val host = Host()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -82,10 +90,8 @@ class CarreraActivity : Activity() {
         }
     }
 
-    @SuppressLint("SetJavaScriptEnabled")
+    @SuppressLint("SetJavaScriptEnabled", "JavascriptInterface")
     private fun load() {
-        val port = RemoteState.port
-        val origin = "http://127.0.0.1:$port"
         val view = try {
             WebView(this)
         } catch (e: RuntimeException) {
@@ -93,15 +99,29 @@ class CarreraActivity : Activity() {
             say(getString(R.string.carrera_no_webview))
             return
         }
+        val files = CarreraFiles(this)
         view.setBackgroundColor(getColor(R.color.carbon))
         view.settings.javaScriptEnabled = true
         view.settings.allowFileAccess = false
         view.settings.allowContentAccess = false
         view.settings.setSupportZoom(false)
+        // La página mide todo en proporción a la pantalla; el mínimo de letra de Android le rompería la escala.
+        view.settings.minimumFontSize = 1
+        view.settings.minimumLogicalFontSize = 1
+        view.settings.textZoom = 100
         view.webViewClient = object : WebViewClient() {
             /** La página no sale de la carrera: cualquier otro destino se ignora. */
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean =
-                !request.url.toString().startsWith("$origin/carrera/")
+                !request.url.toString().startsWith(ORIGIN)
+
+            /** Todo pedido se responde desde el APK, o no se responde: nada sale a la red. */
+            override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse {
+                val url = request.url.toString().substringBefore('#').substringBefore('?')
+                val file = (if (url.startsWith(ORIGIN)) files.open(url.substring(ORIGIN.length)) else null)
+                    ?: return WebResourceResponse("text/plain", "utf-8", 404, "Not Found", emptyMap(), ByteArrayInputStream(ByteArray(0)))
+                val headers = mapOf("Content-Security-Policy" to HttpResponse.GAME_POLICY, "X-Content-Type-Options" to "nosniff")
+                return WebResourceResponse(file.type.substringBefore(';'), "utf-8", 200, "OK", headers, ByteArrayInputStream(file.bytes))
+            }
 
             /** En un equipo con poca memoria el sistema puede matar el proceso que dibuja: se cierra la pantalla, no la app. */
             override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
@@ -109,16 +129,49 @@ class CarreraActivity : Activity() {
                 return true
             }
         }
+        // Lo que la página avisa por consola queda en el registro del equipo: es lo único que se ve desde afuera.
+        view.webChromeClient = object : WebChromeClient() {
+            override fun onConsoleMessage(message: ConsoleMessage): Boolean {
+                Log.i(TAG, "${message.messageLevel()} ${message.message()} (${message.sourceId().substringAfterLast('/')}:${message.lineNumber()})")
+                return true
+            }
+        }
+        view.addJavascriptInterface(host, "CarreraHost")
         val room = CarreraHub.carrera.open()
-        val join = RemoteState.address(this)?.let { "http://$it:$port/carrera/volante.html#r=${room.code}" }
-        val page = Uri.parse("$origin/carrera/index.html").buildUpon()
-            .appendQueryParameter("q", "bajo")
-            .encodedFragment("s=${room.hostSecret}&tls=${RemoteState.securePort}&qr=${join?.let(::qr).orEmpty()}")
-            .build()
+        val join = RemoteState.address(this)?.let { "http://$it:${RemoteState.port}/carrera/volante.html#r=${room.code}" }
         frame.removeAllViews()
         frame.addView(view)
         web = view
-        view.loadUrl(page.toString())
+        view.loadUrl("${ORIGIN}index.html?q=bajo#s=${room.hostSecret}&tls=${RemoteState.securePort}&qr=${join?.let(::qr).orEmpty()}")
+    }
+
+    /**
+     * Lo único del launcher que la página puede tocar: su canal con la sala. La página es la del
+     * APK y no navega a otro lado, pero igual esto no da más que mandar y recibir mensajes de la carrera.
+     */
+    private class Host {
+        @Volatile private var pipe: Pipe? = null
+
+        @JavascriptInterface
+        fun open() {
+            val fresh = Pipe()
+            pipe?.close()
+            pipe = fresh
+            Thread({ CarreraHub.carrera.serve(fresh, LOOPBACK) }, "carrera-pared").apply { isDaemon = true }.start()
+        }
+
+        @JavascriptInterface
+        fun send(text: String) {
+            pipe?.push(text)
+        }
+
+        @JavascriptInterface
+        fun poll(): String? = pipe?.drain()
+
+        fun close() {
+            pipe?.close()
+            pipe = null
+        }
     }
 
     /** El control remoto maneja la sala: los lados cambian de pista, OK larga. El resto sigue su camino. */
@@ -149,6 +202,7 @@ class CarreraActivity : Activity() {
 
     override fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
+        host.close()
         // Al salir se cierra la sala: el código del QR deja de servir.
         if (web != null) CarreraHub.carrera.close()
         web?.let {
@@ -160,6 +214,11 @@ class CarreraActivity : Activity() {
     }
 
     companion object {
+        /** Un origen que no existe en ninguna red: sirve solo para que la página tenga uno, y seguro. */
+        private const val ORIGIN = "https://carrera.invalid/"
+        private const val LOOPBACK = "127.0.0.1"
+        private const val TAG = "Carrera"
+
         /** El QR ya resuelto, como lo espera la página: lado, guion y los módulos en hexadecimal. */
         fun qr(text: String): String {
             val matrix = Qr.encode(text)

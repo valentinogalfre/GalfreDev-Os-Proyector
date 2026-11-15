@@ -63,6 +63,12 @@ async function start(): Promise<void> {
   renderer.setPixelRatio(fine ? Math.min(devicePixelRatio, 1.5) : 1);
   renderer.setSize(innerWidth, innerHeight, false);
   renderer.toneMappingExposure = theme.exposure;
+  {
+    // En el proyector no hay consola a mano: esta línea queda en el registro del equipo y dice con qué se está dibujando.
+    const gl = renderer.getContext();
+    const gpu = gl.getExtension('WEBGL_debug_renderer_info');
+    console.info(`carrera: ${gl.getParameter(gl.VERSION)} · ${gpu ? gl.getParameter(gpu.UNMASKED_RENDERER_WEBGL) : 'gpu sin nombre'} · ${innerWidth}x${innerHeight} · calidad ${fine ? 'alta' : 'baja'}`);
+  }
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.3, 6000);
