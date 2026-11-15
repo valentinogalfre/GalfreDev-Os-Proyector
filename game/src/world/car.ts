@@ -325,7 +325,9 @@ export class Fleet {
     if (night) flat(4.6, 11, 0.05, 7.2, 0.28, true, 0xffe2b0);
     if (underglow) this.under = flat(5.8, 9, 0.045, 0, 0.9, true);
 
-    for (const mesh of [...this.tiers.flatMap((t) => [t.paint, t.rest, t.tail, t.wheels]), ...this.flats]) {
+    // Sin flatMap: el navegador del proyector es de 2018 y no lo tiene.
+    const pieces = this.tiers.reduce<THREE.InstancedMesh[]>((all, t) => all.concat(t.paint, t.rest, t.tail, t.wheels), []);
+    for (const mesh of pieces.concat(this.flats)) {
       mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       // Los autos están repartidos por toda la pista: no hay una caja que sirva para descartarlos juntos.
       mesh.frustumCulled = false;
