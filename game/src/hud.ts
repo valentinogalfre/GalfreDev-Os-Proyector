@@ -30,7 +30,8 @@ function clockText(seconds: number): string {
  * El tablero de la pared, con las reglas del manual: el wordmark va en una cabecera lisa de carbón,
  * nunca suelto sobre la imagen; los datos van en mono y la cinta marca un solo dato, el líder.
  */
-export function mountHud(look: HudLook): { update(state: HudState): void } {
+export function mountHud(look: HudLook): { update(state: HudState): void; show(on: boolean): void } {
+  document.getElementById('hud')?.remove();
   const hud = document.createElement('div');
   hud.id = 'hud';
   hud.innerHTML = `
@@ -49,6 +50,9 @@ export function mountHud(look: HudLook): { update(state: HudState): void } {
   }));
   let shown = '';
   return {
+    show(on) {
+      hud.style.display = on ? 'block' : 'none';
+    },
     update(state) {
       time.textContent = clockText(state.clock);
       lap.textContent = `${Math.min(look.laps, state.lap + 1)}/${look.laps}`;

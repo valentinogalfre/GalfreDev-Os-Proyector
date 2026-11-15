@@ -66,6 +66,10 @@ export const TUNING = {
   nitroFill: 0.07,
   offTrackSpeed: 0.45,
   offTrackGrip: 0.55,
+  /** Cuánta velocidad de más recibe el que quedó lejos del primero: todos comparten una sola pantalla. */
+  catchUp: 0.1,
+  catchUpFrom: 30,
+  catchUpFull: 200,
   carLength: 4.5,
   carWidth: 2.1,
   countdown: 3,
@@ -84,6 +88,8 @@ export class Race {
   readonly laps: number;
   private carry = 0;
   private placed = 0;
+  /** Por dónde va el primero, en metros. */
+  private front = 0;
 
   constructor(course: Course, laps: number, bots: boolean[]) {
     this.course = course;
@@ -126,6 +132,7 @@ export class Race {
       if (this.clock < 0) return;
       this.phase = 'race';
     }
+    this.front = Math.max(...this.cars.map((car) => car.s));
     this.cars.forEach((car, i) => {
       if (car.bot) this.drive(car, this.inputs[i], i);
       this.move(car, this.inputs[i], i, events);
@@ -155,6 +162,7 @@ export class Race {
     car.nitro = clamp(car.nitro + (car.boosting ? -T.nitroBurn : T.nitroFill) * STEP, 0, 1);
 
     let top = T.topSpeed * (car.boosting ? T.nitroGain : 1) * (car.offTrack ? T.offTrackSpeed : 1);
+    top *= 1 + T.catchUp * clamp((this.front - car.s - T.catchUpFrom) / (T.catchUpFull - T.catchUpFrom), 0, 1);
     if (done) top *= 0.4;
     if (car.spin > 0) {
       // En trompo no hay control: el auto gira sobre sí mismo y pierde velocidad.

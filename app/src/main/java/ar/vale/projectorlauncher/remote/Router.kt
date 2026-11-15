@@ -45,9 +45,9 @@ class Router(
     private val device: RemoteDevice,
     private val party: JuntadaRoutes? = null,
     private val access: Access = Access(),
-    private val files: StaticFiles,
     /** Quién atiende a los volantes de la carrera. Sin esto, la ruta no existe. */
-    private val race: SocketHandler? = null
+    private val race: SocketHandler? = null,
+    private val files: StaticFiles
 ) {
 
     /** Una a la vez: varias en paralelo pasarían cada una por separado el control de espacio. */

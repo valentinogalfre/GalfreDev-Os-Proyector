@@ -80,4 +80,16 @@ describe('la carrera', () => {
     assert.ok(events.some((e) => e.type === 'hit'));
     assert.ok(Math.abs(race.cars[0].d - race.cars[1].d) >= TUNING.carWidth - 1e-6);
   });
+
+  it('el que quedó lejos del primero recibe un poco más de velocidad', () => {
+    const top = (gap: number) => {
+      const race = new Race({ length: 100000, half: 7, wall: 8.6, curvature: () => 0 }, 1, [true, true]);
+      race.cars[0].s = gap;
+      race.start();
+      run(race, TUNING.countdown + 30);
+      return race.cars[1].v;
+    };
+    assert.ok(Math.abs(top(10) - TUNING.topSpeed) < 0.5);
+    assert.ok(top(2000) > TUNING.topSpeed * (1 + TUNING.catchUp) - 0.5);
+  });
 });

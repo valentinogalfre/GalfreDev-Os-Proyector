@@ -68,6 +68,10 @@
     <string name="home_party_title">Todos juegan desde su celular.</string>
     <string name="home_party_body">Trivia, votaciones y las cuentas de la casa. Escanean un código y listo.</string>
     <string name="home_party_open">Abrir la juntada</string>
+    <string name="home_race_open">Correr una carrera</string>
+    <string name="carrera_off">La carrera usa la conexión con el celular, que está apagada.\n\nApretá OK para encenderla.</string>
+    <string name="carrera_failed">No se pudo encender la conexión con el celular.\n\nApretá OK para probar de nuevo.</string>
+    <string name="carrera_no_webview">Este equipo no tiene el componente del sistema que muestra páginas (WebView), y la carrera lo necesita.</string>
     <string name="home_wall_body">La hora en la pared cuando nadie usa el proyector. Aparece sola.</string>
     <string name="home_wall_open">Mostrar la pared</string>
     <string name="home_remote_title">Tu celular es el control.</string>

@@ -2,4 +2,8 @@
 <!-- Todo lo que sale del equipo va cifrado: la Tienda y Claude solo hablan por HTTPS. -->
 <network-security-config>
     <base-config cleartextTrafficPermitted="false" />
+    <!-- La única excepción no sale del equipo: la pantalla Carrera carga su página del servidor propio. -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">127.0.0.1</domain>
+    </domain-config>
 </network-security-config>

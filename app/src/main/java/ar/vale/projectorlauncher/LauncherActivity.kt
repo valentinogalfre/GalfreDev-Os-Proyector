@@ -21,6 +21,7 @@ import ar.vale.projectorlauncher.claude.ClaudeRuntime
 import ar.vale.projectorlauncher.claude.ClaudeSettings
 import ar.vale.projectorlauncher.claude.KeyVault
 import ar.vale.projectorlauncher.device.CalibrationActivity
+import ar.vale.projectorlauncher.carrera.CarreraActivity
 import ar.vale.projectorlauncher.juntada.JuntadaActivity
 import ar.vale.projectorlauncher.device.SystemScreens
 import ar.vale.projectorlauncher.apps.Streaming
@@ -414,6 +415,9 @@ class LauncherActivity : GdActivity() {
                 title.setText(R.string.home_party_title)
                 body.setText(R.string.home_party_body)
                 panelRow(extra, getString(R.string.home_party_open), null, R.drawable.ic_star) { open(Section.JUNTADA) }
+                panelRow(extra, getString(R.string.home_race_open), null, R.drawable.ic_play) {
+                    openScreen(Intent(this, CarreraActivity::class.java), getString(R.string.home_race_open))
+                }
             }
             Section.PARED -> {
                 val now = Calendar.getInstance()

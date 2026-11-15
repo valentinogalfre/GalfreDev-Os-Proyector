@@ -229,7 +229,7 @@ class CarreraTest {
     @Test
     fun `servidor - un volante entra por websocket y otra pagina no`() {
         val pairing = Pairing("t".repeat(48), {})
-        val router = Router(pairing, FakeDevice(), files = { HttpResponse.error(404, "x") }, race = carrera::serve)
+        val router = Router(pairing, FakeDevice(), race = carrera::serve) { HttpResponse.error(404, "x") }
         val server = RemoteServer(router)
         val port = server.start(18790, 20)
         try {

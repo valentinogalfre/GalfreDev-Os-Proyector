@@ -2,6 +2,9 @@ import * as THREE from 'three';
 import './style.css';
 import { buildComposer } from './render/fx';
 import { mountHud } from './hud';
+import { mountLobby } from './host/lobby';
+import { Session } from './host/session';
+import type { Command, Shared } from './net/protocol';
 import { Race, TUNING, type RaceEvent } from './sim/race';
 import { animate, buildCar, loadCarKit } from './world/car';
 import { mirror } from './world/mirror';
@@ -14,7 +17,18 @@ import type { Theme } from './themes/theme';
 
 const THEMES: Record<string, Theme> = { puna, neon, cinta };
 const NAMES = ['Vale', 'Tino', 'Maxi', 'Sofi', 'Nacho', 'Lu'];
+/** Los autos que nadie maneja. */
+const BOTS = ['Rayo', 'Tuerca', 'Nafta', 'Pistón', 'Bujía', 'Llanta'];
+/** Pinturas para el séptimo y el octavo: cada pista trae seis. */
+const EXTRA_PAINT = [0x7a3fd0, 0x3fb8d0];
 const LAPS = 3;
+/** La grilla se completa con bots hasta acá, y no pasa de lo que entra en la sala. */
+const MIN_CARS = 6, MAX_CARS = 8;
+/** Cuánto se espera a los que faltan desde que llega el primero. */
+const GRACE = 30;
+/** Hasta dónde se abre la cámara para que entren todos: más atrás que eso, sigue a los de adelante. */
+const MAX_SPAN = 70;
+const GRID_S = -14;
 
 const query = new URLSearchParams(location.search);
 const key = query.get('t') ?? 'puna';
@@ -26,12 +40,16 @@ const view = query.get('cam') ?? 'chase';
 const fine = query.get('q') !== 'bajo';
 // En la maqueta el primer auto se maneja con el teclado; con [demo] corren todos solos.
 const demo = query.has('demo') || frozen !== null;
+// Dentro del launcher la dirección trae el secreto de la sala: la pared pasa a ser el anfitrión.
+const hash = new URLSearchParams(location.hash.slice(1));
+const secret = hash.get('s');
+const hosting = secret !== null;
 
 document.querySelectorAll<HTMLAnchorElement>('#pick a').forEach((link) => {
   if (link.id === 'cam') link.href = `?t=${key}&cam=${view === 'tv' ? 'chase' : 'tv'}`;
   else if (link.getAttribute('href') === `?t=${key}`) link.classList.add('on');
 });
-if (frozen !== null) document.getElementById('pick')!.style.display = 'none';
+if (frozen !== null || hosting) document.getElementById('pick')!.style.display = 'none';
 
 const keys = new Set<string>();
 addEventListener('keydown', (e) => keys.add(e.code));
@@ -60,9 +78,31 @@ async function start(): Promise<void> {
   scene.environment = pmrem.fromScene(scene, 0, 0.3, 5000, { position: probe.position }).texture;
   pmrem.dispose();
 
-  const race = new Race({ length: track.length, half: track.half, wall: theme.wall, curvature: (s) => curvature(track, s) }, LAPS, theme.cars.map((_, i) => demo || i > 0));
-  const cars = theme.cars.map((style) => buildCar(kit, style, fine, theme.night ?? false));
-  cars.forEach((car) => scene.add(car));
+  const course = { length: track.length, half: track.half, wall: theme.wall, curvature: (s: number) => curvature(track, s) };
+  const styleOf = (i: number) => (i < theme.cars.length ? theme.cars[i] : { ...theme.cars[i - theme.cars.length], paint: EXTRA_PAINT[(i - theme.cars.length) % EXTRA_PAINT.length] });
+  const showHud = query.get('hud') !== '0';
+  const cars: THREE.Group[] = [];
+  /** Quién maneja cada auto de la grilla: el número de jugador en la sala, o null si es un bot. */
+  let grid: (number | null)[] = [];
+  let names: string[] = [];
+  let race!: Race;
+  let hud: ReturnType<typeof mountHud> | null = null;
+
+  /** Arma la grilla: una carrera nueva con un auto por cada uno, parados detrás de la línea. */
+  function line(drivers: (number | null)[], labels: string[]): void {
+    grid = drivers;
+    names = labels;
+    race = new Race(course, LAPS, grid.map((id) => id === null));
+    while (cars.length > grid.length) scene.remove(cars.pop()!);
+    while (cars.length < grid.length) {
+      const car = buildCar(kit, styleOf(cars.length), fine, theme.night ?? false);
+      cars.push(car);
+      scene.add(car);
+    }
+    hud = showHud ? mountHud({ track: theme.name, laps: LAPS, cinta: theme.trail === undefined, players: grid.map((_, i) => ({ name: names[i], paint: styleOf(i).paint })) }) : null;
+  }
+  // En la maqueta el primer auto es del teclado (jugador 0) y el resto corre solo.
+  line(theme.cars.map((_, i) => (demo || hosting || i > 0 ? null : 0)), hosting ? BOTS : NAMES);
   const dust = theme.spray ? new Puffs({ ...theme.spray, life: 0.9, rise: 1.2 }, 480) : null;
   const sparks = new Puffs({ color: 0xffb060, opacity: 1, size: 0.5, additive: true, life: 0.45, rise: -14 }, 240);
   (sparks.points.material as THREE.ShaderMaterial).uniforms.color.value.multiplyScalar(6);
@@ -109,13 +149,124 @@ async function start(): Promise<void> {
     scene.add(trail);
   }
 
-  const hud = query.get('hud') === '0' ? null : mountHud({
-    track: theme.name, laps: LAPS, cinta: theme.trail === undefined,
-    players: theme.cars.map((style, i) => ({ name: NAMES[i], paint: style.paint })),
-  });
-
-  let shake = 0, eye = 0, eyeLane = 0, fov = 60, clock = 0;
+  let shake = 0, eye = GRID_S, eyeLane = 0, span = 0, fov = 60, clock = 0, snap = true;
   const at = new THREE.Vector3();
+
+  // --- La sala: solo cuando la pared corre dentro del launcher ---
+  let stage: Shared['phase'] = hosting ? 'lobby' : 'countdown';
+  let results: Shared['results'] = [];
+  let resultPaint: number[] = [];
+  let firstFinish = 0, sinceTold = 0;
+  const buzz: number[] = [];
+  const lobby = hosting ? mountLobby(hash.get('qr') ?? '') : null;
+  const paintOf = (id: number) => (grid.includes(id) ? styleOf(grid.indexOf(id)).paint : 0x6b6862);
+
+  function share(): void {
+    if (!session) return;
+    const leadName = session.seats.find((seat) => seat.id === session!.lead)?.name ?? null;
+    session.share({
+      phase: stage, track: theme.name, laps: LAPS, lead: session.lead, results, secure: Number(hash.get('tls')) || 0,
+      players: session.seats.map((seat) => ({ id: seat.id, name: seat.name, paint: paintOf(seat.id), on: seat.on })),
+      racing: stage === 'lobby' ? [] : grid.filter((id): id is number => id !== null),
+    });
+    const waiting = stage === 'lobby' || stage === 'results';
+    hud?.show(!waiting);
+    if (!waiting) return lobby?.hide();
+    lobby?.show({
+      track: theme.name, laps: LAPS, lead: leadName,
+      players: session.seats.map((seat) => ({ name: seat.name, paint: paintOf(seat.id), on: seat.on })),
+      results: stage === 'results' ? results.map((r, i) => ({ name: r.name, time: r.time, paint: resultPaint[i] })) : null,
+    });
+  }
+
+  /** Sienta en la grilla a los que están conectados y completa con bots. */
+  function seat(): void {
+    const seats = session!.seats.filter((s) => s.on).slice(0, MAX_CARS);
+    const fill = Math.max(0, MIN_CARS - seats.length);
+    line([...seats.map((s) => s.id), ...Array<null>(fill).fill(null)], [...seats.map((s) => s.name), ...BOTS.slice(0, fill)]);
+    snap = true;
+  }
+
+  function launch(): void {
+    if (stage !== 'lobby') return;
+    stage = 'countdown';
+    results = [];
+    firstFinish = 0;
+    snap = true;
+    race.start();
+    share();
+  }
+
+  function toLobby(): void {
+    stage = 'lobby';
+    results = [];
+    seat();
+    share();
+  }
+
+  /** Otra pista es otra página: el mundo anterior se suelta entero, que en un equipo con poca memoria importa. */
+  function otherTrack(step: number): void {
+    if (stage !== 'lobby' && stage !== 'results') return;
+    const all = Object.keys(THEMES);
+    query.set('t', all[(all.indexOf(THEMES[key] ? key : 'puna') + step + all.length) % all.length]);
+    location.replace(`?${query.toString()}${location.hash}`);
+  }
+
+  function obey(command: Command): void {
+    if (command.a === 'track') otherTrack(command.d);
+    else if (command.a === 'start') launch();
+    else if (stage === 'results') toLobby();
+  }
+
+  const session = hosting ? new Session(secret, {
+    roster() {
+      if (stage === 'lobby') seat();
+      // En plena carrera, el auto del que se cayó lo lleva un bot hasta que vuelva.
+      else grid.forEach((id, i) => { race.cars[i].bot = id === null || !session!.seats.some((s) => s.id === id && s.on); });
+      share();
+    },
+    command(from, command) {
+      if (from === session!.lead) obey(command);
+    },
+  }) : null;
+  if (hosting) {
+    // El control remoto del proyector también maneja la sala.
+    const remote = (key: string) => {
+      if (key === 'left' || key === 'right') otherTrack(key === 'left' ? -1 : 1);
+      else if (key === 'ok') obey(stage === 'lobby' ? { a: 'start' } : { a: 'lobby' });
+    };
+    // En el proyector las teclas las manda el launcher; en una notebook, el teclado.
+    (window as unknown as { carreraKey: typeof remote }).carreraKey = remote;
+    addEventListener('keydown', (e) => remote(e.code === 'ArrowLeft' ? 'left' : e.code === 'ArrowRight' ? 'right' : e.code === 'Enter' || e.code === 'NumpadEnter' ? 'ok' : ''));
+    share();
+  }
+
+  /** Lo de la sala que pasa cuadro a cuadro: volantes que entran, la carrera que termina, y el aviso a cada celular. */
+  function host(events: RaceEvent[], order: number[], dt: number): void {
+    for (const event of events) {
+      if (event.type === 'finish' && firstFinish === 0) firstFinish = race.clock;
+      if (event.type === 'wall' || event.type === 'hit') buzz[event.car] = Math.max(buzz[event.car] ?? 0, Math.min(1, event.force));
+    }
+    if (stage === 'countdown' && race.phase !== 'countdown') stage = 'race';
+    if (stage === 'race') {
+      const humansIn = grid.every((id, i) => id === null || race.cars[i].bot || race.cars[i].finished !== null);
+      if (race.phase === 'done' || (firstFinish > 0 && race.clock - firstFinish > (humansIn ? 3 : GRACE))) {
+        stage = 'results';
+        results = order.map((i) => ({ id: grid[i], name: names[i], time: race.cars[i].finished }));
+        resultPaint = order.map((i) => styleOf(i).paint);
+      }
+    }
+    share();
+    sinceTold += dt;
+    if (sinceTold < 0.1 || stage === 'lobby') return;
+    sinceTold = 0;
+    grid.forEach((id, i) => {
+      if (id === null || race.cars[i].bot) return;
+      const car = race.cars[i];
+      session!.tell(id, { place: order.indexOf(i) + 1, of: grid.length, lap: car.lap, nitro: Math.round(car.nitro * 100) / 100, speed: Math.round(car.v * 3.6), off: car.offTrack, buzz: buzz[i] ?? 0 });
+      buzz[i] = 0;
+    });
+  }
 
   function react(events: RaceEvent[], focus: number): void {
     for (const event of events) {
@@ -125,20 +276,31 @@ async function start(): Promise<void> {
       const side = event.type === 'wall' ? Math.sign(car.d) : Math.sign(race.cars[event.other].d - car.d) || 1;
       place(track, car.s, car.d + side * 1.05, probe);
       for (let k = 0; k < 6 + event.force * 22; k++) sparks.emit(at.copy(probe.position).setY(probe.position.y + 0.35), 0, 3 + event.force * 4, 0, 7 + event.force * 8);
-      if (event.car === focus || (event.type === 'hit' && event.other === focus)) shake = Math.max(shake, 0.25 + event.force * 0.6);
+      if (event.type === 'hit' && event.other === focus) shake = Math.max(shake, 0.25 + event.force * 0.6);
     }
   }
 
   function frame(dt: number, draw = true): void {
-    if (!demo) {
+    if (session) grid.forEach((id, i) => { if (id !== null && !race.cars[i].bot) Object.assign(race.inputs[i], session.input(id)); });
+    else if (!demo) {
       const input = race.inputs[0];
       input.steer = (keys.has('ArrowLeft') ? 1 : 0) - (keys.has('ArrowRight') ? 1 : 0);
       input.brake = keys.has('ArrowDown') || keys.has('Space');
       input.nitro = keys.has('ArrowUp') || keys.has('ShiftLeft');
     }
+    // A quiénes sigue la cámara: a los que manejan. Si no maneja nadie, al segundo, que siempre tiene a quién pasar.
+    let watched = grid.map((id, i) => (id !== null && !race.cars[i].bot ? i : -1)).filter((i) => i >= 0);
+    if (!watched.length) watched = [race.order()[Math.min(1, grid.length - 1)]];
+    const events = race.advance(dt);
     const order = race.order();
-    const focus = demo ? order[Math.min(1, order.length - 1)] : 0;
-    react(race.advance(dt), focus);
+    const front = Math.max(...watched.map((i) => race.cars[i].s));
+    // Los que quedaron demasiado atrás salen de cuadro: la cámara se queda con el grupo de adelante.
+    const inShot = watched.filter((i) => race.cars[i].s >= front - MAX_SPAN);
+    const back = Math.min(...inShot.map((i) => race.cars[i].s));
+    const focus = inShot.reduce((a, b) => (race.cars[b].s > race.cars[a].s ? b : a));
+    for (const event of events) if ((event.type === 'wall' || event.type === 'hit') && inShot.includes(event.car)) shake = Math.max(shake, 0.25 + event.force * 0.6);
+    react(events, focus);
+    if (session) host(events, order, dt);
     clock += dt;
 
     cars.forEach((mesh, i) => {
@@ -168,12 +330,23 @@ async function start(): Promise<void> {
     }
 
     // La cámara sigue al auto con un poco de retraso, se abre con la velocidad y tiembla con los golpes.
+    const cut = frozen !== null || snap;
+    snap = false;
     const ease = Math.min(1, dt * 6);
-    eye += (me.s - eye) * (frozen !== null ? 1 : Math.min(1, dt * 10));
-    eyeLane += (me.d - eyeLane) * (frozen !== null ? 1 : ease);
-    fov += ((view === 'tv' ? 30 : view === 'foto' ? 38 : 58 + (me.v / TUNING.topSpeed) * 8 + (me.boosting ? 7 : 0)) - fov) * (frozen !== null ? 1 : ease);
+    const lane = inShot.reduce((sum, i) => sum + race.cars[i].d, 0) / inShot.length;
+    eye += ((stage === 'lobby' ? GRID_S : back) - eye) * (cut ? 1 : Math.min(1, dt * 10));
+    eyeLane += (lane - eyeLane) * (cut ? 1 : ease);
+    span += (front - back - span) * (cut ? 1 : Math.min(1, dt * 2.5));
+    fov += ((stage === 'lobby' ? 44 : view === 'tv' ? 30 : view === 'foto' ? 38 : 58 + (me.v / TUNING.topSpeed) * 8 + (me.boosting ? 7 : 0)) - fov) * (cut ? 1 : ease);
     shake = Math.max(0, shake - dt * 1.8);
-    if (view === 'tv') {
+    if (stage === 'lobby') {
+      // En la sala la cámara da vueltas despacio alrededor de la grilla: cada uno ve aparecer su auto.
+      const turn = clock * 0.11;
+      place(track, GRID_S + Math.cos(turn) * 17, Math.sin(turn) * (track.half - 1.6), probe);
+      place(track, GRID_S, 0, ahead);
+      camera.position.copy(probe.position).add(new THREE.Vector3(0, 2 + Math.sin(turn * 0.7) * 0.5, 0));
+      camera.lookAt(ahead.position.x, ahead.position.y + 0.6, ahead.position.z);
+    } else if (view === 'tv') {
       // Una grúa sobre el borde de la pista: nada del costado se le cruza por delante.
       place(track, eye + 44, -track.half + 0.6, probe);
       camera.position.copy(probe.position).add(new THREE.Vector3(0, 6.2, 0));
@@ -184,12 +357,17 @@ async function start(): Promise<void> {
       camera.position.copy(probe.position).add(new THREE.Vector3(0, 1.25, 0));
       camera.lookAt(cars[focus].position.x, cars[focus].position.y + 0.6, cars[focus].position.z);
     } else {
-      place(track, eye - 7.4, eyeLane * 0.85, probe);
-      place(track, eye + 18, eyeLane * 0.35, ahead);
-      camera.position.copy(probe.position).add(new THREE.Vector3((Math.random() - 0.5) * shake * 0.5, 2.25 + (Math.random() - 0.5) * shake * 0.5, 0));
+      // Con varios manejando, la cámara retrocede y sube lo que haga falta para que entren todos.
+      place(track, eye - 7.4 - span * 0.3, eyeLane * 0.85, probe);
+      place(track, eye + span * 0.6 + 18, eyeLane * 0.35, ahead);
+      camera.position.copy(probe.position).add(new THREE.Vector3((Math.random() - 0.5) * shake * 0.5, 2.25 + span * 0.2 + (Math.random() - 0.5) * shake * 0.5, 0));
       camera.lookAt(ahead.position.x, ahead.position.y + 0.8, ahead.position.z);
     }
     camera.fov = fov;
+    // En la sala el código ocupa la izquierda: la imagen se corre para que la grilla quede en lo que se ve.
+    const waiting = hosting && (stage === 'lobby' || stage === 'results');
+    if (waiting) camera.setViewOffset(innerWidth, innerHeight, -innerHeight * 0.23, 0, innerWidth, innerHeight);
+    else if (camera.view) camera.clearViewOffset();
     camera.updateProjectionMatrix();
     if (sun && sunDir) {
       // Las sombras acompañan al pelotón: la luz se para siempre a la misma distancia de él.
@@ -214,7 +392,10 @@ async function start(): Promise<void> {
   addEventListener('resize', resize);
   resize();
 
-  race.start();
+  // Si el equipo pierde el contexto gráfico, se empieza de nuevo: la sala sigue en el launcher.
+  renderer.domElement.addEventListener('webglcontextlost', (e) => { e.preventDefault(); setTimeout(() => location.reload(), 500); });
+
+  if (!hosting) race.start();
   if (frozen !== null) {
     // Se corre sin dibujar hasta el segundo pedido, y los últimos cuadros con efectos para que haya polvo y chispas.
     race.advance(0);
@@ -223,11 +404,23 @@ async function start(): Promise<void> {
     for (let k = 0; k < 60; k++) frame(1 / 60, k === 59);
     document.title = `listo ${renderer.info.render.calls} ${renderer.info.render.triangles}`;
   } else {
-    let last = performance.now();
+    // En calidad baja, si no alcanza, se dibuja con menos puntos antes que con menos cuadros.
+    const meter = query.has('fps') ? document.body.appendChild(Object.assign(document.createElement('div'), { id: 'fps' })) : null;
+    let last = performance.now(), frames = 0, since = last, scale = 1;
     renderer.setAnimationLoop(() => {
       const now = performance.now();
       frame(Math.min(0.1, (now - last) / 1000));
       last = now;
+      if (++frames < 90) return;
+      const fps = (frames * 1000) / (now - since);
+      frames = 0;
+      since = now;
+      if (!fine && fps < 26 && scale > 0.5) {
+        scale = Math.max(0.5, scale - 0.125);
+        renderer.setPixelRatio(scale);
+        resize();
+      }
+      if (meter) meter.textContent = `${fps.toFixed(0)} FPS · ${Math.round(scale * 100)}% · ${renderer.info.render.triangles} TRI · ${renderer.info.render.calls} DIB`;
     });
   }
 }
