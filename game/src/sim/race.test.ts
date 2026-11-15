@@ -92,4 +92,28 @@ describe('la carrera', () => {
     assert.ok(Math.abs(top(10) - TUNING.topSpeed) < 0.5);
     assert.ok(top(2000) > TUNING.topSpeed * (1 + TUNING.catchUp) - 0.5);
   });
+
+  it('derrapando el auto toma una curva que derecho no entra, y carga nitro', () => {
+    // Una curva de 45 m de radio a fondo, con un piloto que busca el medio de la pista.
+    const take = (drift: boolean) => {
+      const race = new Race({ length: 100000, half: 7, wall: 8.6, curvature: (s) => (s > 400 ? 1 / 45 : 0) }, 1, [false]);
+      race.start();
+      const car = race.cars[0], input = race.inputs[0];
+      while (car.s < 400) race.advance(1 / 60);
+      car.nitro = 0;
+      input.drift = drift;
+      let hitWall = false, slip = 0;
+      for (let k = 0; k < 240; k++) {
+        input.steer = Math.min(1, Math.max(-1, 1 - car.d * 0.3 - car.yaw * 4));
+        if (race.advance(1 / 60).some((e) => e.type === 'wall')) hitWall = true;
+        slip = Math.max(slip, car.slip);
+      }
+      return { hitWall, slip, nitro: car.nitro, speed: car.v };
+    };
+    const straight = take(false), sideways = take(true);
+    assert.ok(straight.hitWall && straight.slip === 0);
+    assert.ok(!sideways.hitWall && sideways.slip > 0.2);
+    assert.ok(sideways.speed > 45 && sideways.speed < TUNING.topSpeed);
+    assert.ok(sideways.nitro > 0.6);
+  });
 });

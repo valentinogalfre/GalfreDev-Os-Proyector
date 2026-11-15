@@ -33,6 +33,9 @@ export interface Mine {
 /** Lo que pide el que lidera la sala. */
 export type Command = { a: 'track'; d: 1 | -1 } | { a: 'start' } | { a: 'lobby' };
 
+/** Lo que pide cualquiera en la sala: el auto de al lado. */
+export type Wish = { a: 'car'; d: 1 | -1 };
+
 export interface RosterEntry { id: number; name: string; on: boolean }
 
 export type FromRoom =
@@ -43,5 +46,5 @@ export type FromRoom =
   | { t: 'host'; on: boolean }
   | { t: 'pong'; n: number }
   | { t: 'roster'; players: RosterEntry[] }
-  | { t: 'in'; id: number; s: number; b: boolean; n: boolean }
-  | { t: 'cmd'; id: number; d: Command };
+  | { t: 'in'; id: number; s: number; b: boolean; n: boolean; k: boolean }
+  | { t: 'cmd'; id: number; d: Command | Wish };

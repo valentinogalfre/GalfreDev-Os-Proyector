@@ -149,12 +149,13 @@ class CarreraTest {
         assertEquals("Vale", joined.getString("name"))
         wall.next("roster")
         assertEquals("Vale", wall.next("roster").getJSONArray("players").getJSONObject(0).getString("name"))
-        phone.say(JSONObject().put("t", "in").put("s", 7.5).put("b", 1).put("n", 0))
+        phone.say(JSONObject().put("t", "in").put("s", 7.5).put("b", 1).put("n", 0).put("k", 1))
         val input = wall.next("in")
         assertEquals(joined.getInt("id"), input.getInt("id"))
         assertEquals(1.0, input.getDouble("s"), 0.0)
         assertTrue(input.getBoolean("b"))
         assertFalse(input.getBoolean("n"))
+        assertTrue(input.getBoolean("k"))
     }
 
     @Test

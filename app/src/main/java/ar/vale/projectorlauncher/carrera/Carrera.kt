@@ -137,7 +137,8 @@ class Carrera(private val random: SecureRandom = SecureRandom(), private val now
                     "in" -> tellHost(
                         JSONObject().put("t", "in").put("id", player.id)
                             .put("s", message.optDouble("s", 0.0).let { if (it.isNaN()) 0.0 else it.coerceIn(-1.0, 1.0) })
-                            .put("b", message.optInt("b") != 0).put("n", message.optInt("n") != 0).toString()
+                            .put("b", message.optInt("b") != 0).put("n", message.optInt("n") != 0)
+                            .put("k", message.optInt("k") != 0).toString()
                     )
                     "cmd" -> message.optJSONObject("d")?.let { tellHost(JSONObject().put("t", "cmd").put("id", player.id).put("d", it).toString()) }
                     "ping" -> channel.send(JSONObject().put("t", "pong").put("n", message.optLong("n")).toString())

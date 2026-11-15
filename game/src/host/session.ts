@@ -1,10 +1,10 @@
 import { connect, type Link } from '../net/link';
-import type { Command, FromRoom, Mine, RosterEntry, Shared } from '../net/protocol';
+import type { Command, FromRoom, Mine, RosterEntry, Shared, Wish } from '../net/protocol';
 import type { Input } from '../sim/race';
 
 interface Handlers {
   roster(): void;
-  command(from: number, command: Command): void;
+  command(from: number, command: Command | Wish): void;
 }
 
 /**
@@ -33,7 +33,7 @@ export class Session {
 
   input(id: number): Input {
     let input = this.inputs.get(id);
-    if (!input) this.inputs.set(id, (input = { steer: 0, brake: false, nitro: false }));
+    if (!input) this.inputs.set(id, (input = { steer: 0, brake: false, nitro: false, drift: false }));
     return input;
   }
 
@@ -55,6 +55,7 @@ export class Session {
       input.steer = message.s;
       input.brake = message.b;
       input.nitro = message.n;
+      input.drift = message.k;
     } else if (message.t === 'roster') {
       this.seats = message.players;
       // Quien se fue suelta el volante: su auto no sigue doblando para siempre.

@@ -125,7 +125,7 @@ export function buildCar(kit: CarKit, style: CarStyle, fine: boolean, night: boo
   for (const x of [-0.42, 0.42]) flame.add(new THREE.Mesh(new THREE.ConeGeometry(0.17, 2.4, 8, 1, true).rotateX(-Math.PI / 2).translate(x, 0.42, kit.hub.z - WHEELBASE - 1.75), fire));
   flame.visible = false;
   body.add(flame);
-  car.userData = { wheels, body, flame, tail, front: wheels.slice(0, 1).concat(wheels.slice(2, 3)).map((w) => w.parent!) };
+  car.userData = { wheels, body, flame, tail, paint, caliper, fire, front: wheels.slice(0, 1).concat(wheels.slice(2, 3)).map((w) => w.parent!) };
 
   const flat = (w: number, l: number, color: number, opacity: number, additive: boolean) => {
     const m = new THREE.Mesh(new THREE.PlaneGeometry(w, l), new THREE.MeshBasicMaterial({
@@ -148,8 +148,18 @@ export function buildCar(kit: CarKit, style: CarStyle, fine: boolean, night: boo
     const under = flat(5.8, 9, style.underglow, 0.9, true);
     under.position.y = 0.045;
     car.add(under);
+    car.userData.under = under.material;
   }
   return car;
+}
+
+/** Cambia la pintura de un auto ya armado: elegir otro no rehace el modelo. */
+export function repaint(car: THREE.Group, style: CarStyle): void {
+  const { paint, caliper, fire, under } = car.userData as { paint: THREE.MeshStandardMaterial; caliper: THREE.MeshStandardMaterial; fire: THREE.MeshBasicMaterial; under?: THREE.MeshBasicMaterial };
+  paint.color.set(style.paint);
+  caliper.color.set(style.accent);
+  fire.color.set(style.underglow ?? 0x6ad0ff).multiplyScalar(4);
+  if (style.underglow !== undefined) under?.color.set(style.underglow);
 }
 
 export interface Pose { metres: number; steer: number; speed: number; boosting: boolean; braking: boolean; time: number }

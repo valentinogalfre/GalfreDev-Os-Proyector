@@ -1,7 +1,7 @@
 import './style.css';
 import logoUrl from '../../../app/src/main/assets/remote/logo.svg';
 import { connect, type Link } from '../net/link';
-import type { Command, FromRoom, Mine, Shared } from '../net/protocol';
+import type { Command, FromRoom, Mine, Shared, Wish } from '../net/protocol';
 import { Tilt } from './tilt';
 
 const room = new URLSearchParams(location.hash.slice(1)).get('r') ?? '';
@@ -28,12 +28,12 @@ let shared: Shared | null = null;
 let mine: Mine | null = null;
 let problem = '';
 let useTilt = false;
-const held = { left: false, right: false, brake: false, nitro: false };
+const held = { left: false, right: false, brake: false, nitro: false, drift: false };
 
 const hex = (color: number) => `#${color.toString(16).padStart(6, '0')}`;
 const esc = (text: string) => text.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const head = () => `<header><img src="${logoUrl}" alt="galfredev"><span class="tag ${online ? 'up' : ''}"><i></i>${online ? 'Conectado' : 'Sin conexión'}</span></header>`;
-const command = (c: Command) => link?.send({ t: 'cmd', d: c });
+const command = (c: Command | Wish) => link?.send({ t: 'cmd', d: c });
 
 function join(name: string): void {
   store('name', name);
@@ -110,7 +110,7 @@ function lobby(state: Shared): void {
     : state.players.map((p) => `<li class="${p.on ? '' : 'off'}"><i style="background:${hex(p.paint)}"></i>${esc(p.name)}${p.id === state.lead ? '<span class="tag">Elige pista</span>' : ''}</li>`);
   const secure = !isSecureContext && state.secure ? `https://${location.hostname}:${state.secure}${location.pathname}${location.hash}` : '';
   app.innerHTML = `${head()}
-    <div class="me"><div class="chip" style="background:${hex(self?.paint ?? 0xf1ede6)}"></div><div><span class="tag">${done ? (place ? `Llegaste ${place}.º` : 'Final') : 'Tu auto'}</span><b>${esc(me!.name)}</b></div></div>
+    <div class="me"><div class="chip" style="background:${hex(self?.paint ?? 0xf1ede6)}"></div><div class="fill"><span class="tag">${done ? (place ? `Llegaste ${place}.º` : 'Final') : 'Tu auto'}</span><b>${esc(me!.name)}</b></div>${done ? '' : '<button class="quiet" id="car-prev" aria-label="Auto anterior">‹</button><button class="quiet" id="car-next" aria-label="Auto siguiente">›</button>'}</div>
     <div class="fill scroll"><ol>${rows.join('')}</ol></div>
     <div class="stack" style="padding-top:14px">
       ${problem ? `<p>${esc(problem)}</p>` : ''}
@@ -127,6 +127,8 @@ function lobby(state: Shared): void {
     store('invert', tilt.invert ? '1' : '0');
     render();
   });
+  on('car-prev', () => command({ a: 'car', d: -1 }));
+  on('car-next', () => command({ a: 'car', d: 1 }));
   on('prev', () => command({ a: 'track', d: -1 }));
   on('next', () => command({ a: 'track', d: 1 }));
   on('start', () => {
@@ -141,9 +143,9 @@ function buildDrive(): void {
   drive.dataset.tilt = String(useTilt);
   const pad = (id: string, label: string, hint: string) => `<div class="pad" data-pad="${id}"><small class="tag">${hint}</small>${label}<u></u></div>`;
   drive.innerHTML = `
-    ${useTilt ? pad('brake', 'Freno', 'Mantené') : `<div class="steer">${pad('left', '‹', 'Izquierda')}${pad('right', '›', 'Derecha')}</div>`}
+    ${useTilt ? `<div class="pads">${pad('drift', 'Derrape', 'En la curva')}${pad('brake', 'Freno', 'Mantené')}</div>` : `<div class="steer">${pad('left', '‹', 'Izquierda')}${pad('right', '›', 'Derecha')}</div>`}
     <div class="dash"><img src="${logoUrl}" alt="galfredev"><div><div class="place"></div><span class="tag lap"></span></div><b class="note">Fuera de pista</b><div class="wheel"><i></i></div><span class="tag">${useTilt ? 'Tocá acá para centrar' : 'Volante'}</span></div>
-    ${useTilt ? pad('nitro', 'Nitro', 'Mantené') : `<div class="pads">${pad('nitro', 'Nitro', 'Mantené')}${pad('brake', 'Freno', 'Mantené')}</div>`}`;
+    ${useTilt ? pad('nitro', 'Nitro', 'Mantené') : `<div class="pads three">${pad('nitro', 'Nitro', 'Mantené')}${pad('drift', 'Derrape', 'En la curva')}${pad('brake', 'Freno', 'Mantené')}</div>`}`;
   drive.querySelector('.dash')!.addEventListener('pointerdown', () => tilt.center());
   drive.querySelectorAll<HTMLElement>('.pad').forEach((el) => {
     const set = (down: boolean) => (event: Event) => {
@@ -167,15 +169,20 @@ function paintDrive(): void {
 }
 
 // El volante se manda treinta veces por segundo mientras se corre, y un aviso de vida el resto del tiempo.
+// El aviso va por reloj y no por cuenta de vueltas: con la pestaña atrás el navegador frena los temporizadores.
 let beat = 0;
+let lastBeat = 0;
 setInterval(() => {
   const racing = shared && me && (shared.phase === 'countdown' || shared.phase === 'race');
   if (racing) {
     const steer = useTilt ? tilt.steer : (held.left ? 1 : 0) - (held.right ? 1 : 0);
-    link?.send({ t: 'in', s: Math.round(steer * 100) / 100, b: held.brake ? 1 : 0, n: held.nitro ? 1 : 0 });
+    link?.send({ t: 'in', s: Math.round(steer * 100) / 100, b: held.brake ? 1 : 0, n: held.nitro ? 1 : 0, k: held.drift ? 1 : 0 });
     const needle = drive.querySelector<HTMLElement>('.wheel i');
     if (needle) needle.style.left = `${50 - steer * 46}%`;
-  } else if (++beat % 90 === 0) link?.send({ t: 'ping', n: beat });
+  } else if (performance.now() - lastBeat > 3000) {
+    lastBeat = performance.now();
+    link?.send({ t: 'ping', n: ++beat });
+  }
 }, 33);
 
 // La pantalla no se apaga en plena carrera, donde el navegador lo permita.

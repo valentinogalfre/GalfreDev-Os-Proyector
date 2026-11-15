@@ -6,7 +6,7 @@ import { mountLobby } from './host/lobby';
 import { Session } from './host/session';
 import type { Command, Shared } from './net/protocol';
 import { Race, TUNING, type RaceEvent } from './sim/race';
-import { animate, buildCar, loadCarKit } from './world/car';
+import { animate, buildCar, repaint, loadCarKit } from './world/car';
 import { mirror } from './world/mirror';
 import { Puffs } from './world/spray';
 import { buildTrack, curvature, place } from './world/track';
@@ -85,7 +85,11 @@ async function start(): Promise<void> {
   pmrem.dispose();
 
   const course = { length: track.length, half: track.half, wall: theme.wall, curvature: (s: number) => curvature(track, s) };
-  const styleOf = (i: number) => (i < theme.cars.length ? theme.cars[i] : { ...theme.cars[i - theme.cars.length], paint: EXTRA_PAINT[(i - theme.cars.length) % EXTRA_PAINT.length] });
+  /** Los autos para elegir: los seis de la pista y dos más con otra pintura. */
+  const liveries = [...theme.cars, ...EXTRA_PAINT.map((paint, k) => ({ ...theme.cars[k], paint }))];
+  /** Qué auto lleva cada lugar de la grilla. */
+  let livery: number[] = [];
+  const styleOf = (i: number) => liveries[livery[i] ?? i % liveries.length];
   const showHud = query.get('hud') !== '0';
   const cars: THREE.Group[] = [];
   /** Quién maneja cada auto de la grilla: el número de jugador en la sala, o null si es un bot. */
@@ -95,9 +99,10 @@ async function start(): Promise<void> {
   let hud: ReturnType<typeof mountHud> | null = null;
 
   /** Arma la grilla: una carrera nueva con un auto por cada uno, parados detrás de la línea. */
-  function line(drivers: (number | null)[], labels: string[]): void {
+  function line(drivers: (number | null)[], labels: string[], looks: number[] = drivers.map((_, i) => i % liveries.length)): void {
     grid = drivers;
     names = labels;
+    livery = looks;
     race = new Race(course, LAPS, grid.map((id) => id === null));
     while (cars.length > grid.length) scene.remove(cars.pop()!);
     while (cars.length < grid.length) {
@@ -105,6 +110,7 @@ async function start(): Promise<void> {
       cars.push(car);
       scene.add(car);
     }
+    cars.forEach((car, i) => repaint(car, styleOf(i)));
     hud = showHud ? mountHud({ track: theme.name, laps: LAPS, cinta: theme.trail === undefined, players: grid.map((_, i) => ({ name: names[i], paint: styleOf(i).paint })) }) : null;
   }
   // En la maqueta el primer auto es del teclado (jugador 0) y el resto corre solo.
@@ -114,6 +120,9 @@ async function start(): Promise<void> {
   (sparks.points.material as THREE.ShaderMaterial).uniforms.color.value.multiplyScalar(6);
   scene.add(sparks.points);
   if (dust) scene.add(dust.points);
+  // El humo de las gomas al derrapar: claro de día, azulado bajo las luces de la noche.
+  const smoke = new Puffs({ color: theme.night ? 0x9aa6c4 : 0xe6e0d6, opacity: theme.night ? 0.13 : 0.15, size: 2.6, additive: false, life: 0.7, rise: 1.6 }, 320);
+  scene.add(smoke.points);
 
   const sun = fine ? world.sun : undefined;
   const range = world.shadowRange ?? 45;
@@ -165,7 +174,9 @@ async function start(): Promise<void> {
   let firstFinish = 0, sinceTold = 0;
   const buzz: number[] = [];
   const lobby = hosting ? mountLobby(hash.get('qr') ?? '') : null;
-  const paintOf = (id: number) => (grid.includes(id) ? styleOf(grid.indexOf(id)).paint : 0x6b6862);
+  /** El auto que eligió cada uno. Sobrevive al cambio de pista, que recarga la página. */
+  const picks = new Map<number, number>((query.get('autos') ?? '').split('-').filter(Boolean).map((pair) => pair.split('.').map(Number) as [number, number]));
+  const paintOf = (id: number) => liveries[picks.get(id) ?? -1]?.paint ?? 0x6b6862;
 
   function share(): void {
     if (!session) return;
@@ -189,7 +200,11 @@ async function start(): Promise<void> {
   function seat(): void {
     const seats = session!.seats.filter((s) => s.on).slice(0, MAX_CARS);
     const fill = Math.max(0, MIN_CARS - seats.length);
-    line([...seats.map((s) => s.id), ...Array<null>(fill).fill(null)], [...seats.map((s) => s.name), ...BOTS.slice(0, fill)]);
+    // Cada uno con el auto que eligió si sigue libre, o el primero que quede; los bots, con lo que sobra.
+    const free = liveries.map((_, k) => k);
+    const take = (wanted?: number) => free.splice(Math.max(0, free.indexOf(wanted ?? -1)), 1)[0];
+    for (const s of seats) picks.set(s.id, take(picks.get(s.id)));
+    line([...seats.map((s) => s.id), ...Array<null>(fill).fill(null)], [...seats.map((s) => s.name), ...BOTS.slice(0, fill)], [...seats.map((s) => picks.get(s.id)!), ...Array.from({ length: fill }, () => take())]);
     snap = true;
   }
 
@@ -210,10 +225,23 @@ async function start(): Promise<void> {
     share();
   }
 
+  /** El auto de al lado, salteando los que ya tienen dueño. */
+  function otherCar(id: number, step: number): void {
+    const seats = session!.seats.filter((s) => s.on).slice(0, MAX_CARS);
+    if (stage !== 'lobby' || !seats.some((s) => s.id === id)) return;
+    const taken = new Set(seats.filter((s) => s.id !== id).map((s) => picks.get(s.id)));
+    let next = picks.get(id) ?? 0;
+    do next = (next + step + liveries.length) % liveries.length; while (taken.has(next));
+    picks.set(id, next);
+    seat();
+    share();
+  }
+
   /** Otra pista es otra página: el mundo anterior se suelta entero, que en un equipo con poca memoria importa. */
   function otherTrack(step: number): void {
     if (stage !== 'lobby' && stage !== 'results') return;
     const all = Object.keys(THEMES);
+    query.set('autos', [...picks].map(([id, look]) => `${id}.${look}`).join('-'));
     query.set('t', all[(all.indexOf(THEMES[key] ? key : 'puna') + step + all.length) % all.length]);
     location.replace(`?${query.toString()}${location.hash}`);
   }
@@ -232,7 +260,8 @@ async function start(): Promise<void> {
       share();
     },
     command(from, command) {
-      if (from === session!.lead) obey(command);
+      if (command.a === 'car') otherCar(from, command.d === -1 ? -1 : 1);
+      else if (from === session!.lead) obey(command);
     },
   }) : null;
   if (hosting) {
@@ -293,6 +322,7 @@ async function start(): Promise<void> {
       input.steer = (keys.has('ArrowLeft') ? 1 : 0) - (keys.has('ArrowRight') ? 1 : 0);
       input.brake = keys.has('ArrowDown') || keys.has('Space');
       input.nitro = keys.has('ArrowUp') || keys.has('ShiftLeft');
+      input.drift = keys.has('KeyX') || keys.has('ControlLeft');
     }
     // A quiénes sigue la cámara: a los que manejan. Si no maneja nadie, al segundo, que siempre tiene a quién pasar.
     let watched = grid.map((id, i) => (id !== null && !race.cars[i].bot ? i : -1)).filter((i) => i >= 0);
@@ -312,14 +342,22 @@ async function start(): Promise<void> {
     cars.forEach((mesh, i) => {
       const car = race.cars[i];
       place(track, car.s, car.d, mesh);
-      mesh.rotateY(car.yaw);
-      animate(mesh, { metres: car.s, steer: car.steer, speed: car.v, boosting: car.boosting, braking: car.braking, time: clock });
+      // Derrapando, la cola se cruza y las ruedas de adelante apuntan para el otro lado.
+      mesh.rotateY(car.yaw + car.slip);
+      animate(mesh, { metres: car.s, steer: car.steer - car.slip * 1.5, speed: car.v, boosting: car.boosting, braking: car.braking, time: clock });
       // Las ruedas traseras levantan polvo o agua: más cuanto más rápido, y mucho más fuera del asfalto.
       if (dust && car.v > 12 && Math.random() < (car.offTrack ? 1 : car.v / 140)) {
         place(track, car.s - 1.9, car.d + (Math.random() < 0.5 ? -0.85 : 0.85), probe);
         dust.emit(at.copy(probe.position).setY(probe.position.y + 0.15), 0, 0.6, 0, car.offTrack ? 3 : 1.4);
       }
+      // El humo sale de las dos ruedas de atrás, por tiempo y no por cuadro: a 30 cuadros no es la mitad de humo.
+      if (car.drifting) for (const side of [-0.85, 0.85]) {
+        if (Math.random() > dt * 26 * Math.min(1, Math.abs(car.slip) * 4)) continue;
+        place(track, car.s - 1.7, car.d + side - Math.sin(car.slip) * 1.7, probe);
+        smoke.emit(at.copy(probe.position).setY(probe.position.y + 0.2), 0, 0.8, 0, 1.2);
+      }
     });
+    smoke.update(dt);
     dust?.update(dt);
     sparks.update(dt);
 

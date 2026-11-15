@@ -20,6 +20,7 @@ export interface Input {
   steer: number;
   brake: boolean;
   nitro: boolean;
+  drift: boolean;
 }
 
 export interface Car {
@@ -35,6 +36,10 @@ export interface Car {
   nitro: number;
   boosting: boolean;
   braking: boolean;
+  /** Va derrapando: dobla más de lo que da el agarre, a cambio de velocidad. */
+  drifting: boolean;
+  /** Cuánto cruzó la cola respecto de por dónde va, en radianes: es lo que se ve, no cambia el rumbo. */
+  slip: number;
   offTrack: boolean;
   /** Segundos que le quedan de trompo tras un golpe fuerte. */
   spin: number;
@@ -64,6 +69,12 @@ export const TUNING = {
   nitroGain: 1.3,
   nitroBurn: 0.34,
   nitroFill: 0.07,
+  /** Derrapando el auto dobla esto de más, corre esto de menos y carga el nitro así de rápido. */
+  driftGrip: 1.7,
+  driftSpeed: 0.88,
+  driftFill: 0.2,
+  driftFrom: 20,
+  driftSlip: 0.5,
   offTrackSpeed: 0.45,
   offTrackGrip: 0.55,
   /** Cuánta velocidad de más recibe el que quedó lejos del primero: todos comparten una sola pantalla. */
@@ -98,9 +109,9 @@ export class Race {
     bots.forEach((bot, i) => {
       this.cars.push({
         s: -6 - Math.floor(i / 2) * 9 - (i % 2) * 3, d: (i % 2 ? -1 : 1) * course.half * 0.42,
-        v: 0, yaw: 0, steer: 0, nitro: 0.35, boosting: false, braking: false, offTrack: false, spin: 0, lap: 0, finished: null, bot,
+        v: 0, yaw: 0, steer: 0, nitro: 0.35, boosting: false, braking: false, drifting: false, slip: 0, offTrack: false, spin: 0, lap: 0, finished: null, bot,
       });
-      this.inputs.push({ steer: 0, brake: false, nitro: false });
+      this.inputs.push({ steer: 0, brake: false, nitro: false, drift: false });
     });
   }
 
@@ -159,9 +170,12 @@ export class Race {
     car.offTrack = Math.abs(car.d) > course.half + 0.3;
     car.braking = !done && input.brake;
     car.boosting = !done && input.nitro && car.nitro > 0 && car.spin <= 0 && !car.offTrack;
-    car.nitro = clamp(car.nitro + (car.boosting ? -T.nitroBurn : T.nitroFill) * STEP, 0, 1);
+    // El derrape arranca doblando y se sostiene mientras se mantenga el botón y quede velocidad.
+    car.drifting = !done && input.drift && car.spin <= 0 && !car.offTrack && car.v > T.driftFrom && (car.drifting || Math.abs(car.steer) > 0.3);
+    car.slip += ((car.drifting ? clamp(car.steer * 2, -1, 1) * T.driftSlip : 0) - car.slip) * Math.min(1, STEP * 5);
+    car.nitro = clamp(car.nitro + (car.boosting ? -T.nitroBurn : car.drifting ? T.driftFill : T.nitroFill) * STEP, 0, 1);
 
-    let top = T.topSpeed * (car.boosting ? T.nitroGain : 1) * (car.offTrack ? T.offTrackSpeed : 1);
+    let top = T.topSpeed * (car.boosting ? T.nitroGain : 1) * (car.drifting ? T.driftSpeed : 1) * (car.offTrack ? T.offTrackSpeed : 1);
     top *= 1 + T.catchUp * clamp((this.front - car.s - T.catchUpFrom) / (T.catchUpFull - T.catchUpFrom), 0, 1);
     if (done) top *= 0.4;
     if (car.spin > 0) {
@@ -181,7 +195,7 @@ export class Race {
     const k = course.curvature(car.s);
     if (car.spin <= 0) {
       // Lo que el auto puede doblar baja con la velocidad: pasado el agarre, se va de trompa.
-      const grip = T.grip * (car.offTrack ? T.offTrackGrip : 1);
+      const grip = T.grip * (car.offTrack ? T.offTrackGrip : 1) * (car.drifting ? T.driftGrip : 1);
       const limit = grip / Math.max(car.v, 9);
       const turn = clamp(car.steer * T.turnRate, -limit, limit) + k * car.v * T.assist;
       car.yaw += (turn - k * car.v) * STEP;
@@ -261,6 +275,8 @@ export class Race {
     const tight = Math.max(Math.abs(kAhead), Math.abs(kFar));
     const safe = tight > 1e-4 ? Math.sqrt((T.grip * 0.93) / (tight * (1 - T.assist * 0.5))) : Infinity;
     input.brake = car.v > safe * 1.06;
+    // En la curva cerrada el bot cruza el auto en vez de pasarla derecho.
+    input.drift = Math.abs(kNow) > 0.011 && car.v > T.driftFrom + 4;
     input.nitro = !input.brake && tight < 0.004 && Math.abs(car.yaw) < 0.08 && car.nitro > (car.boosting ? 0.02 : 0.6);
   }
 }
