@@ -12,6 +12,7 @@ import android.os.Build
 import android.os.IBinder
 import ar.vale.projectorlauncher.Prefs
 import ar.vale.projectorlauncher.R
+import ar.vale.projectorlauncher.carrera.CarreraHub
 import ar.vale.projectorlauncher.juntada.JuntadaHub
 import java.io.IOException
 import java.net.Inet4Address
@@ -60,7 +61,7 @@ class RemoteService : Service() {
         val pairing = RemoteState.pairing
             ?: Pairing(prefs.remoteToken, { prefs.remoteToken = it }).also { RemoteState.pairing = it }
         val party = JuntadaRoutes(JuntadaHub.get(this), JuntadaHub.source(this))
-        val router = Router(pairing, AndroidRemote(applicationContext), party, AccessHub.get(this), RemotePage(applicationContext))
+        val router = Router(pairing, AndroidRemote(applicationContext), party, AccessHub.get(this), RemotePage(applicationContext), CarreraHub.carrera::serve)
         val created = RemoteServer(router)
         try {
             RemoteState.port = created.start()

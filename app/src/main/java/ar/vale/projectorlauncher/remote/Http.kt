@@ -116,7 +116,9 @@ class HttpResponse(
     private val bytes: ByteArray? = null,
     private val stream: InputStream? = null,
     private val length: Long = bytes?.size?.toLong() ?: -1L,
-    private val cacheSeconds: Int = 0
+    private val cacheSeconds: Int = 0,
+    /** Qué puede cargar la página. La del juego trae sus propios archivos de código; la otra no. */
+    private val policy: String = PAGE_POLICY
 ) {
     fun write(out: OutputStream) {
         val head = StringBuilder("HTTP/1.1 $status ${reason(status)}\r\n")
@@ -127,7 +129,7 @@ class HttpResponse(
         head.append("X-Content-Type-Options: nosniff\r\n")
         head.append("X-Frame-Options: DENY\r\n")
         head.append("Referrer-Policy: no-referrer\r\n")
-        head.append("Content-Security-Policy: default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'\r\n")
+        head.append("Content-Security-Policy: ").append(policy).append("\r\n")
         head.append("\r\n")
         out.write(head.toString().toByteArray(Charsets.ISO_8859_1))
         if (bytes != null) out.write(bytes)
@@ -136,6 +138,18 @@ class HttpResponse(
     }
 
     companion object {
+        const val PAGE_POLICY =
+            "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+
+        /**
+         * La carrera: código solo de este mismo servidor, y la conexión del volante. `ws:` va
+         * explícito porque no todos los navegadores lo cuentan dentro de 'self'. Los modelos y sus
+         * texturas se arman en memoria, de ahí `blob:`.
+         */
+        const val GAME_POLICY =
+            "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; " +
+                "connect-src 'self' ws: wss: data: blob:; worker-src 'self' blob:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+
         fun json(status: Int, value: JSONObject) =
             HttpResponse(status, "application/json; charset=utf-8", value.toString().toByteArray(Charsets.UTF_8))
 
@@ -157,6 +171,7 @@ class HttpResponse(
             423 -> "Locked"
             429 -> "Too Many Requests"
             431 -> "Request Header Fields Too Large"
+            503 -> "Service Unavailable"
             507 -> "Insufficient Storage"
             else -> "Error"
         }

@@ -10,6 +10,7 @@ import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.SynchronousQueue
 import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Servidor de una conexión por pedido, con topes: nadie en la red, ni siquiera sin token, puede
@@ -22,7 +23,8 @@ class RemoteServer(
     private val secure: Boolean = false,
     private val requestMs: Long = REQUEST_MS,
     private val replyMs: Long = REPLY_MS,
-    private val reapMs: Long = REAP_MS
+    private val reapMs: Long = REAP_MS,
+    private val socketIdleMs: Int = SOCKET_IDLE_MS
 ) {
 
     @Volatile private var socket: ServerSocket? = null
@@ -34,6 +36,7 @@ class RemoteServer(
      */
     private val deadlines = ConcurrentHashMap<Socket, Long>()
     private val perAddress = ConcurrentHashMap<String, Int>()
+    private val openSockets = AtomicInteger()
     @Volatile private var reaper: Thread? = null
 
     /** Devuelve el puerto en uso. */
@@ -121,6 +124,11 @@ class RemoteServer(
                     val input = BufferedInputStream(it.getInputStream())
                     val response = try {
                         val request = HttpParser.parse(input, address, secure) ?: return
+                        val handler = router.socket(request)
+                        if (handler != null) {
+                            stayOpen(it, input, request, handler, address)
+                            return
+                        }
                         if (router.isLong(request)) deadlines[client] = Long.MAX_VALUE
                         router.handle(request)
                     } catch (e: HttpError) {
@@ -132,6 +140,29 @@ class RemoteServer(
             }
         } finally {
             deadlines.remove(client)
+        }
+    }
+
+    /**
+     * La conexión de un volante queda abierta. No tiene plazo fijo, pero sí uno entre mensajes: un
+     * volante manda algo varias veces por segundo, así que el silencio es una conexión muerta.
+     */
+    private fun stayOpen(client: Socket, input: BufferedInputStream, request: HttpRequest, handler: SocketHandler, address: String) {
+        if (openSockets.incrementAndGet() > MAX_SOCKETS) {
+            openSockets.decrementAndGet()
+            HttpResponse.error(503, "busy").write(client.getOutputStream())
+            return
+        }
+        try {
+            val output = client.getOutputStream()
+            output.write(WebSocket.accept(request))
+            output.flush()
+            deadlines[client] = Long.MAX_VALUE
+            client.soTimeout = socketIdleMs
+            client.tcpNoDelay = true
+            handler.serve(WebSocket(input, output), address)
+        } finally {
+            openSockets.decrementAndGet()
         }
     }
 
@@ -149,5 +180,8 @@ class RemoteServer(
         private const val REQUEST_MS = 10_000L
         private const val REPLY_MS = 30_000L
         private const val REAP_MS = 1_000L
+        /** La pared y ocho volantes, con margen. No le sacan lugar a los pedidos comunes del dueño. */
+        private const val MAX_SOCKETS = 12
+        private const val SOCKET_IDLE_MS = 12_000
     }
 }

@@ -28,7 +28,7 @@ import java.nio.file.Files
 import java.util.concurrent.CountDownLatch
 import kotlin.concurrent.thread
 
-private class FakeDevice : RemoteDevice {
+internal class FakeDevice : RemoteDevice {
     val calls = ArrayList<String>()
     var uploaded: ByteArray? = null
     var result = RemoteDevice.Result.OK

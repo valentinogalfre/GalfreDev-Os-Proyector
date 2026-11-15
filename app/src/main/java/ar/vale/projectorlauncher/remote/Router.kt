@@ -45,7 +45,9 @@ class Router(
     private val device: RemoteDevice,
     private val party: JuntadaRoutes? = null,
     private val access: Access = Access(),
-    private val files: StaticFiles
+    private val files: StaticFiles,
+    /** Quién atiende a los volantes de la carrera. Sin esto, la ruta no existe. */
+    private val race: SocketHandler? = null
 ) {
 
     /** Una a la vez: varias en paralelo pasarían cada una por separado el control de espacio. */
@@ -54,6 +56,17 @@ class Router(
     /** Una subida autorizada tarda lo que tarde el archivo. Ningún otro pedido tiene por qué demorar. */
     fun isLong(r: HttpRequest): Boolean =
         r.path == "/api/upload" && pairing.authorized(r.header("authorization"))
+
+    /**
+     * Si el pedido es un volante que quiere dejar la conexión abierta, quién lo atiende. No lleva
+     * token: un navegador no puede ponerle cabeceras a un WebSocket, así que el código de la sala
+     * va en el primer mensaje. El origen sí se exige, para que otra página no hable por el usuario.
+     */
+    fun socket(r: HttpRequest): SocketHandler? {
+        if (race == null || r.path != SOCKET_PATH || !WebSocket.wanted(r)) return null
+        if (r.header("origin") == null || !sameOrigin(r)) return null
+        return race
+    }
 
     fun handle(request: HttpRequest): HttpResponse = try {
         route(request)
@@ -231,6 +244,7 @@ class Router(
         const val MAX_TEXT = 4000
         const val OWNER = "owner"
         const val NONE = "none"
+        const val SOCKET_PATH = "/api/carrera/socket"
         val READS = setOf("/api/state", "/api/apps", "/api/claude/state", "/api/access/list")
 
         /** Lo que alcanza un invitado con control: lo mismo que el control remoto, y nada más. */
