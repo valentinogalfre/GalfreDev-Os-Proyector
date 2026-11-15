@@ -1,103 +1,173 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { rng, fbm } from '../world/noise';
+import { along, bend, wires } from '../world/props';
 import { DROP, envFrom, ground, ridge, skyDome } from '../world/scenery';
-import { roadTexture, strata, stripes } from '../world/textures';
+import { gradient, gravel, label, roadTexture, stripes } from '../world/textures';
 import { embankment, ribbon } from '../world/track';
-import type { Stage, Theme } from './theme';
+import type { Stage, Theme, World } from './theme';
 
-const SUN = new THREE.Vector3(-0.93, 0.085, 0.36).normalize();
+const SUN = new THREE.Vector3(-0.72, 0.27, 0.64).normalize();
+/** Los estratos del cerro, de abajo hacia arriba. */
+const STRATA = [0xa8502f, 0xc9703c, 0xe0a060, 0xead0a0, 0x9a5a78, 0x6f8a62, 0xd07840, 0x8a3a2a, 0xd9b48a, 0x7a4a6a].map((c) => new THREE.Color(c));
 
+/** Un cardón: tronco acanalado y dos brazos que suben. */
 function cardon(): THREE.BufferGeometry {
-  const trunk = new THREE.CylinderGeometry(0.34, 0.4, 6, 7).translate(0, 3, 0);
-  const cap = new THREE.SphereGeometry(0.34, 7, 4, 0, Math.PI * 2, 0, Math.PI / 2).translate(0, 6, 0);
-  const parts = [trunk, cap];
-  for (const [side, at, tall] of [[1, 2.4, 2.6], [-1, 3.3, 1.9]] as [number, number, number][]) {
-    parts.push(new THREE.CylinderGeometry(0.22, 0.22, 1, 6).rotateZ(Math.PI / 2).translate(side * 0.7, at, 0));
-    parts.push(new THREE.CylinderGeometry(0.22, 0.24, tall, 6).translate(side * 1.2, at + tall / 2, 0));
-    parts.push(new THREE.SphereGeometry(0.22, 6, 3, 0, Math.PI * 2, 0, Math.PI / 2).translate(side * 1.2, at + tall, 0));
+  const column = (r: number, h: number) => {
+    const g = new THREE.CylinderGeometry(r * 0.92, r, h, 10, 1).translate(0, h / 2, 0);
+    const p = g.attributes.position as THREE.BufferAttribute;
+    // Las costillas: una arista sí y una no se meten hacia adentro.
+    for (let i = 0; i < p.count; i++) {
+      const a = Math.atan2(p.getZ(i), p.getX(i));
+      const k = 0.86 + 0.14 * Math.abs(Math.cos(a * 5));
+      p.setXYZ(i, p.getX(i) * k, p.getY(i), p.getZ(i) * k);
+    }
+    return g;
+  };
+  const dome = (r: number) => new THREE.SphereGeometry(r * 0.92, 10, 4, 0, Math.PI * 2, 0, Math.PI / 2);
+  const parts: THREE.BufferGeometry[] = [column(0.42, 6.4), dome(0.42).translate(0, 6.4, 0)];
+  for (const [side, at, tall] of [[1, 2.5, 2.8], [-1, 3.4, 2.1]] as [number, number, number][]) {
+    parts.push(new THREE.TorusGeometry(0.75, 0.24, 6, 6, Math.PI / 2).rotateZ(Math.PI).rotateY(side > 0 ? 0 : Math.PI).translate(side * 0.75, at + 0.75, 0));
+    parts.push(column(0.26, tall).translate(side * 1.5, at + 0.75, 0));
+    parts.push(dome(0.26).translate(side * 1.5, at + 0.75 + tall, 0));
   }
-  return mergeGeometries(parts)!;
+  return mergeGeometries(parts.map((g) => g.toNonIndexed()))!;
 }
 
 /** Atardecer en la Puna: cerros de colores, cardones y la ruta sola. */
 export const puna: Theme = {
   name: 'Puna',
-  exposure: 1.05,
+  exposure: 0.95,
+  layout: [
+    [0, 0, 0], [140, 2, -20], [260, 8, 30], [300, 16, 140], [230, 24, 220], [130, 28, 200], [90, 30, 260], [170, 34, 330],
+    [110, 38, 400], [0, 36, 380], [-90, 30, 300], [-60, 24, 200], [-150, 16, 150], [-230, 8, 60], [-180, 2, -30], [-90, 0, -20],
+  ],
+  half: 6.5,
+  start: 820,
+  bloom: [0.22, 0.6, 1.5],
   cars: [
-    { paint: 0xf1ede6, accent: 0x111111 },
+    { paint: 0xd6d2c8, accent: 0xb3261e },
     { paint: 0xb3261e, accent: 0xf1ede6 },
-    { paint: 0x111111, accent: 0xe4a32b },
-    { paint: 0x1f4e5f, accent: 0xe4a32b },
+    { paint: 0x141414, accent: 0xe4a32b },
+    { paint: 0x1f5a6e, accent: 0xe4a32b },
     { paint: 0xe4a32b, accent: 0x111111 },
     { paint: 0x4a2b6b, accent: 0xf1ede6 },
   ],
-  build({ scene, track, anisotropy }: Stage): THREE.Scene {
-    scene.fog = new THREE.FogExp2(0xe9966c, 0.00072);
+  build({ scene, track, anisotropy }: Stage): World {
+    scene.fog = new THREE.FogExp2(0xdca88c, 0.00052);
     const sky = skyDome({
-      top: 0x18204f, horizon: 0xffa25e, ground: 0x8a4a34, sun: SUN, sunColor: 0xffd49a, curve: 0.55,
-      clouds: { dark: 0x5a3f74, lit: 0xff9a5e, cover: 0.4 },
+      top: 0x3f63b4, horizon: 0xf6b98a, ground: 0x9a6248, sun: SUN, sunColor: 0xffe2b4, curve: 0.5, gain: 1.25,
+      clouds: { dark: 0xa08aa8, lit: 0xffc896, cover: 0.27 },
     });
     scene.add(sky);
+    // El disco del sol pasa de 1 para que el resplandor lo encuentre.
+    const disc = new THREE.Mesh(new THREE.CircleGeometry(26, 24), new THREE.MeshBasicMaterial({ color: new THREE.Color(0xffd9a0).multiplyScalar(9), fog: false }));
+    disc.position.copy(SUN).multiplyScalar(1450);
+    disc.lookAt(0, 0, 0);
+    const sunGroup = new THREE.Group();
+    sunGroup.name = 'sky';
+    sunGroup.add(disc);
+    scene.add(sunGroup);
 
-    scene.add(new THREE.HemisphereLight(0xa79ae0, 0x8a4326, 1.7));
-    const sun = new THREE.DirectionalLight(0xffa860, 3.6);
-    sun.position.copy(SUN).multiplyScalar(100);
+    scene.add(new THREE.HemisphereLight(0xa9bcf0, 0xa8683e, 1.7));
+    const sun = new THREE.DirectionalLight(0xffc48c, 4.2);
+    sun.position.copy(SUN);
     scene.add(sun);
 
-    // Asfalto algo liso: con el sol tan bajo devuelve un brillo largo hacia la cámara.
     scene.add(new THREE.Mesh(
       ribbon(track, track.half, 0, -track.half, 0),
-      new THREE.MeshStandardMaterial({ map: roadTexture({ base: 0x3d3835, grain: 0.1, edge: 0xf1ede6, dash: 0xe4a32b, period: 32, width: track.half * 2 }, anisotropy), roughness: 0.5, metalness: 0, envMapIntensity: 0.5 }),
+      new THREE.MeshStandardMaterial({ map: roadTexture({ base: 0x3a3836, grain: 0.12, edge: 0xf1ede6, dash: 0xe4a32b, period: 32, width: track.half * 2 }, anisotropy), roughness: 0.62, metalness: 0, envMapIntensity: 0.55 }),
     ));
-    scene.add(embankment(track, new THREE.MeshLambertMaterial({ color: 0xa87352 }), new THREE.MeshLambertMaterial({ color: 0x9a5f40 }), 2.6, 12, DROP + 0.6));
-
-    // Guardarraíl del lado de afuera y mojones del lado de adentro.
-    const rail = new THREE.MeshStandardMaterial({ color: 0xb9b4aa, metalness: 0.8, roughness: 0.45, side: THREE.DoubleSide });
-    scene.add(new THREE.Mesh(ribbon(track, track.half + 1.2, 0.85, track.half + 1.2, 0.4), rail));
+    const grit = gravel(4, anisotropy);
+    const shoulder = new THREE.MeshLambertMaterial({ color: 0xb58a68, map: grit });
+    const slope = new THREE.MeshLambertMaterial({ color: 0xa87352, map: grit });
+    scene.add(embankment(track, shoulder, slope, 2.8, 12, DROP + 0.6));
     const kerb = new THREE.MeshLambertMaterial({ map: stripes(0xb3261e, 0xf1ede6, 4) });
     scene.add(new THREE.Mesh(ribbon(track, -track.half + 0.05, 0.015, -track.half - 0.9, 0.05), kerb));
+    scene.add(new THREE.Mesh(ribbon(track, track.half + 0.9, 0.05, track.half - 0.05, 0.015), kerb));
 
-    const sand = new THREE.Color(0xb9764c), red = new THREE.Color(0x8f3f2a), pale = new THREE.Color(0xd9a878), tint = new THREE.Color();
+    // Guardarraíl con sus postes del lado de afuera.
+    const steel = new THREE.MeshStandardMaterial({ color: 0xc4c0b8, metalness: 0.85, roughness: 0.4, side: THREE.DoubleSide });
+    const rail = new THREE.Mesh(ribbon(track, track.half + 1.6, 0.82, track.half + 1.6, 0.46), steel);
+    const posts = along(track, new THREE.BoxGeometry(0.1, 0.9, 0.12).translate(0, 0.4, 0), steel, 4, track.half + 1.68);
+    rail.castShadow = posts.castShadow = true;
+    scene.add(rail, posts);
+
+    // Postes de luz de madera con su cable, del lado de adentro.
+    const wood = new THREE.MeshLambertMaterial({ color: 0x4a3324 });
+    const pole = mergeGeometries([new THREE.CylinderGeometry(0.11, 0.15, 9, 6).translate(0, 4.5, 0), new THREE.BoxGeometry(2.2, 0.14, 0.14).translate(0, 8.3, 0)])!;
+    const poles = along(track, pole, wood, 46, -track.half - 6.5);
+    poles.castShadow = true;
+    scene.add(poles);
+    for (const side of [-1, 1]) scene.add(wires(track, 46, -track.half - 6.5 + side, 8.4, 0.9, 0x241a14));
+
+    // Flechas en las curvas, del lado de afuera, mirando al que llega.
+    const arrow = new THREE.MeshBasicMaterial({ map: label('›››', 0x111111, 0xe4a32b, 128, 64), side: THREE.DoubleSide });
+    for (const turn of [1, -1]) {
+      const board = new THREE.PlaneGeometry(2.4, 1.2).rotateY(Math.PI).translate(0, 1.5, 0);
+      if (turn > 0) board.scale(-1, 1, 1);
+      const boards = along(track, board, arrow, 9, -turn * (track.half + 3.4), (s) => bend(track, s) * turn > 0.5);
+      boards.castShadow = true;
+      scene.add(boards);
+    }
+
+    const sand = new THREE.Color(0xc08a5e), dust = new THREE.Color(0xd8b088), tint = new THREE.Color(), band = new THREE.Color();
     const land = ground(track, {
-      center: [25, 120], size: 1900, segments: 190, relief: 46, flat: 26, scale: 0.006, seed: 11,
-      material: new THREE.MeshLambertMaterial({ vertexColors: true }),
-      color: (h, x, z) => tint.copy(sand).lerp(red, Math.min(1, Math.max(0, h / 40))).lerp(pale, fbm(x * 0.03, z * 0.03, 3, 5) * 0.7),
+      center: track.center, size: 3600, segments: 230, focus: 1.7, tile: 14, relief: 250, flat: 34, ramp: 520, scale: 0.0042, seed: 11,
+      material: new THREE.MeshLambertMaterial({ vertexColors: true, map: grit }),
+      color: (h, x, z) => {
+        // Abajo arena; hacia arriba aparecen los estratos, ondulados por el ruido.
+        const level = (h + 26 * fbm(x * 0.004, z * 0.004, 3, 7)) / 13;
+        const i = Math.floor(level), f = level - i;
+        band.copy(STRATA[((i % STRATA.length) + STRATA.length) % STRATA.length]).lerp(STRATA[(((i + 1) % STRATA.length) + STRATA.length) % STRATA.length], Math.max(0, (f - 0.75) * 4));
+        const high = Math.min(1, Math.max(0, (h - 2) / 26));
+        return tint.copy(sand).lerp(dust, fbm(x * 0.02, z * 0.02, 3, 5)).lerp(band, high * 0.92);
+      },
     });
     scene.add(land.mesh);
 
-    // Los cerros de colores, en dos cordones: el de atrás, más alto y ya metido en la bruma.
-    const near = strata([0x7a3626, 0xb5532f, 0xd98a4a, 0xe9c08a, 0x8a4a6b, 0x5f7a5a, 0xc96a3a, 0xa8482e], 5);
-    const far = strata([0x4a2f55, 0x6a3c62, 0x93506a, 0xb0646c], 9);
-    near.anisotropy = far.anisotropy = anisotropy;
-    scene.add(ridge({ center: [25, 120], radius: 600, height: 170, base: -24, seed: 3, map: near, repeat: 7, jagged: 1.6, shade: 1.0 }));
-    scene.add(ridge({ center: [25, 120], radius: 880, height: 330, base: -30, seed: 8, map: far, repeat: 5, jagged: 1.1, shade: 0.9 }));
+    // Un cordón lejano, ya metido en la bruma, cierra el horizonte.
+    scene.add(ridge({ center: track.center, radius: 2300, height: 640, base: -40, seed: 8, map: gradient(0x8a6a8e, 0xb98a8a), repeat: 1, jagged: 1.3, shade: 1 }));
 
     const rand = rng(21);
     const dummy = new THREE.Object3D();
-    const spots: [number, number, number][] = [];
-    while (spots.length < 260) {
-      const x = 25 + (rand() - 0.5) * 700, z = 120 + (rand() - 0.5) * 700;
-      const d = land.distanceAt(x, z);
-      if (d > track.half + 7 && d < 190 && rand() < 1.15 - d / 190) spots.push([x, land.heightAt(x, z), z]);
-    }
-    const cacti = new THREE.InstancedMesh(cardon(), new THREE.MeshLambertMaterial({ color: 0x4f6a3a }), 110);
-    const rocks = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 0), new THREE.MeshLambertMaterial({ color: 0x8a4a34, flatShading: true }), 150);
-    spots.forEach(([x, y, z], i) => {
-      dummy.position.set(x, y - 0.2, z);
-      dummy.rotation.set(0, rand() * 6.28, 0);
-      if (i < 110) {
-        dummy.scale.setScalar(0.7 + rand() * 0.9);
-        dummy.updateMatrix();
-        cacti.setMatrixAt(i, dummy.matrix);
-      } else {
-        dummy.scale.set(0.6 + rand() * 2.4, 0.4 + rand() * 1.2, 0.6 + rand() * 2.4);
-        dummy.updateMatrix();
-        rocks.setMatrixAt(i - 110, dummy.matrix);
+    const scatter = (count: number, reach: number, near: number, each: (i: number) => void) => {
+      for (let i = 0; i < count;) {
+        const x = track.center[0] + (rand() - 0.5) * reach * 2, z = track.center[1] + (rand() - 0.5) * reach * 2;
+        const d = land.distanceAt(x, z);
+        if (d < near || d > reach * 0.7 || rand() > 1.2 - d / (reach * 0.7)) continue;
+        dummy.position.set(x, land.heightAt(x, z) - 0.15, z);
+        dummy.rotation.set(0, rand() * 6.28, 0);
+        each(i++);
       }
+    };
+    const cacti = new THREE.InstancedMesh(cardon(), new THREE.MeshLambertMaterial({ color: 0x5a7440 }), 170);
+    scatter(170, 420, track.half + 8, (i) => {
+      dummy.scale.setScalar(0.6 + rand() * 0.9);
+      dummy.updateMatrix();
+      cacti.setMatrixAt(i, dummy.matrix);
     });
-    scene.add(cacti, rocks);
+    cacti.castShadow = true;
+    // Tolas y pastos duros: matas bajas que le dan escala al suelo.
+    const bushes = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 6, 4), new THREE.MeshLambertMaterial(), 1000);
+    scatter(1000, 380, track.half + 3.5, (i) => {
+      const w = 0.5 + rand() * 1.1;
+      dummy.scale.set(w, w * (0.45 + rand() * 0.4), w);
+      dummy.updateMatrix();
+      bushes.setMatrixAt(i, dummy.matrix);
+      bushes.setColorAt(i, rand() < 0.6 ? tint.setHSL(0.1 + rand() * 0.03, 0.5, 0.2 + rand() * 0.1) : tint.setHSL(0.2 + rand() * 0.08, 0.3, 0.07 + rand() * 0.06));
+    });
+    const rocks = new THREE.InstancedMesh(new THREE.DodecahedronGeometry(1, 0), new THREE.MeshLambertMaterial({ flatShading: true }), 260);
+    scatter(260, 420, track.half + 4, (i) => {
+      dummy.rotation.set(rand() * 3, rand() * 6.28, rand() * 3);
+      dummy.scale.set(0.5 + rand() * 2.6, 0.4 + rand() * 1.4, 0.5 + rand() * 2.6);
+      dummy.updateMatrix();
+      rocks.setMatrixAt(i, dummy.matrix);
+      rocks.setColorAt(i, tint.setHSL(0.04 + rand() * 0.04, 0.4, 0.2 + rand() * 0.14));
+    });
+    rocks.castShadow = true;
+    scene.add(cacti, bushes, rocks);
 
-    return envFrom(sky);
+    return { env: envFrom(sky), sun, shadowRange: 60 };
   },
 };

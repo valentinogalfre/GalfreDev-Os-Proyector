@@ -5,6 +5,9 @@ export interface Track {
   n: number;
   length: number;
   half: number;
+  /** Centro y radio del rectángulo que encierra el trazado, vistos desde arriba. */
+  center: [number, number];
+  radius: number;
   pos: THREE.Vector3[];
   tan: THREE.Vector3[];
   left: THREE.Vector3[];
@@ -24,7 +27,10 @@ export function buildTrack(points: [number, number, number][], half: number): Tr
     tan.push(t);
     left.push(new THREE.Vector3().crossVectors(up, t).normalize());
   }
-  return { n, length, half, pos, tan, left };
+  const box = new THREE.Box3().setFromPoints(pos);
+  const center: [number, number] = [(box.min.x + box.max.x) / 2, (box.min.z + box.max.z) / 2];
+  const radius = Math.hypot(box.max.x - box.min.x, box.max.z - box.min.z) / 2;
+  return { n, length, half, center, radius, pos, tan, left };
 }
 
 /** Una cinta a lo largo de la pista entre dos desplazamientos laterales. La v del UV va en metros. */

@@ -10,6 +10,8 @@ export interface SkyLook {
   sunColor?: number;
   /** Cuánto se abre el resplandor del horizonte hacia arriba: más chico, más alto. */
   curve?: number;
+  /** Brillo del cielo, para compensar lo que el tono final le quita. */
+  gain?: number;
   /** Nubes: color a la sombra, color encendido y cuánto cielo cubren (0 a 1). */
   clouds?: { dark: number; lit: number; cover: number };
 }
@@ -25,10 +27,12 @@ export function skyDome(look: SkyLook): THREE.Mesh {
   canvas.height = H;
   const g = canvas.getContext('2d')!;
   const img = g.createImageData(W, H);
-  const top = new THREE.Color(look.top), horizon = new THREE.Color(look.horizon), low = new THREE.Color(look.ground);
-  const sunColor = new THREE.Color(look.sunColor ?? 0x000000);
+  // Los colores se mezclan tal como se escriben, sin pasar a lineal: el lienzo ya es sRGB.
+  const raw = (hex: number) => new THREE.Color().setHex(hex, THREE.LinearSRGBColorSpace);
+  const top = raw(look.top), horizon = raw(look.horizon), low = raw(look.ground);
+  const sunColor = raw(look.sunColor ?? 0x000000);
   const sun = (look.sun ?? new THREE.Vector3(0, -1, 0)).clone().normalize();
-  const dark = new THREE.Color(look.clouds?.dark ?? 0), lit = new THREE.Color(look.clouds?.lit ?? 0);
+  const dark = raw(look.clouds?.dark ?? 0), lit = raw(look.clouds?.lit ?? 0);
   const curve = look.curve ?? 0.45;
   const c = new THREE.Color(), cloud = new THREE.Color();
   for (let py = 0; py < H; py++) {
@@ -63,11 +67,11 @@ export function skyDome(look: SkyLook): THREE.Mesh {
   map.wrapS = THREE.RepeatWrapping;
   const mesh = new THREE.Mesh(
     new THREE.SphereGeometry(1500, 48, 24),
-    new THREE.MeshBasicMaterial({ map, side: THREE.BackSide, depthWrite: false, fog: false, toneMapped: false }),
+    new THREE.MeshBasicMaterial({ map, color: new THREE.Color().setScalar(look.gain ?? 1), side: THREE.BackSide, depthWrite: false, fog: false }),
   );
   mesh.name = 'sky';
   mesh.frustumCulled = false;
-  if (look.sun) mesh.userData.sun = { dir: sun, color: sunColor };
+  if (look.sun) mesh.userData.sun = { dir: sun, color: new THREE.Color(look.sunColor ?? 0xffffff) };
   return mesh;
 }
 
@@ -106,6 +110,12 @@ export interface GroundLook {
   /** Altura máxima del relieve y a qué distancia de la pista empieza. */
   relief: number;
   flat: number;
+  /** En cuántos metros pasa de llano a cerro. */
+  ramp?: number;
+  /** Cuánto se aprieta la malla hacia el centro: 1 es pareja, más es más fina cerca de la pista. */
+  focus?: number;
+  /** Metros que cubre una repetición de la textura. */
+  tile?: number;
   scale: number;
   seed: number;
   material: THREE.Material;
@@ -128,20 +138,24 @@ export function ground(track: Track, look: GroundLook): Ground {
   };
   const heightAt = (x: number, z: number): number => {
     const [y, dist] = sample(x, z);
-    const rise = smooth(look.flat, look.flat + 140, dist);
-    const hills = fbm(x * look.scale, z * look.scale, 5, look.seed);
-    return y - DROP + look.relief * rise * Math.pow(hills, 1.6) * 2.2;
+    const rise = smooth(look.flat, look.flat + (look.ramp ?? 140), dist);
+    // Ruido plegado: da filos y quebradas en vez de lomas redondas.
+    const folded = 1 - Math.abs(fbm(x * look.scale, z * look.scale, 5, look.seed) * 2 - 1);
+    const hills = 0.6 * folded * folded + 0.4 * fbm(x * look.scale * 0.4 + 40, z * look.scale * 0.4, 3, look.seed + 3);
+    return y - DROP + look.relief * rise * hills + (rise > 0 ? 1.2 * fbm(x * 0.05, z * 0.05, 3, look.seed + 9) * Math.min(1, dist / 40) : 0);
   };
   const g = new THREE.PlaneGeometry(look.size, look.size, look.segments, look.segments).rotateX(-Math.PI / 2);
-  g.translate(look.center[0], 0, look.center[1]);
   const p = g.attributes.position as THREE.BufferAttribute;
+  const focus = look.focus ?? 1, halfSize = look.size / 2, tile = look.tile ?? 50;
+  const squeeze = (v: number) => Math.sign(v) * Math.pow(Math.abs(v) / halfSize, focus) * halfSize;
+  for (let i = 0; i < p.count; i++) p.setXYZ(i, look.center[0] + squeeze(p.getX(i)), 0, look.center[1] + squeeze(p.getZ(i)));
   const colors = look.color ? new Float32Array(p.count * 3) : null;
   const uv = g.attributes.uv as THREE.BufferAttribute;
   for (let i = 0; i < p.count; i++) {
     const x = p.getX(i), z = p.getZ(i);
     const y = heightAt(x, z);
     p.setY(i, y);
-    uv.setXY(i, x / 50, z / 50);
+    uv.setXY(i, x / tile, z / tile);
     if (colors && look.color) look.color(y, x, z).toArray(colors, i * 3);
   }
   if (colors) g.setAttribute('color', new THREE.BufferAttribute(colors, 3));

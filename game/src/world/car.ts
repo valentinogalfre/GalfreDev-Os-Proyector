@@ -1,62 +1,38 @@
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import fineUrl from '../assets/car.glb?url';
+import liteUrl from '../assets/car-lite.glb?url';
 
-interface Station { z: number; w: number; y0: number; y1: number }
+export interface CarStyle { paint: number; accent: number; underglow?: number }
 
-const RING = 24;
+interface Part { geometry: THREE.BufferGeometry; matrix: THREE.Matrix4; role: string; ao: THREE.Texture | null }
 
-function spow(v: number, e: number): number {
-  return Math.sign(v) * Math.pow(Math.abs(v), e);
-}
+/** Las piezas del modelo, cargadas una vez y compartidas por todos los autos. */
+export interface CarKit { body: Part[]; wheel: Part[]; hub: THREE.Vector3 }
 
-/** Une secciones redondeadas a lo largo del auto. [taper] angosta la parte de arriba. */
-function loft(stations: Station[], exponent: number, taper: number): THREE.BufferGeometry {
-  const p: number[] = [], index: number[] = [];
-  stations.forEach((s) => {
-    const mid = (s.y0 + s.y1) / 2, hh = (s.y1 - s.y0) / 2;
-    for (let k = 0; k < RING; k++) {
-      const a = (k / RING) * Math.PI * 2;
-      const up = Math.max(0, Math.sin(a));
-      p.push(s.w * spow(Math.cos(a), 2 / exponent) * (1 - (1 - taper) * up * up), mid + hh * spow(Math.sin(a), 2 / exponent), s.z);
-    }
+/** Cuánto más atrás va el eje trasero respecto del delantero. */
+const WHEELBASE = 2.8;
+
+/** Carga el modelo completo o, con [fine] en falso, el liviano que apunta al proyector. */
+export async function loadCarKit(fine: boolean): Promise<CarKit> {
+  const gltf = await new GLTFLoader().loadAsync(fine ? fineUrl : liteUrl);
+  gltf.scene.updateMatrixWorld(true);
+  const body: Part[] = [], wheel: Part[] = [];
+  const tyre = new THREE.Box3();
+  gltf.scene.traverse((node) => {
+    const mesh = node as THREE.Mesh;
+    if (!mesh.isMesh) return;
+    const source = mesh.material as THREE.MeshStandardMaterial;
+    const part: Part = { geometry: mesh.geometry, matrix: mesh.matrixWorld.clone(), role: source.name, ao: source.aoMap };
+    if (part.role === 'rim' || part.role === 'tyre') wheel.push(part); else body.push(part);
+    if (part.role === 'tyre') tyre.setFromObject(mesh);
   });
-  for (let i = 0; i < stations.length - 1; i++) {
-    for (let k = 0; k < RING; k++) {
-      const a = i * RING + k, b = i * RING + ((k + 1) % RING), c = a + RING, d = b + RING;
-      index.push(a, b, c, b, d, c);
-    }
-  }
-  for (const [at, flip] of [[0, false], [stations.length - 1, true]] as [number, boolean][]) {
-    const s = stations[at], center = p.length / 3;
-    p.push(0, (s.y0 + s.y1) / 2, s.z);
-    for (let k = 0; k < RING; k++) {
-      const a = at * RING + k, b = at * RING + ((k + 1) % RING);
-      if (flip) index.push(center, a, b); else index.push(center, b, a);
-    }
-  }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(p, 3));
-  g.setIndex(index);
-  g.computeVertexNormals();
-  return g;
+  const hub = tyre.getCenter(new THREE.Vector3());
+  // La rueda queda centrada en su eje para poder girarla y repetirla en las cuatro esquinas.
+  const recenter = new THREE.Matrix4().makeTranslation(-hub.x, -hub.y, -hub.z);
+  wheel.forEach((part) => part.matrix.premultiply(recenter));
+  return { body, wheel, hub };
 }
-
-const HULL: Station[] = [
-  { z: -2.2, w: 0.74, y0: 0.4, y1: 0.8 },
-  { z: -1.95, w: 0.93, y0: 0.26, y1: 0.93 },
-  { z: -1.0, w: 0.97, y0: 0.2, y1: 0.9 },
-  { z: 0.0, w: 0.97, y0: 0.2, y1: 0.82 },
-  { z: 1.0, w: 0.96, y0: 0.2, y1: 0.74 },
-  { z: 1.85, w: 0.9, y0: 0.22, y1: 0.63 },
-  { z: 2.2, w: 0.7, y0: 0.3, y1: 0.5 },
-];
-
-const CABIN: Station[] = [
-  { z: -1.8, w: 0.6, y0: 0.8, y1: 0.88 },
-  { z: -1.0, w: 0.76, y0: 0.8, y1: 1.17 },
-  { z: -0.2, w: 0.78, y0: 0.78, y1: 1.23 },
-  { z: 0.5, w: 0.76, y0: 0.74, y1: 1.1 },
-  { z: 1.2, w: 0.66, y0: 0.68, y1: 0.76 },
-];
 
 let glowTexture: THREE.Texture | null = null;
 
@@ -81,78 +57,86 @@ export function halo(color: number, size: number, opacity = 1): THREE.Sprite {
   return s;
 }
 
-export interface CarStyle { paint: number; accent: number; underglow?: number }
+const shared = new Map<string, THREE.Material>();
 
-/** Un cupé armado con código: mira hacia +Z y apoya las ruedas en y = 0. */
-export function buildCar(style: CarStyle): THREE.Group {
+/** Los materiales que no cambian de un auto a otro se crean una sola vez. */
+function common(role: string, ao: THREE.Texture | null): THREE.Material {
+  let material = shared.get(role);
+  if (material) return material;
+  const lit = (color: number, metalness: number, roughness: number, envMapIntensity = 1) =>
+    new THREE.MeshStandardMaterial({ color, metalness, roughness, envMapIntensity, aoMap: ao });
+  // Las luces pasan de 1 a propósito: es lo que hace que el resplandor las encuentre.
+  const lamp = (color: number, gain: number) => new THREE.MeshBasicMaterial({ color: new THREE.Color(color).multiplyScalar(gain), fog: false });
+  switch (role) {
+    case 'trim': material = lit(0x0d0d0e, 0.7, 0.32, 1.2); break;
+    case 'glass': material = lit(0x040506, 1, 0.06, 1.5); break;
+    case 'rim': material = lit(0x8f9399, 1, 0.28, 1.3); break;
+    case 'tyre': material = lit(0x0b0b0b, 0, 0.85); break;
+    case 'tail': material = lamp(0xff1a0a, 8); break;
+    case 'head': material = lamp(0xfff0d8, 4); break;
+    case 'signal': material = lit(0x3a1400, 0, 0.3); break;
+    default: material = lit(0x080808, 0.1, 0.8);
+  }
+  shared.set(role, material);
+  return material;
+}
+
+/** Un auto listo para la pista: mira hacia +Z y apoya las ruedas en y = 0. */
+export function buildCar(kit: CarKit, style: CarStyle, fine: boolean, night: boolean): THREE.Group {
   const car = new THREE.Group();
-  const paint = new THREE.MeshStandardMaterial({ color: style.paint, metalness: 0.55, roughness: 0.28, envMapIntensity: 1.3 });
-  const glass = new THREE.MeshStandardMaterial({ color: 0x06080a, metalness: 0.9, roughness: 0.08, envMapIntensity: 1.6 });
-  const dark = new THREE.MeshStandardMaterial({ color: 0x0b0b0b, metalness: 0.2, roughness: 0.7 });
-  const rim = new THREE.MeshStandardMaterial({ color: 0xbfc3c7, metalness: 0.9, roughness: 0.3 });
+  const ao = kit.body.find((part) => part.role === 'paint')?.ao ?? null;
+  const paint = fine
+    ? new THREE.MeshPhysicalMaterial({ color: style.paint, metalness: 0.4, roughness: 0.5, clearcoat: 1, clearcoatRoughness: 0.05, aoMap: ao, envMapIntensity: 1.0 })
+    : new THREE.MeshStandardMaterial({ color: style.paint, metalness: 0.5, roughness: 0.3, aoMap: ao, envMapIntensity: 1.0 });
+  const caliper = new THREE.MeshStandardMaterial({ color: style.accent, metalness: 0.3, roughness: 0.5 });
+  const pick = (part: Part) => (part.role === 'paint' ? paint : part.role === 'caliper' ? caliper : common(part.role, part.ao));
+  const mesh = (part: Part) => {
+    const m = new THREE.Mesh(part.geometry, pick(part));
+    part.matrix.decompose(m.position, m.quaternion, m.scale);
+    m.castShadow = part.role !== 'glass';
+    return m;
+  };
+  kit.body.forEach((part) => car.add(mesh(part)));
 
-  car.add(new THREE.Mesh(loft(HULL, 3.4, 0.84), paint));
-  car.add(new THREE.Mesh(loft(CABIN, 2.6, 0.72), glass));
-
-  const tyre = new THREE.CylinderGeometry(0.35, 0.35, 0.28, 20).rotateZ(Math.PI / 2);
-  const disc = new THREE.CylinderGeometry(0.22, 0.22, 0.29, 10).rotateZ(Math.PI / 2);
-  for (const x of [-0.86, 0.86]) for (const z of [-1.38, 1.36]) {
-    const wheel = new THREE.Group();
-    wheel.add(new THREE.Mesh(tyre, dark), new THREE.Mesh(disc, rim));
-    wheel.position.set(x, 0.35, z);
-    wheel.name = 'wheel';
-    car.add(wheel);
+  const wheels: THREE.Object3D[] = [];
+  for (const side of [1, -1]) for (const z of [kit.hub.z, kit.hub.z - WHEELBASE]) {
+    const mount = new THREE.Group(), spin = new THREE.Group();
+    mount.position.set(kit.hub.x * side, kit.hub.y, z);
+    mount.rotation.y = side > 0 ? 0 : Math.PI;
+    spin.userData.dir = side;
+    kit.wheel.forEach((part) => spin.add(mesh(part)));
+    mount.add(spin);
+    car.add(mount);
+    wheels.push(spin);
   }
+  car.userData.wheels = wheels;
 
-  const wing = new THREE.Mesh(new THREE.BoxGeometry(1.62, 0.04, 0.34), dark);
-  wing.position.set(0, 1.06, -2.02);
-  car.add(wing);
-  for (const x of [-0.55, 0.55]) {
-    const post = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.2, 0.16), dark);
-    post.position.set(x, 0.95, -2.0);
-    car.add(post);
+  const flat = (w: number, l: number, color: number, opacity: number, additive: boolean) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, l), new THREE.MeshBasicMaterial({
+      map: glow(), color, transparent: true, opacity, depthWrite: false, blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending,
+    }));
+    m.rotation.x = -Math.PI / 2;
+    return m;
+  };
+  // Sombra de contacto: una mancha bajo el auto que no depende del mapa de sombras.
+  const shadow = flat(3.3, 6.2, 0x000000, 0.8, false);
+  shadow.position.set(0, 0.02, -0.1);
+  car.add(shadow);
+  // De noche, el charco de luz de los faros sobre el asfalto.
+  if (night) {
+    const beam = flat(4.6, 11, 0xffe2b0, 0.28, true);
+    beam.position.set(0, 0.05, 7.2);
+    car.add(beam);
   }
-  const splitter = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.04, 0.5), dark);
-  splitter.position.set(0, 0.2, 2.02);
-  car.add(splitter);
-
-  const sill = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.16, 3.0), dark);
-  sill.position.set(0, 0.24, 0);
-  const diffuser = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.2, 0.3), dark);
-  diffuser.position.set(0, 0.36, -2.1);
-  car.add(sill, diffuser);
-
-  const tail = new THREE.Mesh(new THREE.BoxGeometry(1.42, 0.07, 0.05), new THREE.MeshBasicMaterial({ color: 0xff2a1a, fog: false }));
-  tail.position.set(0, 0.72, -2.2);
-  car.add(tail);
-  for (const x of [-0.56, 0.56]) {
-    const h = halo(0xff2010, 0.95, 0.55);
-    h.position.set(x, 0.72, -2.26);
-    car.add(h);
-    const lamp = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.06, 0.05), new THREE.MeshBasicMaterial({ color: 0xfff4dc, fog: false }));
-    lamp.position.set(x * 1.05, 0.53, 2.17);
-    car.add(lamp);
-  }
-  // El charco de luz de los faros sobre el asfalto.
-  const beam = new THREE.Mesh(new THREE.PlaneGeometry(4.4, 11), new THREE.MeshBasicMaterial({ map: glow(), color: 0xffe2b0, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.3 }));
-  beam.rotation.x = -Math.PI / 2;
-  beam.position.set(0, 0.05, 6.4);
-  car.add(beam);
-  const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.012, 1.3), new THREE.MeshBasicMaterial({ color: style.accent }));
-  stripe.position.set(0, 0.795, 1.45);
-  stripe.rotation.x = 0.105;
-  car.add(stripe);
-
   if (style.underglow !== undefined) {
-    const under = new THREE.Mesh(new THREE.PlaneGeometry(5.6, 8.6), new THREE.MeshBasicMaterial({ map: glow(), color: style.underglow, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.9 }));
-    under.rotation.x = -Math.PI / 2;
+    const under = flat(5.8, 9, style.underglow, 0.9, true);
     under.position.y = 0.045;
     car.add(under);
   }
-  // Sombra de contacto: una mancha bajo el auto, sin mapa de sombras.
-  const shadow = new THREE.Mesh(new THREE.PlaneGeometry(2.9, 5.4), new THREE.MeshBasicMaterial({ map: glow(), color: 0x000000, transparent: true, opacity: 0.85, depthWrite: false }));
-  shadow.rotation.x = -Math.PI / 2;
-  shadow.position.y = 0.02;
-  car.add(shadow);
   return car;
+}
+
+/** Hace girar las ruedas según lo recorrido. */
+export function roll(car: THREE.Group, metres: number): void {
+  for (const wheel of car.userData.wheels as THREE.Object3D[]) wheel.rotation.x = (metres / 0.38) * wheel.userData.dir;
 }

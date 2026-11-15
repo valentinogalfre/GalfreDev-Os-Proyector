@@ -87,7 +87,8 @@ export function wetTexture(period: number, anisotropy: number): THREE.Texture {
   const img = g.createImageData(S, S);
   for (let i = 0; i < S * S; i++) {
     const n = a[i] * 0.6 + b[i] * 0.4;
-    const rough = 0.2 + 0.16 * Math.min(1, Math.max(0, (n - 0.4) * 3));
+    const k = Math.min(1, Math.max(0, (n - 0.4) * 2.6));
+    const rough = 0.11 + 0.17 * k * k * (3 - 2 * k);
     img.data.set([255, rough * 255, 0, 255], i * 4);
   }
   g.putImageData(img, 0, 0);
@@ -125,22 +126,40 @@ export function fade(): THREE.Texture {
   return new THREE.CanvasTexture(c);
 }
 
-/** Fachada de noche: una grilla de ventanas, pocas prendidas. */
-export function windows(seed: number): THREE.Texture {
+/** Fachada de noche. Tres tipos: oficinas en grilla, pisos corridos de vidrio y viviendas con pocas luces. */
+export function windows(seed: number, kind: 'grid' | 'bands' | 'homes'): THREE.Texture {
   const cell = 32, cols = 8, rows = 16;
   const [c, g] = canvas(cols * cell, rows * cell);
   const rand = rng(seed);
-  g.fillStyle = '#06060b';
+  g.fillStyle = '#080a12';
   g.fillRect(0, 0, c.width, c.height);
-  const lit = ['#ffd9a0', '#ffe9c8', '#9fd8ff', '#ff7ad9', '#fff1d6', '#ffd9a0'];
+  // Los parantes de la fachada: apenas más claros, para que la torre tenga forma aunque esté apagada.
+  g.fillStyle = '#121624';
+  for (let k = 0; k <= cols; k++) g.fillRect(k * cell - 1, 0, 2, c.height);
+  const cool = ['#cfe6ff', '#9fd8ff', '#e8f2ff', '#7fd0ff'], warm = ['#ffd9a0', '#ffe9c8', '#ffc078', '#ff9ad0'];
   for (let r = 0; r < rows; r++) {
-    // Algunos pisos enteros prendidos, como oficinas.
-    const floor = rand() < 0.12;
+    const y = r * cell;
+    if (kind === 'bands') {
+      // Pisos enteros de vidrio: algunos prendidos de punta a punta, otros por tramos.
+      const on = rand();
+      g.fillStyle = '#0d111d';
+      g.fillRect(0, y + 9, c.width, 16);
+      if (on < 0.45) {
+        const from = on < 0.2 ? 0 : Math.floor(rand() * cols), to = on < 0.2 ? cols : Math.min(cols, from + 1 + Math.floor(rand() * 5));
+        g.globalAlpha = 0.45 + rand() * 0.55;
+        g.fillStyle = cool[Math.floor(rand() * cool.length)];
+        g.fillRect(from * cell + 2, y + 9, (to - from) * cell - 4, 16);
+        g.globalAlpha = 1;
+      }
+      continue;
+    }
+    const office = kind === 'grid' && rand() < 0.16;
     for (let k = 0; k < cols; k++) {
-      const on = rand() < (floor ? 0.85 : 0.2);
-      g.globalAlpha = on ? 0.35 + rand() * 0.65 : 1;
-      g.fillStyle = on ? lit[Math.floor(rand() * lit.length)] : '#0b0c14';
-      g.fillRect(k * cell + 7, r * cell + 8, 18, 15);
+      const on = rand() < (office ? 0.9 : kind === 'grid' ? 0.26 : 0.16);
+      const tones = kind === 'homes' || rand() < 0.2 ? warm : cool;
+      g.globalAlpha = on ? 0.4 + rand() * 0.6 : 1;
+      g.fillStyle = on ? tones[Math.floor(rand() * tones.length)] : '#0c0f1a';
+      if (kind === 'homes') g.fillRect(k * cell + 9, y + 9, 13, 15); else g.fillRect(k * cell + 5, y + 7, 22, 18);
     }
   }
   g.globalAlpha = 1;
@@ -183,7 +202,12 @@ export function label(text: string, ink: number, block: number | null, w = 256, 
     g.fillRect(0, 0, w, h);
   }
   g.fillStyle = css(ink);
-  g.font = `800 ${Math.round(h * 0.68)}px Archivo, system-ui, sans-serif`;
+  let size = Math.round(h * 0.68);
+  g.font = `800 ${size}px Archivo, system-ui, sans-serif`;
+  // Si el texto no entra a lo ancho, se achica hasta que entre.
+  const wide = g.measureText(text).width;
+  if (wide > w * 0.88) size = Math.floor((size * w * 0.88) / wide);
+  g.font = `800 ${size}px Archivo, system-ui, sans-serif`;
   g.textAlign = 'center';
   g.textBaseline = 'middle';
   g.fillText(text, w / 2, h * 0.54);
@@ -216,5 +240,43 @@ export function strata(bands: number[], seed: number): THREE.Texture {
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   t.wrapS = THREE.RepeatWrapping;
+  return t;
+}
+
+/** Un degradé vertical de dos colores, para laderas lejanas ya metidas en la bruma. */
+export function gradient(top: number, bottom: number): THREE.Texture {
+  const [c, g] = canvas(4, 64);
+  const grad = g.createLinearGradient(0, 0, 0, 64);
+  grad.addColorStop(0, css(top));
+  grad.addColorStop(1, css(bottom));
+  g.fillStyle = grad;
+  g.fillRect(0, 0, 4, 64);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = THREE.RepeatWrapping;
+  return t;
+}
+
+/** Pedregullo: manchas claras y oscuras sobre gris medio, para multiplicar sobre el color del suelo. */
+export function gravel(seed: number, anisotropy: number): THREE.Texture {
+  const S = 256;
+  const [c, g] = canvas(S, S);
+  const rand = rng(seed);
+  const soft = tileNoise(S, 9, seed);
+  const img = g.createImageData(S, S);
+  for (let i = 0; i < S * S; i++) {
+    const v = 215 + (soft[i] - 0.5) * 40 + (rand() - 0.5) * 34;
+    img.data.set([v, v, v, 255], i * 4);
+  }
+  g.putImageData(img, 0, 0);
+  for (let k = 0; k < 260; k++) {
+    const x = rand() * S, y = rand() * S, r = 0.6 + rand() * rand() * 3.4;
+    g.fillStyle = rand() < 0.5 ? 'rgba(70,60,55,.5)' : 'rgba(255,250,240,.6)';
+    for (const dx of [-S, 0, S]) for (const dy of [-S, 0, S]) { g.beginPath(); g.ellipse(x + dx, y + dy, r, r * (0.5 + rand() * 0.5), rand() * 3, 0, 6.3); g.fill(); }
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.anisotropy = anisotropy;
   return t;
 }
