@@ -43,6 +43,7 @@ export const puna: Theme = {
     [110, 38, 400], [0, 36, 380], [-90, 30, 300], [-60, 24, 200], [-150, 16, 150], [-230, 8, 60], [-180, 2, -30], [-90, 0, -20],
   ],
   half: 6.5,
+  wall: 12,
   start: 820,
   grade: { bloom: [0.35, 0.6, 1.25], vignette: 0.5, speed: 0.11 },
   spray: { color: 0xc9a27e, opacity: 0.2, size: 2.6, additive: false },
@@ -82,32 +83,32 @@ export const puna: Theme = {
     const grit = gravel(4, anisotropy);
     const shoulder = new THREE.MeshLambertMaterial({ color: 0xb58a68, map: grit });
     const slope = new THREE.MeshLambertMaterial({ color: 0xa87352, map: grit });
-    scene.add(embankment(track, shoulder, slope, 2.8, 12, DROP + 0.6));
+    scene.add(embankment(track, shoulder, slope, 7.6, 16, DROP + 0.6));
     const kerb = new THREE.MeshLambertMaterial({ map: stripes(0xb3261e, 0xf1ede6, 4) });
     scene.add(new THREE.Mesh(ribbon(track, -track.half + 0.05, 0.015, -track.half - 0.9, 0.05), kerb));
     scene.add(new THREE.Mesh(ribbon(track, track.half + 0.9, 0.05, track.half - 0.05, 0.015), kerb));
 
     // Guardarraíl con sus postes del lado de afuera.
     const steel = new THREE.MeshStandardMaterial({ color: 0xc4c0b8, metalness: 0.85, roughness: 0.4, side: THREE.DoubleSide });
-    const rail = new THREE.Mesh(ribbon(track, track.half + 1.6, 0.82, track.half + 1.6, 0.46), steel);
-    const posts = along(track, new THREE.BoxGeometry(0.1, 0.9, 0.12).translate(0, 0.4, 0), steel, 4, track.half + 1.68);
+    const rail = new THREE.Mesh(ribbon(track, track.half + 6.7, 0.5, track.half + 6.7, 0.14), steel);
+    const posts = along(track, new THREE.BoxGeometry(0.1, 0.9, 0.12).translate(0, 0.08, 0), steel, 4, track.half + 6.78);
     rail.castShadow = posts.castShadow = true;
     scene.add(rail, posts);
 
     // Postes de luz de madera con su cable, del lado de adentro.
     const wood = new THREE.MeshLambertMaterial({ color: 0x4a3324 });
     const pole = mergeGeometries([new THREE.CylinderGeometry(0.11, 0.15, 9, 6).translate(0, 4.5, 0), new THREE.BoxGeometry(2.2, 0.14, 0.14).translate(0, 8.3, 0)])!;
-    const poles = along(track, pole, wood, 46, -track.half - 6.5);
+    const poles = along(track, pole, wood, 46, -track.half - 8);
     poles.castShadow = true;
     scene.add(poles);
-    for (const side of [-1, 1]) scene.add(wires(track, 46, -track.half - 6.5 + side, 8.4, 0.9, 0x241a14));
+    for (const side of [-1, 1]) scene.add(wires(track, 46, -track.half - 8 + side, 8.4, 0.9, 0x241a14));
 
     // Flechas en las curvas, del lado de afuera, mirando al que llega.
     const arrow = new THREE.MeshBasicMaterial({ map: label('›››', 0x111111, 0xe4a32b, 128, 64), side: THREE.DoubleSide });
     for (const turn of [1, -1]) {
       const board = new THREE.PlaneGeometry(2.4, 1.2).rotateY(Math.PI).translate(0, 1.5, 0);
       if (turn > 0) board.scale(-1, 1, 1);
-      const boards = along(track, board, arrow, 9, -turn * (track.half + 3.4), (s) => bend(track, s) * turn > 0.5);
+      const boards = along(track, board, arrow, 9, -turn * (track.half + 7.4), (s) => bend(track, s) * turn > 0.5);
       boards.castShadow = true;
       scene.add(boards);
     }
@@ -151,7 +152,7 @@ export const puna: Theme = {
     cacti.castShadow = true;
     // Tolas y pastos duros: matas bajas que le dan escala al suelo.
     const bushes = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 6, 4), new THREE.MeshLambertMaterial(), 1000);
-    scatter(1000, 380, track.half + 3.5, (i) => {
+    scatter(1000, 380, track.half + 7, (i) => {
       const w = 0.5 + rand() * 1.1;
       dummy.scale.set(w, w * (0.45 + rand() * 0.4), w);
       dummy.updateMatrix();
@@ -159,7 +160,7 @@ export const puna: Theme = {
       bushes.setColorAt(i, rand() < 0.6 ? tint.setHSL(0.1 + rand() * 0.03, 0.5, 0.2 + rand() * 0.1) : tint.setHSL(0.2 + rand() * 0.08, 0.3, 0.07 + rand() * 0.06));
     });
     const rocks = new THREE.InstancedMesh(new THREE.DodecahedronGeometry(1, 0), new THREE.MeshLambertMaterial({ flatShading: true }), 260);
-    scatter(260, 420, track.half + 4, (i) => {
+    scatter(260, 420, track.half + 7.5, (i) => {
       dummy.rotation.set(rand() * 3, rand() * 6.28, rand() * 3);
       dummy.scale.set(0.5 + rand() * 2.6, 0.4 + rand() * 1.4, 0.5 + rand() * 2.6);
       dummy.updateMatrix();
@@ -169,7 +170,7 @@ export const puna: Theme = {
     rocks.castShadow = true;
     scene.add(cacti, bushes, rocks);
 
-    scene.add(gantry(track, 40, 0xf1ede6, 0x111111));
+    scene.add(gantry(track, 0, 0xf1ede6, 0x111111));
 
     return { sun, shadowRange: 60, rays: disc };
   },

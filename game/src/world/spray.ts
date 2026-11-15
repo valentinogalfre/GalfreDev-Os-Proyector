@@ -1,63 +1,79 @@
 import * as THREE from 'three';
-import type { Spray } from '../themes/theme';
-import { place, type Track } from './track';
 
-const PER_WHEEL = 14, LIFE = 0.9;
-const probe = new THREE.Object3D();
+export interface PuffLook { color: number; opacity: number; size: number; additive: boolean; life: number; rise: number }
 
 /**
- * Lo que levantan las ruedas traseras. No guarda estado: cada mota se calcula a partir de dónde
- * estaba el auto hace un rato, así un cuadro congelado sale igual que uno en movimiento.
+ * Un montón de motas que nacen, se abren y se apagan: polvo, agua o chispas, según cómo se lo configure.
+ * Todas van en un solo dibujo y el montón es fijo: cuando se llena, la mota nueva pisa a la más vieja.
  */
-export function buildSpray(look: Spray, cars: number): { points: THREE.Points; update(track: Track, at: (car: number, time: number) => [number, number], time: number): void } {
-  const count = cars * 2 * PER_WHEEL;
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(count * 3), 3));
-  g.setAttribute('age', new THREE.BufferAttribute(new Float32Array(count), 1));
-  const material = new THREE.ShaderMaterial({
-    uniforms: { color: { value: new THREE.Color(look.color) }, opacity: { value: look.opacity }, size: { value: look.size }, tall: { value: 720 } },
-    vertexShader: /* glsl */`
-      attribute float age;
-      uniform float size, tall;
-      varying float vFade;
-      void main() {
-        vec4 mv = modelViewMatrix * vec4(position, 1.0);
-        gl_Position = projectionMatrix * mv;
-        gl_PointSize = size * (0.35 + 1.9 * age) * tall / -mv.z;
-        vFade = smoothstep(0.0, 0.12, age) * (1.0 - age) * (1.0 - age);
-      }`,
-    fragmentShader: /* glsl */`
-      uniform vec3 color;
-      uniform float opacity;
-      varying float vFade;
-      void main() {
-        float d = length(gl_PointCoord - 0.5) * 2.0;
-        float soft = smoothstep(1.0, 0.1, d);
-        gl_FragColor = vec4(color, soft * soft * vFade * opacity);
-        #include <tonemapping_fragment>
-        #include <colorspace_fragment>
-      }`,
-    transparent: true, depthWrite: false, blending: look.additive ? THREE.AdditiveBlending : THREE.NormalBlending,
-  });
-  const points = new THREE.Points(g, material);
-  points.frustumCulled = false;
-  const p = g.attributes.position as THREE.BufferAttribute, age = g.attributes.age as THREE.BufferAttribute;
-  // Un desvío fijo por mota, para que la nube no sea una fila.
-  const drift = Array.from({ length: count }, (_, i) => [Math.sin(i * 12.9898) * 0.5, 0.3 + 0.7 * Math.abs(Math.sin(i * 78.233)), Math.sin(i * 37.719) * 0.5]);
-  return {
-    points,
-    update(track, at, time) {
-      material.uniforms.tall.value = innerHeight;
-      let i = 0;
-      for (let car = 0; car < cars; car++) for (const side of [-0.85, 0.85]) for (let k = 0; k < PER_WHEEL; k++, i++) {
-        const a = (k + ((time / LIFE) * PER_WHEEL) % 1) / PER_WHEEL;
-        const [s, lane] = at(car, time - a * LIFE);
-        place(track, s - 1.6, lane + side, probe);
-        const [dx, dy, dz] = drift[i];
-        p.setXYZ(i, probe.position.x + dx * a * 1.6, probe.position.y + 0.15 + dy * a * 1.5, probe.position.z + dz * a * 1.6);
-        age.setX(i, a);
-      }
-      p.needsUpdate = age.needsUpdate = true;
-    },
-  };
+export class Puffs {
+  readonly points: THREE.Points;
+  private readonly position: THREE.BufferAttribute;
+  private readonly age: THREE.BufferAttribute;
+  private readonly velocity: Float32Array;
+  private readonly material: THREE.ShaderMaterial;
+  private next = 0;
+  private readonly look: PuffLook;
+  private readonly count: number;
+
+  constructor(look: PuffLook, count: number) {
+    this.look = look;
+    this.count = count;
+    const g = new THREE.BufferGeometry();
+    this.position = new THREE.BufferAttribute(new Float32Array(count * 3), 3);
+    this.age = new THREE.BufferAttribute(new Float32Array(count).fill(1), 1);
+    this.velocity = new Float32Array(count * 3);
+    g.setAttribute('position', this.position);
+    g.setAttribute('age', this.age);
+    this.material = new THREE.ShaderMaterial({
+      uniforms: { color: { value: new THREE.Color(look.color) }, opacity: { value: look.opacity }, size: { value: look.size }, tall: { value: 720 } },
+      vertexShader: /* glsl */`
+        attribute float age;
+        uniform float size, tall;
+        varying float vFade;
+        void main() {
+          vec4 mv = modelViewMatrix * vec4(position, 1.0);
+          gl_Position = projectionMatrix * mv;
+          gl_PointSize = age >= 1.0 ? 0.0 : size * (0.35 + 1.9 * age) * tall / -mv.z;
+          vFade = smoothstep(0.0, 0.1, age) * (1.0 - age) * (1.0 - age);
+        }`,
+      fragmentShader: /* glsl */`
+        uniform vec3 color;
+        uniform float opacity;
+        varying float vFade;
+        void main() {
+          float d = length(gl_PointCoord - 0.5) * 2.0;
+          float soft = smoothstep(1.0, 0.1, d);
+          gl_FragColor = vec4(color, soft * soft * vFade * opacity);
+          #include <tonemapping_fragment>
+          #include <colorspace_fragment>
+        }`,
+      transparent: true, depthWrite: false, blending: look.additive ? THREE.AdditiveBlending : THREE.NormalBlending,
+    });
+    this.points = new THREE.Points(g, this.material);
+    this.points.frustumCulled = false;
+  }
+
+  /** Suelta una mota en [at] con velocidad [vx, vy, vz] más un poco de azar de tamaño [spread]. */
+  emit(at: THREE.Vector3, vx: number, vy: number, vz: number, spread: number): void {
+    const i = this.next;
+    this.next = (this.next + 1) % this.count;
+    this.position.setXYZ(i, at.x, at.y, at.z);
+    this.velocity.set([vx + (Math.random() - 0.5) * spread, vy + Math.random() * spread * 0.6, vz + (Math.random() - 0.5) * spread], i * 3);
+    this.age.setX(i, 0);
+  }
+
+  update(dt: number): void {
+    this.material.uniforms.tall.value = innerHeight;
+    const p = this.position.array as Float32Array, age = this.age.array as Float32Array, v = this.velocity;
+    for (let i = 0; i < this.count; i++) {
+      if (age[i] >= 1) continue;
+      age[i] = Math.min(1, age[i] + dt / this.look.life);
+      v[i * 3 + 1] += this.look.rise * dt;
+      p[i * 3] += v[i * 3] * dt;
+      p[i * 3 + 1] += v[i * 3 + 1] * dt;
+      p[i * 3 + 2] += v[i * 3 + 2] * dt;
+    }
+    this.position.needsUpdate = this.age.needsUpdate = true;
+  }
 }

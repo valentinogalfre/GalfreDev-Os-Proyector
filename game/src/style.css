@@ -24,7 +24,7 @@ canvas { display: block; width: 100%; height: 100%; }
 #hud header .lap b { color: var(--hueso); font-weight: 500; }
 #hud header strong { font: 800 4em/1 'Archivo', system-ui, sans-serif; font-variant-numeric: tabular-nums; min-width: 4.6em; text-align: right; }
 #hud ol { position: absolute; left: 5em; top: 13em; margin: 0; padding: 0; list-style: none; width: 30em; background: var(--carbon-2); border: 1px solid var(--linea-oscura); }
-#hud li { display: grid; grid-template-columns: 2.6em 1.2em 1fr auto; align-items: center; gap: 1.2em; padding: .9em 1.4em; border-top: 1px solid var(--linea-oscura); }
+#hud li { position: relative; display: grid; grid-template-columns: 2.6em 1.2em 1fr auto; align-items: center; gap: 1.2em; padding: .9em 1.4em 1.1em; border-top: 1px solid var(--linea-oscura); }
 #hud li:first-child { border-top: 0; }
 #hud li .n { font: 500 2em 'Geist Mono', monospace; color: var(--gris-oscuro); }
 #hud li i { width: 1.2em; height: 1.2em; border: 1px solid var(--linea-oscura); }
@@ -33,3 +33,10 @@ canvas { display: block; width: 100%; height: 100%; }
 #hud li.first { background: var(--hueso); color: var(--carbon); }
 #hud li.first.cinta { background: var(--cinta); }
 #hud li.first .n, #hud li.first .gap { color: var(--carbon); }
+/* El tanque de nitro de cada uno: un filete al pie de su renglón. */
+#hud li u { position: absolute; left: 0; right: 0; bottom: 0; height: .35em; background: var(--linea-oscura); }
+#hud li s { display: block; height: 100%; background: var(--hueso); }
+#hud li.first u { background: rgba(17, 17, 17, .25); }
+#hud li.first s { background: var(--carbon); }
+/* La cuenta regresiva y el final: una cifra grande sobre su bloque liso. */
+#hud .count { display: none; position: absolute; left: 50%; top: 46%; transform: translate(-50%, -50%); margin: 0; min-width: 2.2em; padding: .08em .35em; text-align: center; background: var(--carbon); color: var(--hueso); font: 800 22em/1.1 'Archivo', system-ui, sans-serif; }

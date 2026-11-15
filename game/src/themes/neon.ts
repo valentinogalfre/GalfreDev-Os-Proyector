@@ -32,6 +32,7 @@ export const neon: Theme = {
     [100, 0, 235], [40, 0, 255], [-40, 0, 250], [-110, 0, 235], [-150, 0, 180], [-155, 0, 90], [-140, 0, 25], [-90, 0, 0],
   ],
   half: 8,
+  wall: 7.5,
   start: 60,
   grade: { bloom: [1.0, 0.72, 0.85], vignette: 0.6, speed: 0.11 },
   night: true,
@@ -140,7 +141,7 @@ export const neon: Theme = {
     scene.add(beams, arcPools);
 
     // La largada, con el wordmark en hueso sobre carbón y sin brillo: el logo no lleva efectos.
-    scene.add(gantry(track, 150, HUESO, CARBON));
+    scene.add(gantry(track, 0, HUESO, CARBON));
     for (const [s, side] of [[520, 1], [1180, -1]] as [number, number][]) {
       const board = billboard(22, HUESO, CARBON);
       place(track, s, side * (h + 13), board);

@@ -20,6 +20,7 @@ export const cinta: Theme = {
     [-70, 0, 290], [-110, 0, 220], [-110, 0, 80], [-70, 0, 10],
   ],
   half: 7,
+  wall: 7.1,
   start: 900,
   grade: { bloom: [0.2, 0.6, 1.1], vignette: 0.55, speed: 0.11 },
   trail: CINTA,
@@ -164,7 +165,7 @@ export const cinta: Theme = {
     }
 
     // La marca: el pórtico de largada, un muro liso sobre la recta y el wordmark pintado en la mesa.
-    scene.add(gantry(track, 120, CARBON, HUESO));
+    scene.add(gantry(track, 0, CARBON, HUESO));
     const mural = billboard(64, HUESO, CARBON);
     place(track, 95, -(h + 30), mural);
     mural.rotateY(-Math.PI / 2);

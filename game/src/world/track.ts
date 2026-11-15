@@ -76,3 +76,10 @@ export function place(t: Track, s: number, off: number, out: THREE.Object3D): vo
   out.position.copy(t.pos[i]).lerp(t.pos[j], k).addScaledVector(left, off);
   out.quaternion.setFromRotationMatrix(basis.makeBasis(left, up.crossVectors(tan, left), tan));
 }
+
+/** Curvatura de la pista en [s], en 1/metros: positiva si dobla a la izquierda. Promedia 12 metros. */
+export function curvature(t: Track, s: number): number {
+  const i = ((Math.round(s / STEP) % t.n) + t.n) % t.n, reach = 3;
+  const a = t.tan[(i + t.n - reach) % t.n], b = t.tan[(i + reach) % t.n];
+  return ((b.x - a.x) * t.left[i].x + (b.z - a.z) * t.left[i].z) / (2 * reach * STEP);
+}

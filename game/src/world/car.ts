@@ -96,7 +96,16 @@ export function buildCar(kit: CarKit, style: CarStyle, fine: boolean, night: boo
     m.castShadow = part.role !== 'glass';
     return m;
   };
-  kit.body.forEach((part) => car.add(mesh(part)));
+  // La carrocería va en su propio grupo: se inclina en las curvas sin arrastrar la sombra del piso.
+  const body = new THREE.Group();
+  car.add(body);
+  // Las luces de freno son de cada auto: se encienden más cuando ese auto frena.
+  const tail = (common('tail', null) as THREE.MeshBasicMaterial).clone();
+  kit.body.forEach((part) => {
+    const m = mesh(part);
+    if (part.role === 'tail') m.material = tail;
+    body.add(m);
+  });
 
   const wheels: THREE.Object3D[] = [];
   for (const side of [1, -1]) for (const z of [kit.hub.z, kit.hub.z - WHEELBASE]) {
@@ -106,10 +115,17 @@ export function buildCar(kit: CarKit, style: CarStyle, fine: boolean, night: boo
     spin.userData.dir = side;
     kit.wheel.forEach((part) => spin.add(mesh(part)));
     mount.add(spin);
-    car.add(mount);
+    mount.userData.rest = mount.rotation.y;
+    body.add(mount);
     wheels.push(spin);
   }
-  car.userData.wheels = wheels;
+  // La llama del nitro: dos conos que solo se ven mientras empuja.
+  const flame = new THREE.Group();
+  const fire = new THREE.MeshBasicMaterial({ color: new THREE.Color(style.underglow ?? 0x6ad0ff).multiplyScalar(4), transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
+  for (const x of [-0.42, 0.42]) flame.add(new THREE.Mesh(new THREE.ConeGeometry(0.17, 2.4, 8, 1, true).rotateX(-Math.PI / 2).translate(x, 0.42, kit.hub.z - WHEELBASE - 1.75), fire));
+  flame.visible = false;
+  body.add(flame);
+  car.userData = { wheels, body, flame, tail, front: wheels.slice(0, 1).concat(wheels.slice(2, 3)).map((w) => w.parent!) };
 
   const flat = (w: number, l: number, color: number, opacity: number, additive: boolean) => {
     const m = new THREE.Mesh(new THREE.PlaneGeometry(w, l), new THREE.MeshBasicMaterial({
@@ -136,7 +152,17 @@ export function buildCar(kit: CarKit, style: CarStyle, fine: boolean, night: boo
   return car;
 }
 
-/** Hace girar las ruedas según lo recorrido. */
-export function roll(car: THREE.Group, metres: number): void {
-  for (const wheel of car.userData.wheels as THREE.Object3D[]) wheel.rotation.x = (metres / 0.38) * wheel.userData.dir;
+export interface Pose { metres: number; steer: number; speed: number; boosting: boolean; braking: boolean; time: number }
+
+/** Lleva al modelo lo que hace el auto: ruedas, volante, inclinación, luces de freno y llama. */
+export function animate(car: THREE.Group, pose: Pose): void {
+  const { wheels, body, flame, tail, front } = car.userData as { wheels: THREE.Object3D[]; body: THREE.Group; flame: THREE.Group; tail: THREE.MeshBasicMaterial; front: THREE.Object3D[] };
+  for (const wheel of wheels) wheel.rotation.x = (pose.metres / 0.38) * wheel.userData.dir;
+  for (const mount of front) mount.rotation.y = mount.userData.rest + pose.steer * 0.32;
+  // El auto se acuesta hacia afuera en la curva, levanta la trompa con el nitro y la clava al frenar.
+  body.rotation.z = -pose.steer * Math.min(1, pose.speed / 50) * 0.055;
+  body.rotation.x += ((pose.braking ? 0.022 : pose.boosting ? -0.02 : 0) - body.rotation.x) * 0.15;
+  tail.color.setRGB(1, 0.1, 0.04).multiplyScalar(pose.braking ? 14 : 5);
+  flame.visible = pose.boosting;
+  if (pose.boosting) flame.scale.set(1, 1, 0.8 + 0.35 * Math.sin(pose.time * 61) + 0.2 * Math.sin(pose.time * 37));
 }

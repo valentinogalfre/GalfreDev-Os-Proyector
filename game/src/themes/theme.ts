@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { Grade } from '../render/fx';
 import type { CarStyle } from '../world/car';
 import type { MirrorLook } from '../world/mirror';
+import type { PuffLook } from '../world/spray';
 import type { Track } from '../world/track';
 
 export interface Stage {
@@ -22,7 +23,7 @@ export interface World {
 }
 
 /** Lo que levantan las ruedas: polvo, agua. */
-export interface Spray { color: number; opacity: number; size: number; additive: boolean }
+export type Spray = Omit<PuffLook, 'life' | 'rise'>;
 
 export interface Theme {
   name: string;
@@ -33,6 +34,8 @@ export interface Theme {
   layout: [number, number, number][];
   /** Medio ancho de la pista. */
   half: number;
+  /** Hasta dónde puede correrse el centro del auto antes de tocar el muro. Más que [half] deja salir del asfalto. */
+  wall: number;
   /** Dónde arranca la toma de muestra, en metros desde la largada. */
   start: number;
   grade: Grade;
