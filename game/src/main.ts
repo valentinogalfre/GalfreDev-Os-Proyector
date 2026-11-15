@@ -484,10 +484,22 @@ async function start(): Promise<void> {
     // En calidad baja, si no alcanza, se dibuja con menos puntos antes que con menos cuadros.
     const meter = query.has('fps') ? document.body.appendChild(Object.assign(document.createElement('div'), { id: 'fps' })) : null;
     let last = performance.now(), frames = 0, since = last, scale = startScale, settled = false;
+    // Perillas de medición: «sin=autos,mundo,cielo» apaga partes de la escena y «fin» espera a la GPU para saber cuánto tarda de verdad.
+    const off = new Set((query.get('sin') ?? '').split(','));
+    if (off.size > 1 || !off.has('')) for (const o of scene.children) {
+      const kind = o === fleet?.group || cars.includes(o as THREE.Group) ? 'autos' : o.name === 'sky' ? 'cielo' : (o as THREE.Light).isLight ? 'luz' : 'mundo';
+      if (off.has(kind)) o.visible = false;
+    }
+    const gl = renderer.getContext(), pixel = new Uint8Array(4), wait = query.has('fin');
+    let cpu = 0, gpu = 0;
     renderer.setAnimationLoop(() => {
       const now = performance.now();
       frame(Math.min(0.1, (now - last) / 1000));
       last = now;
+      const drawn = performance.now();
+      if (wait) gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
+      cpu += drawn - now;
+      gpu += performance.now() - drawn;
       if (++frames < 90) return;
       const fps = (frames * 1000) / (now - since);
       frames = 0;
@@ -499,7 +511,8 @@ async function start(): Promise<void> {
         resize();
       }
       settled = true;
-      if (meter) meter.textContent = `${fps.toFixed(0)} FPS · ${Math.round(scale * 100)}% · ${renderer.info.render.triangles} TRI · ${renderer.info.render.calls} DIB`;
+      if (meter) meter.textContent = `${fps.toFixed(0)} FPS · ${Math.round(scale * 100)}% · ${renderer.info.render.triangles} TRI · ${renderer.info.render.calls} DIB · cpu ${(cpu / 90).toFixed(1)} · gpu ${(gpu / 90).toFixed(1)}`;
+      cpu = gpu = 0;
     });
   }
 }

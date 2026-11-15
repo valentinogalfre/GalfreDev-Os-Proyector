@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import fineUrl from '../assets/car.glb?url';
 import liteUrl from '../assets/car-lite.glb?url';
+import miniUrl from '../assets/car-mini.glb?url';
+import medioUrl from '../assets/car-medio.glb?url';
 
 export interface CarStyle { paint: number; accent: number; underglow?: number }
 
@@ -15,7 +17,7 @@ const WHEELBASE = 2.8;
 
 /** Carga el modelo completo o, con [fine] en falso, el liviano que apunta al proyector. */
 export async function loadCarKit(fine: boolean): Promise<CarKit> {
-  const gltf = await new GLTFLoader().loadAsync(fine ? fineUrl : liteUrl);
+  const gltf = await new GLTFLoader().loadAsync(fine ? fineUrl : ({ mini: miniUrl, medio: medioUrl } as Record<string, string>)[new URLSearchParams(location.search).get('auto') ?? ''] ?? liteUrl);
   gltf.scene.updateMatrixWorld(true);
   const body: Part[] = [], wheel: Part[] = [];
   const tyre = new THREE.Box3();
