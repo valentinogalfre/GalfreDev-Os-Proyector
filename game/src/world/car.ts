@@ -1,9 +1,8 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import fineUrl from '../assets/car.glb?url';
-import liteUrl from '../assets/car-lite.glb?url';
-import miniUrl from '../assets/car-mini.glb?url';
-import medioUrl from '../assets/car-medio.glb?url';
+import nearUrl from '../assets/car-cerca.glb?url';
+import farUrl from '../assets/car-lejos.glb?url';
 
 export interface CarStyle { paint: number; accent: number; underglow?: number }
 
@@ -15,9 +14,16 @@ export interface CarKit { body: Part[]; wheel: Part[]; hub: THREE.Vector3 }
 /** Cuánto más atrás va el eje trasero respecto del delantero. */
 const WHEELBASE = 2.8;
 
-/** Carga el modelo completo o, con [fine] en falso, el liviano que apunta al proyector. */
-export async function loadCarKit(fine: boolean): Promise<CarKit> {
-  const gltf = await new GLTFLoader().loadAsync(fine ? fineUrl : ({ mini: miniUrl, medio: medioUrl } as Record<string, string>)[new URLSearchParams(location.search).get('auto') ?? ''] ?? liteUrl);
+/**
+ * Carga el auto. Con [fine] es el modelo completo; sin él son dos, uno para los autos que están cerca de la cámara y
+ * otro mucho más liviano para el resto: en el proyector lo que se paga es cada triángulo, y un auto lejano no los necesita.
+ */
+export function loadCarKits(fine: boolean): Promise<CarKit[]> {
+  return Promise.all((fine ? [fineUrl] : [nearUrl, farUrl]).map(loadCarKit));
+}
+
+async function loadCarKit(url: string): Promise<CarKit> {
+  const gltf = await new GLTFLoader().loadAsync(url);
   gltf.scene.updateMatrixWorld(true);
   const body: Part[] = [], wheel: Part[] = [];
   const tyre = new THREE.Box3();
@@ -273,6 +279,8 @@ function weld(parts: Part[]): THREE.BufferGeometry {
   return geometry;
 }
 
+/** Hasta qué distancia de la cámara un auto merece el modelo detallado. */
+const NEAR = 20;
 const IDLE = new THREE.Color(0.5, 0.02, 0.012), BRAKING = new THREE.Color(1, 0.2, 0.08), OFF = new THREE.Color(0, 0, 0);
 
 /**
@@ -281,26 +289,27 @@ const IDLE = new THREE.Color(0.5, 0.02, 0.012), BRAKING = new THREE.Color(1, 0.2
  */
 export class Fleet {
   readonly group = new THREE.Group();
-  private readonly paint: THREE.InstancedMesh;
-  private readonly rest: THREE.InstancedMesh;
-  private readonly tail: THREE.InstancedMesh;
-  private readonly wheels: THREE.InstancedMesh;
+  /** Un juego de piezas por nivel de detalle: el primero para los autos cercanos, el último para los lejanos. */
+  private readonly tiers: { paint: THREE.InstancedMesh; rest: THREE.InstancedMesh; tail: THREE.InstancedMesh; wheels: THREE.InstancedMesh; n: number }[];
   private readonly flats: THREE.InstancedMesh[] = [];
   private readonly under: THREE.InstancedMesh | null = null;
   private readonly tint = new THREE.Color();
-
+  private readonly gaze = new THREE.Vector3();
   private readonly capacity: number;
 
-  constructor(kit: CarKit, matcap: THREE.Texture, night: boolean, underglow: boolean, capacity: number) {
+  constructor(kits: CarKit[], matcap: THREE.Texture, night: boolean, underglow: boolean, capacity: number) {
     this.capacity = capacity;
     const shiny = () => new THREE.MeshMatcapMaterial({ matcap, vertexColors: true });
-    const of = (role: (r: string) => boolean) => weld(kit.body.filter((part) => role(part.role)));
-    this.paint = new THREE.InstancedMesh(of((r) => r === 'paint'), shiny(), capacity);
-    this.rest = new THREE.InstancedMesh(of((r) => r !== 'paint' && r !== 'tail'), shiny(), capacity);
-    this.tail = new THREE.InstancedMesh(of((r) => r === 'tail'), new THREE.MeshBasicMaterial({ fog: false }), capacity);
-    this.wheels = new THREE.InstancedMesh(weld(kit.wheel), shiny(), capacity * 4);
-    // Las piezas de un mismo auto se mueven igual: comparten la tabla de posiciones.
-    this.rest.instanceMatrix = this.tail.instanceMatrix = this.paint.instanceMatrix;
+    this.tiers = kits.map((kit) => {
+      const of = (role: (r: string) => boolean) => weld(kit.body.filter((part) => role(part.role)));
+      const paint = new THREE.InstancedMesh(of((r) => r === 'paint'), shiny(), capacity);
+      const rest = new THREE.InstancedMesh(of((r) => r !== 'paint' && r !== 'tail'), shiny(), capacity);
+      const tail = new THREE.InstancedMesh(of((r) => r === 'tail'), new THREE.MeshBasicMaterial({ fog: false }), capacity);
+      const wheels = new THREE.InstancedMesh(weld(kit.wheel), shiny(), capacity * 4);
+      // Las piezas de un mismo auto se mueven igual: comparten la tabla de posiciones.
+      rest.instanceMatrix = tail.instanceMatrix = paint.instanceMatrix;
+      return { paint, rest, tail, wheels, n: 0 };
+    });
 
     const flat = (w: number, l: number, y: number, z: number, opacity: number, additive: boolean, color = 0xffffff) => {
       const mesh = new THREE.InstancedMesh(new THREE.PlaneGeometry(w, l).rotateX(-Math.PI / 2).translate(0, y, z), new THREE.MeshBasicMaterial({
@@ -316,7 +325,7 @@ export class Fleet {
     if (night) flat(4.6, 11, 0.05, 7.2, 0.28, true, 0xffe2b0);
     if (underglow) this.under = flat(5.8, 9, 0.045, 0, 0.9, true);
 
-    for (const mesh of [this.paint, this.rest, this.tail, this.wheels, ...this.flats]) {
+    for (const mesh of [...this.tiers.flatMap((t) => [t.paint, t.rest, t.tail, t.wheels]), ...this.flats]) {
       mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       // Los autos están repartidos por toda la pista: no hay una caja que sirva para descartarlos juntos.
       mesh.frustumCulled = false;
@@ -325,23 +334,42 @@ export class Fleet {
     }
   }
 
-  /** Copia a la flota dónde quedó cada auto este cuadro, con su pintura y sus luces. */
-  sync(cars: THREE.Group[]): void {
+  /** Copia a la flota dónde quedó cada auto este cuadro, con su pintura y sus luces, y decide con cuánto detalle va cada uno. */
+  sync(cars: THREE.Group[], camera: THREE.Camera): void {
     const n = Math.min(cars.length, this.capacity);
+    camera.getWorldDirection(this.gaze);
+    // Los dos autos más cercanos van con el modelo detallado; los que quedaron detrás de la cámara no se dibujan.
+    const range: number[] = [];
+    let first = -1, second = -1;
+    for (let i = 0; i < n; i++) {
+      const p = cars[i].position, e = camera.position;
+      const ahead = (p.x - e.x) * this.gaze.x + (p.y - e.y) * this.gaze.y + (p.z - e.z) * this.gaze.z;
+      range[i] = ahead < -6 ? Infinity : p.distanceToSquared(e);
+      if (range[i] > NEAR * NEAR || this.tiers.length < 2) continue;
+      if (first < 0 || range[i] < range[first]) { second = first; first = i; } else if (second < 0 || range[i] < range[second]) second = i;
+    }
+    for (const tier of this.tiers) tier.n = 0;
     for (let i = 0; i < n; i++) {
       const car = cars[i];
       const { body, wheels, style, braking } = car.userData as { body: THREE.Group; wheels: THREE.Object3D[]; style: CarStyle; braking: boolean };
       car.updateMatrixWorld(true);
-      this.paint.setMatrixAt(i, body.matrixWorld);
       this.flats[0].setMatrixAt(i, car.matrixWorld);
-      for (let w = 0; w < 4; w++) this.wheels.setMatrixAt(i * 4 + w, wheels[w].matrixWorld);
-      this.paint.setColorAt(i, this.tint.set(style.paint));
-      this.tail.setColorAt(i, braking ? BRAKING : IDLE);
       this.under?.setColorAt(i, style.underglow === undefined ? OFF : this.tint.set(style.underglow));
+      if (range[i] === Infinity) continue;
+      const tier = this.tiers[i === first || i === second ? 0 : this.tiers.length - 1], k = tier.n++;
+      tier.paint.setMatrixAt(k, body.matrixWorld);
+      for (let w = 0; w < 4; w++) tier.wheels.setMatrixAt(k * 4 + w, wheels[w].matrixWorld);
+      tier.paint.setColorAt(k, this.tint.set(style.paint));
+      tier.tail.setColorAt(k, braking ? BRAKING : IDLE);
     }
-    for (const mesh of [this.paint, this.rest, this.tail, ...this.flats]) mesh.count = n;
-    this.wheels.count = n * 4;
-    this.paint.instanceMatrix.needsUpdate = this.wheels.instanceMatrix.needsUpdate = this.flats[0].instanceMatrix.needsUpdate = true;
-    for (const mesh of [this.paint, this.tail, this.under]) if (mesh?.instanceColor) mesh.instanceColor.needsUpdate = true;
+    for (const tier of this.tiers) {
+      tier.paint.count = tier.rest.count = tier.tail.count = tier.n;
+      tier.wheels.count = tier.n * 4;
+      tier.paint.instanceMatrix.needsUpdate = tier.wheels.instanceMatrix.needsUpdate = true;
+      for (const mesh of [tier.paint, tier.tail]) if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    }
+    for (const mesh of this.flats) mesh.count = n;
+    this.flats[0].instanceMatrix.needsUpdate = true;
+    if (this.under?.instanceColor) this.under.instanceColor.needsUpdate = true;
   }
 }

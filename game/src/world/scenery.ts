@@ -146,6 +146,8 @@ export function ground(track: Track, look: GroundLook): Ground {
 }
 
 export interface RidgeLook {
+  /** Cuántos gajos tiene el cordón alrededor; por omisión 720. */
+  around?: number;
   center: [number, number];
   radius: number;
   height: number;
@@ -160,7 +162,7 @@ export interface RidgeLook {
 
 /** Un cordón de cerros alrededor del mundo. Los estratos van en la textura y las quebradas en el relieve. */
 export function ridge(look: RidgeLook): THREE.Mesh {
-  const around = 720, rows = 10;
+  const around = look.around ?? 720, rows = 10;
   const p: number[] = [], c: number[] = [], uv: number[] = [], index: number[] = [];
   const j = look.jagged;
   for (let i = 0; i <= around; i++) {

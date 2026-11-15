@@ -1,11 +1,12 @@
 import * as THREE from 'three';
 import './style.css';
+import { bakeLight } from './world/bake';
 import { mountHud } from './hud';
 import { mountLobby } from './host/lobby';
 import { Session } from './host/session';
 import type { Command, Shared } from './net/protocol';
 import { Race, TUNING, type RaceEvent } from './sim/race';
-import { animate, bakeMatcap, buildCar, Fleet, repaint, loadCarKit } from './world/car';
+import { animate, bakeMatcap, buildCar, Fleet, repaint, loadCarKits } from './world/car';
 import { Puffs } from './world/spray';
 import { buildTrack, curvature, place } from './world/track';
 import { cinta } from './themes/cinta';
@@ -57,9 +58,15 @@ async function start(): Promise<void> {
   // El proyector arranca en su resolución real; si no llega a los cuadros, el medidor de abajo la va bajando.
   const startScale = query.has('px') ? Number(query.get('px')) : Math.min(devicePixelRatio, 1.5);
   // Los rótulos se pintan en texturas: la tipografía tiene que estar cargada antes.
-  const [kit] = await Promise.all([loadCarKit(fine), document.fonts.load('800 64px Archivo'), document.fonts.load('500 16px "Geist Mono"')]);
+  const [kits] = await Promise.all([loadCarKits(fine), document.fonts.load('800 64px Archivo'), document.fonts.load('500 16px "Geist Mono"')]);
 
-  const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('view') as HTMLCanvasElement, antialias: query.get('aa') === '1', powerPreference: 'high-performance' });
+  if (!fine && query.get('salida') !== 'srgb') {
+    // La curva de salida exacta cuesta una potencia por canal en cada punto de la pantalla (medido en el proyector: unos
+    // 3 ms por cuadro). La raíz cuadrada da casi la misma imagen por una fracción.
+    THREE.ShaderChunk.colorspace_pars_fragment = THREE.ShaderChunk.colorspace_pars_fragment.replace(
+      /vec4 sRGBTransferOETF[^}]*\}/, 'vec4 sRGBTransferOETF( in vec4 value ) { return vec4( sqrt( value.rgb * 1.12 ), value.a ); }');
+  }
+  const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('view') as HTMLCanvasElement, antialias: query.get('aa') === '1', precision: query.get('prec') === 'media' ? 'mediump' : 'highp', powerPreference: 'high-performance' });
   renderer.setPixelRatio(startScale);
   renderer.setSize(innerWidth, innerHeight, false);
   renderer.toneMappingExposure = theme.exposure;
@@ -89,30 +96,7 @@ async function start(): Promise<void> {
   if (fine) scene.environment = surroundings.texture; else surroundings.dispose();
   if (query.get('niebla') === '0') scene.fog = null;
   if (query.get('salida') === 'lineal') renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
-  if (!fine && query.get('mat') !== 'std') {
-    // Sin entorno que reflejar, el material con brillo no aporta: se cambia por el difuso, que cuesta una fracción.
-    const cheap = new Map<THREE.Material, THREE.Material>();
-    const swap = (m: THREE.Material): THREE.Material => {
-      const from = m as THREE.MeshStandardMaterial;
-      if (!from.isMeshStandardMaterial) return m;
-      let to = cheap.get(m);
-      if (!to) {
-        to = query.get('mat') === 'basico' ? new THREE.MeshBasicMaterial({
-          color: from.color, map: from.map, transparent: from.transparent, opacity: from.opacity, side: from.side, vertexColors: from.vertexColors, fog: from.fog,
-          alphaTest: from.alphaTest, depthWrite: from.depthWrite,
-        }) : new THREE.MeshLambertMaterial({
-          color: from.color, map: from.map, transparent: from.transparent, opacity: from.opacity, side: from.side, vertexColors: from.vertexColors, fog: from.fog,
-          alphaTest: from.alphaTest, depthWrite: from.depthWrite, emissive: from.emissive, emissiveMap: from.emissiveMap, emissiveIntensity: from.emissiveIntensity,
-        });
-        cheap.set(m, to);
-      }
-      return to;
-    };
-    scene.traverse((o) => {
-      const mesh = o as THREE.Mesh;
-      if (mesh.isMesh) mesh.material = Array.isArray(mesh.material) ? mesh.material.map(swap) : swap(mesh.material);
-    });
-  }
+  if (!fine && query.get('luz') !== 'viva') bakeLight(scene);
 
   const course = { length: track.length, half: track.half, wall: theme.wall, curvature: (s: number) => curvature(track, s) };
   /** Los autos para elegir: los seis de la pista y dos más con otra pintura. */
@@ -120,7 +104,7 @@ async function start(): Promise<void> {
   /** Qué auto lleva cada lugar de la grilla. */
   let livery: number[] = [];
   const styleOf = (i: number) => liveries[livery[i] ?? i % liveries.length];
-  const fleet = matcap ? new Fleet(kit, matcap, theme.night ?? false, liveries.some((look) => look.underglow !== undefined), 8) : null;
+  const fleet = matcap ? new Fleet(kits, matcap, theme.night ?? false, liveries.some((look) => look.underglow !== undefined), 8) : null;
   if (fleet) scene.add(fleet.group);
   const showHud = query.get('hud') !== '0';
   const cars: THREE.Group[] = [];
@@ -138,7 +122,7 @@ async function start(): Promise<void> {
     race = new Race(course, LAPS, grid.map((id) => id === null));
     while (cars.length > grid.length) scene.remove(cars.pop()!);
     while (cars.length < grid.length) {
-      const car = buildCar(kit, styleOf(cars.length), fine, theme.night ?? false, fleet !== null);
+      const car = buildCar(kits[0], styleOf(cars.length), fine, theme.night ?? false, fleet !== null);
       cars.push(car);
       scene.add(car);
     }
@@ -394,7 +378,7 @@ async function start(): Promise<void> {
         smoke.emit(at.copy(probe.position).setY(probe.position.y + 0.2), 0, 0.8, 0, 1.2);
       }
     });
-    fleet?.sync(cars);
+    
     smoke.update(dt);
     dust?.update(dt);
     sparks.update(dt);
@@ -463,6 +447,8 @@ async function start(): Promise<void> {
       gap: race.cars.map((car) => (lead.s - car.s) / Math.max(20, car.v)), nitro: race.cars.map((car) => car.nitro),
     });
     if (!draw) return;
+    camera.updateMatrixWorld();
+    fleet?.sync(cars, camera);
     if (composer) composer.render(); else renderer.render(scene, camera);
   }
 

@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "node build.mjs CarConcept.glb ../../src/assets/car.glb && node build.mjs CarConcept.glb ../../src/assets/car-lite.glb 0.3"
+    "build": "node build.mjs CarConcept.glb ../../src/assets/car.glb && node build.mjs CarConcept.glb ../../src/assets/car-cerca.glb 0.12 0.03 && node build.mjs CarConcept.glb ../../src/assets/car-lejos.glb 0.04 0.08 abierto"
   },
   "dependencies": {
     "@gltf-transform/core": "4.2.1",

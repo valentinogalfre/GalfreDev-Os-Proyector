@@ -6,7 +6,8 @@ import { dedup, flatten, join, prune, quantize, simplifyPrimitive, textureCompre
 import { MeshoptSimplifier } from 'meshoptimizer';
 import sharp from 'sharp';
 
-const [src, out, budget = '1'] = process.argv.slice(2);
+// [error] es cuánto puede apartarse la malla del original y [open] deja mover los bordes: solo para el auto que se ve de lejos.
+const [src, out, budget = '1', error = '', open = ''] = process.argv.slice(2);
 const scale = Number(budget);
 
 const io = new NodeIO().registerExtensions(ALL_EXTENSIONS);
@@ -71,8 +72,8 @@ for (const mesh of root.listMeshes()) {
     const role = prim.getMaterial().getName();
     const ratio = Math.min(1, RATIO[role] * scale);
     // Las piezas chicas y repetidas aguantan más error que los paneles, donde se nota en el reflejo.
-    const error = scale < 1 || role === 'rim' || role === 'caliper' ? 0.012 : 0.002;
-    if (ratio < 1) simplifyPrimitive(prim, { simplifier: MeshoptSimplifier, ratio, error, lockBorder: true });
+    const slack = error ? Number(error) : scale < 1 || role === 'rim' || role === 'caliper' ? 0.012 : 0.002;
+    if (ratio < 1) simplifyPrimitive(prim, { simplifier: MeshoptSimplifier, ratio, error: slack, lockBorder: open !== 'abierto' });
   }
 }
 

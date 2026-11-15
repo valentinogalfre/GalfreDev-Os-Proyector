@@ -12,9 +12,10 @@ const SUN = new THREE.Vector3(-0.72, 0.27, 0.64).normalize();
 const STRATA = [0xa8502f, 0xc9703c, 0xe0a060, 0xead0a0, 0x9a5a78, 0x6f8a62, 0xd07840, 0x8a3a2a, 0xd9b48a, 0x7a4a6a].map((c) => new THREE.Color(c));
 
 /** Un cardón: tronco acanalado y dos brazos que suben. */
-function cardon(): THREE.BufferGeometry {
+function cardon(fine: boolean): THREE.BufferGeometry {
   const column = (r: number, h: number) => {
-    const g = new THREE.CylinderGeometry(r * 0.92, r, h, 10, 1).translate(0, h / 2, 0);
+    // Las tapas quedan dentro de la cúpula o del suelo: no se ven y son triángulos que el proyector paga igual.
+    const g = new THREE.CylinderGeometry(r * 0.92, r, h, 10, 1, true).translate(0, h / 2, 0);
     const p = g.attributes.position as THREE.BufferAttribute;
     // Las costillas: una arista sí y una no se meten hacia adentro.
     for (let i = 0; i < p.count; i++) {
@@ -24,10 +25,10 @@ function cardon(): THREE.BufferGeometry {
     }
     return g;
   };
-  const dome = (r: number) => new THREE.SphereGeometry(r * 0.92, 10, 4, 0, Math.PI * 2, 0, Math.PI / 2);
+  const dome = (r: number) => new THREE.SphereGeometry(r * 0.92, 10, fine ? 4 : 2, 0, Math.PI * 2, 0, Math.PI / 2);
   const parts: THREE.BufferGeometry[] = [column(0.42, 6.4), dome(0.42).translate(0, 6.4, 0)];
   for (const [side, at, tall] of [[1, 2.5, 2.8], [-1, 3.4, 2.1]] as [number, number, number][]) {
-    parts.push(new THREE.TorusGeometry(0.75, 0.24, 6, 6, Math.PI / 2).rotateZ(Math.PI).rotateY(side > 0 ? 0 : Math.PI).translate(side * 0.75, at + 0.75, 0));
+    parts.push(new THREE.TorusGeometry(0.75, 0.24, fine ? 6 : 5, fine ? 6 : 3, Math.PI / 2).rotateZ(Math.PI).rotateY(side > 0 ? 0 : Math.PI).translate(side * 0.75, at + 0.75, 0));
     parts.push(column(0.26, tall).translate(side * 1.5, at + 0.75, 0));
     parts.push(dome(0.26).translate(side * 1.5, at + 0.75 + tall, 0));
   }
@@ -131,7 +132,7 @@ export const puna: Theme = {
     scene.add(land.mesh);
 
     // Un cordón lejano, ya metido en la bruma, cierra el horizonte.
-    scene.add(ridge({ center: track.center, radius: 2300, height: 640, base: -40, seed: 8, map: gradient(0x8a6a8e, 0xb98a8a), repeat: 1, jagged: 1.3, shade: 1 }));
+    scene.add(ridge({ around: fine ? 720 : 240, center: track.center, radius: 2300, height: 640, base: -40, seed: 8, map: gradient(0x8a6a8e, 0xb98a8a), repeat: 1, jagged: 1.3, shade: 1 }));
 
     const rand = rng(21);
     const dummy = new THREE.Object3D();
@@ -145,7 +146,7 @@ export const puna: Theme = {
         each(i++);
       }
     };
-    const cacti = new THREE.InstancedMesh(cardon(), new THREE.MeshLambertMaterial({ color: 0x5a7440 }), 170);
+    const cacti = new THREE.InstancedMesh(cardon(fine), new THREE.MeshLambertMaterial({ color: 0x5a7440 }), 170);
     cacti.count = Math.round(170 * few);
     scatter(cacti.count, 420, track.half + 8, (i) => {
       dummy.scale.setScalar(0.6 + rand() * 0.9);
@@ -154,7 +155,7 @@ export const puna: Theme = {
     });
     cacti.castShadow = true;
     // Tolas y pastos duros: matas bajas que le dan escala al suelo.
-    const bushes = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 6, 4), new THREE.MeshLambertMaterial(), 1000);
+    const bushes = new THREE.InstancedMesh(new THREE.SphereGeometry(1, fine ? 6 : 5, fine ? 4 : 3), new THREE.MeshLambertMaterial(), 1000);
     bushes.count = Math.round(1000 * few);
     scatter(bushes.count, 380, track.half + 7, (i) => {
       const w = 0.5 + rand() * 1.1;
