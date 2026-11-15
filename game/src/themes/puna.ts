@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { rng, fbm } from '../world/noise';
-import { along, bend, wires } from '../world/props';
-import { DROP, envFrom, ground, ridge, skyDome } from '../world/scenery';
+import { along, bend, gantry, wires } from '../world/props';
+import { DROP, ground, ridge, skyDome } from '../world/scenery';
 import { gradient, gravel, label, roadTexture, stripes } from '../world/textures';
 import { embankment, ribbon } from '../world/track';
 import type { Stage, Theme, World } from './theme';
@@ -37,20 +37,21 @@ function cardon(): THREE.BufferGeometry {
 /** Atardecer en la Puna: cerros de colores, cardones y la ruta sola. */
 export const puna: Theme = {
   name: 'Puna',
-  exposure: 0.95,
+  exposure: 0.78,
   layout: [
     [0, 0, 0], [140, 2, -20], [260, 8, 30], [300, 16, 140], [230, 24, 220], [130, 28, 200], [90, 30, 260], [170, 34, 330],
     [110, 38, 400], [0, 36, 380], [-90, 30, 300], [-60, 24, 200], [-150, 16, 150], [-230, 8, 60], [-180, 2, -30], [-90, 0, -20],
   ],
   half: 6.5,
   start: 820,
-  bloom: [0.22, 0.6, 1.5],
+  grade: { bloom: [0.35, 0.6, 1.25], vignette: 0.5, speed: 0.045 },
+  spray: { color: 0xc9a27e, opacity: 0.2, size: 2.6, additive: false },
   cars: [
-    { paint: 0xd6d2c8, accent: 0xb3261e },
     { paint: 0xb3261e, accent: 0xf1ede6 },
-    { paint: 0x141414, accent: 0xe4a32b },
-    { paint: 0x1f5a6e, accent: 0xe4a32b },
-    { paint: 0xe4a32b, accent: 0x111111 },
+    { paint: 0xd6d2c8, accent: 0xb3261e },
+    { paint: 0x141414, accent: 0xf1ede6 },
+    { paint: 0x1f5a6e, accent: 0xf1ede6 },
+    { paint: 0x2f5d3a, accent: 0xf1ede6 },
     { paint: 0x4a2b6b, accent: 0xf1ede6 },
   ],
   build({ scene, track, anisotropy }: Stage): World {
@@ -61,7 +62,7 @@ export const puna: Theme = {
     });
     scene.add(sky);
     // El disco del sol pasa de 1 para que el resplandor lo encuentre.
-    const disc = new THREE.Mesh(new THREE.CircleGeometry(26, 24), new THREE.MeshBasicMaterial({ color: new THREE.Color(0xffd9a0).multiplyScalar(9), fog: false }));
+    const disc = new THREE.Mesh(new THREE.CircleGeometry(26, 24), new THREE.MeshBasicMaterial({ color: new THREE.Color(0xffd9a0).multiplyScalar(9), fog: false, transparent: true, depthWrite: false }));
     disc.position.copy(SUN).multiplyScalar(1450);
     disc.lookAt(0, 0, 0);
     const sunGroup = new THREE.Group();
@@ -168,6 +169,8 @@ export const puna: Theme = {
     rocks.castShadow = true;
     scene.add(cacti, bushes, rocks);
 
-    return { env: envFrom(sky), sun, shadowRange: 60 };
+    scene.add(gantry(track, 40, 0xf1ede6, 0x111111));
+
+    return { sun, shadowRange: 60, rays: disc };
   },
 };

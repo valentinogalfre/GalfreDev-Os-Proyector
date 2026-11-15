@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { wordmark } from './brand';
 import { place, STEP, type Track } from './track';
 
 const dummy = new THREE.Object3D();
@@ -42,4 +43,27 @@ export function wires(track: Track, every: number, off: number, height: number, 
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(p, 3));
   return new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color }));
+}
+
+/**
+ * El pórtico de largada: dos patas y un dintel liso con el wordmark, de frente al que llega.
+ * El logo va en [ink] sobre [block], que según el manual son siempre hueso y carbón.
+ */
+export function gantry(track: Track, s: number, ink: number, block: number): THREE.Group {
+  const gate = new THREE.Group();
+  const wide = track.half * 2 + 7, tall = 2.6, clear = 7.2;
+  const frame = new THREE.MeshStandardMaterial({ color: 0x1b1b1a, roughness: 0.7, metalness: 0.2 });
+  for (const x of [-wide / 2 + 0.4, wide / 2 - 0.4]) gate.add(new THREE.Mesh(new THREE.BoxGeometry(0.8, clear + tall + 4, 0.8).translate(x, (clear + tall - 4) / 2, 0), frame));
+  gate.add(new THREE.Mesh(new THREE.BoxGeometry(wide, tall, 0.9).translate(0, clear + tall / 2, 0), frame));
+  const face = new THREE.MeshBasicMaterial({ map: wordmark(ink, block, 2048, Math.round((2048 * tall) / wide), 0.5) });
+  for (const turn of [0, Math.PI]) gate.add(new THREE.Mesh(new THREE.PlaneGeometry(wide, tall).translate(0, clear + tall / 2, 0.47).rotateY(turn), face));
+  gate.traverse((o) => { o.castShadow = true; });
+  place(track, s, 0, gate);
+  return gate;
+}
+
+/** Un cartel plano con el wordmark sobre su bloque liso, mirando hacia -Z. */
+export function billboard(wide: number, ink: number, block: number): THREE.Mesh {
+  const tall = wide / 3.2;
+  return new THREE.Mesh(new THREE.PlaneGeometry(wide, tall).rotateY(Math.PI), new THREE.MeshBasicMaterial({ map: wordmark(ink, block, 1024, 320, 0.62) }));
 }

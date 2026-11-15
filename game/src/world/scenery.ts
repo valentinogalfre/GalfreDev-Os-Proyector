@@ -75,24 +75,6 @@ export function skyDome(look: SkyLook): THREE.Mesh {
   return mesh;
 }
 
-/** La escena de la que salen los reflejos: el mismo cielo, con el sol encendido de verdad. */
-export function envFrom(sky: THREE.Mesh, lamps: [number, number, number, number, number][] = []): THREE.Scene {
-  const env = new THREE.Scene();
-  env.add(new THREE.Mesh(sky.geometry, sky.material));
-  const sun = sky.userData.sun as { dir: THREE.Vector3; color: THREE.Color } | undefined;
-  if (sun) {
-    const ball = new THREE.Mesh(new THREE.SphereGeometry(70, 12, 8), new THREE.MeshBasicMaterial({ color: sun.color.clone().multiplyScalar(40) }));
-    ball.position.copy(sun.dir).multiplyScalar(1200);
-    env.add(ball);
-  }
-  for (const [color, x, y, z, size] of lamps) {
-    const lamp = new THREE.Mesh(new THREE.BoxGeometry(Math.abs(x) > Math.abs(z) ? 6 : size, 8, Math.abs(x) > Math.abs(z) ? size : 6), new THREE.MeshBasicMaterial({ color: new THREE.Color(color).multiplyScalar(5) }));
-    lamp.position.set(x, y, z);
-    env.add(lamp);
-  }
-  return env;
-}
-
 function smooth(a: number, b: number, v: number): number {
   const t = Math.min(1, Math.max(0, (v - a) / (b - a)));
   return t * t * (3 - 2 * t);

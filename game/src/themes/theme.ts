@@ -1,5 +1,7 @@
 import * as THREE from 'three';
+import type { Grade } from '../render/fx';
 import type { CarStyle } from '../world/car';
+import type { MirrorLook } from '../world/mirror';
 import type { Track } from '../world/track';
 
 export interface Stage {
@@ -9,13 +11,18 @@ export interface Stage {
 }
 
 export interface World {
-  /** La escena chica de la que salen los reflejos de la pintura. */
-  env: THREE.Scene;
   /** La luz que proyecta sombras, si el mundo tiene una. */
   sun?: THREE.DirectionalLight;
   /** Medio lado, en metros, de la zona con sombras alrededor del pelotón. */
   shadowRange?: number;
+  /** La malla de la que salen los rayos del sol. */
+  rays?: THREE.Mesh;
+  /** Pisos que espejan: geometría plana en y = 0, a qué altura va y cómo refleja. */
+  mirrors?: { flat: THREE.BufferGeometry; y: number; look: Omit<MirrorLook, 'fog'> }[];
 }
+
+/** Lo que levantan las ruedas: polvo, agua. */
+export interface Spray { color: number; opacity: number; size: number; additive: boolean }
 
 export interface Theme {
   name: string;
@@ -28,13 +35,11 @@ export interface Theme {
   half: number;
   /** Dónde arranca la toma de muestra, en metros desde la largada. */
   start: number;
-  /** Resplandor: fuerza, radio y umbral. */
-  bloom: [number, number, number];
+  grade: Grade;
   /** De noche los autos alumbran el asfalto. */
   night?: boolean;
-  build(stage: Stage): World;
-  /** Marca al que va primero. */
-  leader?(car: THREE.Group): void;
-  /** Color de la estela que deja el que va primero. */
+  spray?: Spray;
+  /** Color de la estela que deja el que va primero. Es la cinta: si está, el tablero no la repite. */
   trail?: number;
+  build(stage: Stage): World;
 }

@@ -194,8 +194,8 @@ export function grid(paper: number, line: number, anisotropy: number): THREE.Tex
   return t;
 }
 
-/** Un rótulo: texto en la tipografía de la marca, sobre un bloque de color o suelto. */
-export function label(text: string, ink: number, block: number | null, w = 256, h = 64): THREE.Texture {
+/** Un rótulo: texto en una tipografía de la marca ([font] es peso y familia), sobre un bloque de color o suelto. */
+export function label(text: string, ink: number, block: number | null, w = 256, h = 64, font = "800 Archivo"): THREE.Texture {
   const [c, g] = canvas(w, h);
   if (block !== null) {
     g.fillStyle = css(block);
@@ -203,11 +203,11 @@ export function label(text: string, ink: number, block: number | null, w = 256, 
   }
   g.fillStyle = css(ink);
   let size = Math.round(h * 0.68);
-  g.font = `800 ${size}px Archivo, system-ui, sans-serif`;
+  g.font = `${font.replace(' ', ` ${size}px `)}, system-ui, sans-serif`;
   // Si el texto no entra a lo ancho, se achica hasta que entre.
   const wide = g.measureText(text).width;
   if (wide > w * 0.88) size = Math.floor((size * w * 0.88) / wide);
-  g.font = `800 ${size}px Archivo, system-ui, sans-serif`;
+  g.font = `${font.replace(' ', ` ${size}px `)}, system-ui, sans-serif`;
   g.textAlign = 'center';
   g.textBaseline = 'middle';
   g.fillText(text, w / 2, h * 0.54);
