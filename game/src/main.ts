@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import './style.css';
+import { mountSound } from './audio';
 import { bakeLight } from './world/bake';
 import { mountHud } from './hud';
 import { mountLobby } from './host/lobby';
@@ -54,9 +55,22 @@ const keys = new Set<string>();
 addEventListener('keydown', (e) => keys.add(e.code));
 addEventListener('keyup', (e) => keys.delete(e.code));
 
+/**
+ * Lo que la pared recuerda mientras la carrera está abierta, de una pista a la otra. Al cerrarla se olvida: un mal
+ * momento del equipo no lo deja con menos nitidez para siempre.
+ */
+function recall(name: string): string | null {
+  try { return sessionStorage.getItem(`carrera.${name}`); } catch { return null; }
+}
+function remember(name: string, value: string): void {
+  try { sessionStorage.setItem(`carrera.${name}`, value); } catch { /* sin almacenamiento, no se recuerda */ }
+}
+
 async function start(): Promise<void> {
   // El proyector arranca en su resolución real; si no llega a los cuadros, el medidor de abajo la va bajando.
-  const startScale = query.has('px') ? Number(query.get('px')) : Math.min(devicePixelRatio, 1.5);
+  // Si este equipo ya tuvo que bajar la nitidez en esta pista, arranca ahí: no vuelve a tropezar buscándola en cada carrera.
+  const remembered = Number(recall(`nitidez.${key}`)) || Infinity;
+  const startScale = query.has('px') ? Number(query.get('px')) : Math.min(devicePixelRatio, 1.5, remembered);
   // Los rótulos se pintan en texturas: la tipografía tiene que estar cargada antes.
   const [kits] = await Promise.all([loadCarKits(fine), document.fonts.load('800 64px Archivo'), document.fonts.load('500 16px "Geist Mono"')]);
 
@@ -98,8 +112,10 @@ async function start(): Promise<void> {
   if (query.get('salida') === 'lineal') renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
   if (!fine && query.get('luz') !== 'viva') bakeLight(scene);
 
+  /** En las capturas de un instante fijo no hay nada que oír. */
+  const sound = frozen !== null || query.get('sonido') === '0' ? null : mountSound();
   // Para inspeccionar la escena desde las herramientas del navegador mientras se mide.
-  if (query.has('dbg')) (window as unknown as { dbg: unknown }).dbg = { scene, renderer };
+  if (query.has('dbg')) (window as unknown as { dbg: unknown }).dbg = { scene, renderer, sound };
 
   const course = { length: track.length, half: track.half, wall: theme.wall, curvature: (s: number) => curvature(track, s) };
   /** Los autos para elegir: los seis de la pista y dos más con otra pintura. */
@@ -111,6 +127,7 @@ async function start(): Promise<void> {
   if (fleet) scene.add(fleet.group);
   const showHud = query.get('hud') !== '0';
   const cars: THREE.Group[] = [];
+  let counted = -1;
   const tags: THREE.Sprite[] = [];
   /** Quién maneja cada auto de la grilla: el número de jugador en la sala, o null si es un bot. */
   let grid: (number | null)[] = [];
@@ -315,6 +332,7 @@ async function start(): Promise<void> {
   if (hosting) {
     // El control remoto del proyector también maneja la sala.
     const remote = (key: string) => {
+      sound?.wake();
       if (key === 'left' || key === 'right') otherTrack(key === 'left' ? -1 : 1);
       else if (key === 'ok') obey(stage === 'lobby' ? { a: 'start' } : { a: 'lobby' });
     };
@@ -388,6 +406,22 @@ async function start(): Promise<void> {
     // Al que trajo el elástico se lo ve titilar un momento: así encuentra dónde reapareció.
     for (const event of events) if (event.type === 'tow') cars[event.car].userData.blink = 1.4;
     if (session) host(events, order, dt);
+    if (sound) {
+      for (const event of events) {
+        if (event.type === 'tow') sound.tow();
+        else if (event.type === 'wall' && inShot.includes(event.car)) sound.crash(event.force);
+        else if (event.type === 'hit' && (inShot.includes(event.car) || inShot.includes(event.other))) sound.crash(event.force);
+        else if (event.type === 'lap' && inShot.includes(event.car)) sound.lap();
+        else if (event.type === 'finish' && watched.includes(event.car)) sound.finish();
+      }
+      // Un tono por cada segundo de la cuenta regresiva y otro, más agudo, al largar.
+      const count = race.phase === 'countdown' ? Math.ceil(-race.clock) : race.phase === 'race' ? 0 : -1;
+      if (count !== counted) {
+        if (count > 0) sound.count(false); else if (count === 0 && counted > 0) sound.count(true);
+        counted = count;
+      }
+      sound.update(inShot.map((i) => race.cars[i]), dt, race.phase === 'countdown' || race.phase === 'race');
+    }
     clock += dt;
 
     cars.forEach((mesh, i) => {
@@ -536,6 +570,7 @@ async function start(): Promise<void> {
         renderer.setPixelRatio(scale);
         resize();
         slow = 0;
+        remember(`nitidez.${key}`, String(scale));
       }
       settled = true;
       if (meter) meter.textContent = `${fps.toFixed(0)} FPS · ${Math.round(scale * 100)}% · ${renderer.info.render.triangles} TRI · ${renderer.info.render.calls} DIB · cpu ${(cpu / 90).toFixed(1)} · gpu ${(gpu / 90).toFixed(1)}`;

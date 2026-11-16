@@ -105,6 +105,10 @@ class CarreraActivity : Activity() {
         view.settings.allowFileAccess = false
         view.settings.allowContentAccess = false
         view.settings.setSupportZoom(false)
+        // El sonido de la carrera arranca solo: en la pared no hay nadie que toque la pantalla para habilitarlo.
+        view.settings.mediaPlaybackRequiresUserGesture = false
+        // La página recuerda, mientras está abierta, con qué nitidez le alcanzó a este equipo en cada pista.
+        view.settings.domStorageEnabled = true
         // La página mide todo en proporción a la pantalla; el mínimo de letra de Android le rompería la escala.
         view.settings.minimumFontSize = 1
         view.settings.minimumLogicalFontSize = 1

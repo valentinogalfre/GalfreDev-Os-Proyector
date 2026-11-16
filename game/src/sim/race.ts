@@ -67,12 +67,12 @@ export const TUNING = {
   grip: 24,
   turnRate: 1.5,
   /** Cuánto de la curva toma el auto solo. Con 1 no haría falta doblar. */
-  assist: 0.5,
+  assist: 0.38,
   nitroGain: 1.3,
   nitroBurn: 0.34,
   nitroFill: 0.07,
   /** Derrapando el auto dobla esto de más, corre esto de menos y carga el nitro así de rápido. */
-  driftGrip: 1.7,
+  driftGrip: 1.9,
   driftSpeed: 0.88,
   driftFill: 0.2,
   driftFrom: 20,
@@ -307,7 +307,7 @@ export class Race {
     input.steer = clamp((aim - car.yaw) * 2.6 + (kAhead - kNow) * 9, -1, 1);
     // Velocidad que aguanta la curva más cerrada de las que vienen.
     const tight = Math.max(Math.abs(kAhead), Math.abs(kFar));
-    const safe = tight > 1e-4 ? Math.sqrt((T.grip * 0.93) / (tight * (1 - T.assist * 0.5))) : Infinity;
+    const safe = tight > 1e-4 ? Math.sqrt((T.grip * 0.93) / (tight * (1 - T.assist * 0.3))) : Infinity;
     input.brake = car.v > safe * 1.06;
     // En la curva cerrada el bot cruza el auto en vez de pasarla derecho.
     input.drift = Math.abs(kNow) > 0.011 && car.v > T.driftFrom + 4;
