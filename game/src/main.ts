@@ -616,7 +616,7 @@ async function start(): Promise<void> {
         place(track, camS, camSide * (track.half - 0.7), probe);
         camera.position.copy(probe.position).setY(probe.position.y + 3.4);
         camera.lookAt(car.position.x, car.position.y + 0.5, car.position.z);
-        wide = Math.max(14, Math.min(48, (2 * Math.atan(7 / Math.max(1, camera.position.distanceTo(car.position))) * 180) / Math.PI));
+        wide = Math.max(10, Math.min(46, (2 * Math.atan(5 / Math.max(1, camera.position.distanceTo(car.position))) * 180) / Math.PI));
       } else if (kind === 'frente') {
         // Baja y por delante, mirando hacia atrás: el auto se viene encima.
         place(track, eye + 12.5, eyeLane + camSide * 2.4, probe);
@@ -633,7 +633,7 @@ async function start(): Promise<void> {
         place(track, eye + 44, -track.half + 0.6, probe);
         camera.position.copy(probe.position).setY(probe.position.y + 6.2);
         camera.lookAt(car.position);
-        wide = 30;
+        wide = 22;
       } else {
         place(track, eye - 7.2, eyeLane * 0.85, probe);
         place(track, eye + 16, eyeLane * 0.4, ahead);
