@@ -35,13 +35,17 @@ object PublicTls {
     /** El nombre con que los celulares llegan a [address] bajo ese certificado. */
     fun host(address: String): String = "${address.replace('.', '-')}.$DOMAIN"
 
-    /** Devuelve cómo abrir el puerto con ese certificado, o null si hoy no se puede. */
-    fun sockets(dir: File, now: Long = System.currentTimeMillis()): ((Int) -> ServerSocket)? = runCatching {
+    /**
+     * Devuelve cómo abrir el puerto con ese certificado, o null si hoy no se puede. Por qué no se pudo se le dice a
+     * [report]: sin eso, un puerto que no abre no deja ningún rastro.
+     */
+    fun sockets(dir: File, now: Long = System.currentTimeMillis(), report: (String) -> Unit = {}): ((Int) -> ServerSocket)? = runCatching {
         val chain = File(dir, "server.pem")
         val key = File(dir, "server.key")
         val stale = !chain.exists() || !key.exists() || now - chain.lastModified() > 3 * DAY_MS
-        if (stale) runCatching { download(dir) }
+        if (stale) runCatching { download(dir) }.onFailure { report("no se pudo bajar el certificado: $it") }
         val context = context(chain.readText(), key.readText(), now) ?: run {
+            report("el certificado guardado no vale para la hora del equipo ($now)")
             // Lo guardado venció: un último intento antes de quedarse sin página segura.
             download(dir)
             context(chain.readText(), key.readText(), now)
@@ -49,7 +53,7 @@ object PublicTls {
         val factory = context.serverSocketFactory
         val open: (Int) -> ServerSocket = { port -> factory.createServerSocket(port) }
         open
-    }.getOrNull()
+    }.onFailure { report("sin certificado: $it") }.getOrNull()
 
     /** Arma el contexto de TLS con la cadena y la clave en PEM, o null si el certificado no sirve hoy. */
     fun context(chainPem: String, keyPem: String, now: Long): SSLContext? {

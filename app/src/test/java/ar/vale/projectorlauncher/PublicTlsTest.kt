@@ -32,6 +32,15 @@ class PublicTlsTest {
     }
 
     @Test
+    fun `sin certificado a mano no hay puerto, y queda dicho por que`() {
+        val said = mutableListOf<String>()
+        // Una carpeta que no se puede crear: ni lo guardado ni lo bajado van a estar.
+        val nowhere = java.io.File("/dev/null/volante-tls")
+        assertNull(PublicTls.sockets(nowhere, report = { said += it }))
+        assertEquals(true, said.isNotEmpty())
+    }
+
+    @Test
     fun `el puerto del certificado publico solo atiende la carrera`() {
         val game = Router(Pairing("t".repeat(48), {}), FakeDevice(), gameOnly = true) { path ->
             if (path == "/carrera/volante.html" || path == "/index.html") HttpResponse.error(200, "pagina") else null

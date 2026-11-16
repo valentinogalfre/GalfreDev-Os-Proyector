@@ -14,6 +14,7 @@ import ar.vale.projectorlauncher.Prefs
 import ar.vale.projectorlauncher.R
 import ar.vale.projectorlauncher.carrera.CarreraHub
 import ar.vale.projectorlauncher.juntada.JuntadaHub
+import android.util.Log
 import java.io.File
 import java.io.IOException
 import java.net.Inet4Address
@@ -101,11 +102,13 @@ class RemoteService : Service() {
 
     /**
      * El volante por una dirección segura sin advertencias. Baja el certificado de internet, y mientras no se pueda
-     * no hay puerto. Recién prendido el equipo todavía no tiene red ni la hora puesta, y sin la hora cualquier
-     * certificado parece inválido: por eso se reintenta, cada vez más espaciado, mientras el servicio siga vivo.
+     * no hay puerto. Después de un reinicio el puerto no abrió y no quedó registro de por qué: puede ser que al
+     * arrancar no haya red, o que el equipo todavía no tenga la hora y el certificado parezca inválido. Por eso se
+     * reintenta, cada vez más espaciado, mientras el servicio siga vivo, y cada intento fallido deja su motivo.
      */
     private fun startPublic(game: Router) {
-        var sockets = PublicTls.sockets(File(filesDir, "volante-tls"))
+        val why = { reason: String -> Log.w("Carrera", "volante seguro: $reason"); Unit }
+        var sockets = PublicTls.sockets(File(filesDir, "volante-tls"), report = why)
         var wait = RETRY_MS
         while (sockets == null) {
             // De a un segundo, para soltar el hilo apenas se apaga el servicio.
@@ -114,10 +117,10 @@ class RemoteService : Service() {
                 Thread.sleep(1000)
             }
             wait = (wait * 2).coerceAtMost(RETRY_MAX_MS)
-            sockets = PublicTls.sockets(File(filesDir, "volante-tls"))
+            sockets = PublicTls.sockets(File(filesDir, "volante-tls"), report = why)
         }
         val created = RemoteServer(game, sockets, secure = true)
-        runCatching { created.start(PUBLIC_PORT) }.onSuccess { port ->
+        runCatching { created.start(PUBLIC_PORT) }.onFailure { why("no abrió el puerto $PUBLIC_PORT: $it") }.onSuccess { port ->
             if (server == null) {
                 created.stop()
             } else {
