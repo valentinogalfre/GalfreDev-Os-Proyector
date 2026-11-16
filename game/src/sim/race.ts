@@ -63,7 +63,6 @@ export type RaceEvent =
   | { type: 'hit'; car: number; other: number; force: number }
   | { type: 'lap'; car: number; lap: number }
   /** Quedó demasiado atrás y el elástico lo trajo a la cola del grupo. */
-  | { type: 'tow'; car: number }
   | { type: 'finish'; car: number; place: number };
 
 export type Phase = 'grid' | 'countdown' | 'race' | 'done';
@@ -92,13 +91,6 @@ export const TUNING = {
   catchUp: 0.1,
   catchUpFrom: 30,
   catchUpFull: 200,
-  /**
-   * El elástico. Todos miran la misma pantalla: el jugador que queda a más de [towSpan] metros del jugador que va
-   * primero durante [towGrace] segundos reaparece a [towBack] metros de él, con el tanque de nitro vacío.
-   */
-  towSpan: 60,
-  towGrace: 1.2,
-  towBack: 45,
   /** Manejar bien da velocidad. El rebufo: a entre [draftFrom] y [draftTo] metros detrás de otro, en su misma línea. */
   draftGain: 0.07,
   draftFrom: 3,
@@ -129,7 +121,6 @@ export class Race {
   /** Por dónde va el primero, en metros. */
   private front = 0;
   /** Cuánto lleva cada auto fuera del alcance del elástico, en segundos. */
-  private readonly lost: number[] = [];
 
   constructor(course: Course, laps: number, bots: boolean[]) {
     this.course = course;
@@ -179,7 +170,6 @@ export class Race {
       this.move(car, this.inputs[i], i, events);
     });
     this.collide(events);
-    this.tow(events);
     this.cars.forEach((car, i) => {
       const lap = Math.floor(car.s / this.course.length);
       if (lap > car.lap && car.finished === null) {
@@ -272,32 +262,6 @@ export class Race {
       car.clean += STEP;
       car.flow = clamp((car.clean - T.flowAfter) / (T.flowFull - T.flowAfter), 0, 1);
     }
-  }
-
-  private tow(events: RaceEvent[]): void {
-    const T = TUNING, room = this.course.half - 1.5;
-    // Solo cuenta la gente: un auto automático puede quedar donde sea, nadie lo está buscando en la pantalla.
-    let lead: Car | null = null;
-    for (const car of this.cars) if (!car.bot && car.finished === null && (lead === null || car.s > lead.s)) lead = car;
-    this.cars.forEach((car, i) => {
-      if (lead === null || car.bot || car.finished !== null || car.s >= lead.s - T.towSpan) {
-        this.lost[i] = 0;
-        return;
-      }
-      this.lost[i] = (this.lost[i] ?? 0) + STEP;
-      if (this.lost[i] < T.towGrace) return;
-      this.lost[i] = 0;
-      // Reaparece último: detrás de todos los que siguen en el grupo, sin salirse otra vez del alcance.
-      let last = lead.s - T.towBack + 7;
-      for (const other of this.cars) if (other !== car && other.finished === null && other.s >= lead.s - T.towSpan && other.s < last) last = other.s;
-      car.s = Math.max(lead.s - T.towSpan + 4, last - 7);
-      car.clean = 0;
-      car.d = clamp(car.d, -room, room);
-      car.v = Math.max(car.v, lead.v * 0.9);
-      car.yaw = car.slip = car.spin = car.steer = car.nitro = 0;
-      car.drifting = car.offTrack = false;
-      events.push({ type: 'tow', car: i });
-    });
   }
 
   private collide(events: RaceEvent[]): void {

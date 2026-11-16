@@ -23,7 +23,7 @@ function revs(v: number): number {
  * El sonido de la carrera. Motor, gomas, banquina, golpes y nitro son grabaciones de autos de verdad, todas en un
  * solo archivo que se baja y se descomprime una vez. El motor es un bucle largo de un auto a medias vueltas, que
  * se acelera o se frena para seguir las vueltas de cada auto: un bucle corto se repite igual y suena a sintetizador.
- * Los avisos (cuenta regresiva, vuelta, llegada, elástico) son tonos, como los de un semáforo de largada.
+ * Los avisos (cuenta regresiva, vuelta, llegada) son tonos, como los de un semáforo de largada.
  */
 export class Sound {
   private readonly ctx: AudioContext;
@@ -152,11 +152,6 @@ export class Sound {
 
   finish(): void {
     [523, 659, 784, 1047].forEach((pitch, k) => this.note(pitch, k * 0.11, k === 3 ? 0.6 : 0.2, 0.22));
-  }
-
-  /** El elástico trayendo a alguien a la cola del grupo. */
-  tow(): void {
-    this.note(240, 0, 0.32, 0.22, 'triangle', 960);
   }
 
   /** Alguien abrió el nitro. Si lo abren varios a la vez, suena una sola vez. */

@@ -95,34 +95,15 @@ describe('la carrera', () => {
     assert.ok(top(2000) > clean * (1 + TUNING.catchUp) - 0.5);
   });
 
-  it('el elástico trae a la cola del grupo al jugador que quedó muy atrás, sin nitro; a un automático no', () => {
-    const far = (bot: boolean) => {
-      const race = new Race({ length: 100000, half: 7, wall: 8.6, curvature: () => 0 }, 1, [false, bot]);
-      race.cars[0].s = 400;
-      race.cars[1].nitro = 1;
-      race.start();
-      const events = run(race, TUNING.countdown + TUNING.towGrace + 0.5);
-      return { gap: race.cars[0].s - race.cars[1].s, nitro: race.cars[1].nitro, towed: events.filter((e) => e.type === 'tow').length };
-    };
-    const person = far(false), robot = far(true);
-    assert.equal(person.towed, 1);
-    assert.ok(person.gap < TUNING.towSpan && person.gap > TUNING.towBack - 10, `quedó a ${person.gap} m`);
-    assert.ok(person.nitro < 0.1);
-    assert.equal(robot.towed, 0);
-    assert.ok(robot.gap > 300);
-  });
-
-  it('el elástico deja último al que trae: detrás de los autos que siguen en el grupo', () => {
-    const race = new Race({ length: 100000, half: 7, wall: 8.6, curvature: () => 0 }, 1, [false, false, true]);
+  it('no hay elástico: el que queda muy atrás sigue donde está, con su nitro', () => {
+    const race = new Race({ length: 100000, half: 7, wall: 8.6, curvature: () => 0 }, 1, [false, false]);
     race.cars[0].s = 400;
-    race.cars[2].s = 350;
+    race.cars[1].nitro = 1;
     race.start();
-    const events = run(race, TUNING.countdown + TUNING.towGrace + 0.2);
-    assert.equal(events.filter((e) => e.type === 'tow' && e.car === 1).length, 1);
-    assert.ok(race.cars[1].s < race.cars[2].s, 'quedó delante del automático');
-    assert.ok(race.cars[0].s - race.cars[1].s < TUNING.towSpan);
+    run(race, TUNING.countdown + 3);
+    assert.ok(race.cars[0].s - race.cars[1].s > 300, `quedó a ${race.cars[0].s - race.cars[1].s} m`);
+    assert.equal(race.cars[1].nitro, 1);
   });
-
   it('pegado detrás de otro auto se va más rápido que solo, y un toque al muro corta el ritmo', () => {
     const top = (lane: number) => {
       const race = new Race({ length: 100000, half: 7, wall: 8.6, curvature: () => 0 }, 1, [false, false]);

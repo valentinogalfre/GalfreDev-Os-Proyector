@@ -7,28 +7,23 @@ import { encodeFrame } from './net/frame';
 import { beat, newCup, over, scoreRace, ROUNDS, type Cup, type Records } from './sim/cup';
 import { mountHud } from './hud';
 import { mountLobby } from './host/lobby';
+import { mountMap } from './map';
 import { Session } from './host/session';
 import type { Command, Shared } from './net/protocol';
 import { Race, TUNING, type RaceEvent } from './sim/race';
 import { animate, bakeMatcap, buildCar, Fleet, nameTag, repaint, loadCarKits } from './world/car';
 import { Puffs } from './world/spray';
 import { buildTrack, curvature, place } from './world/track';
-import { cinta } from './themes/cinta';
-import { neon } from './themes/neon';
-import { puna } from './themes/puna';
-import type { Theme } from './themes/theme';
+import { THEMES, liveriesOf } from './themes';
 
-const THEMES: Record<string, Theme> = { puna, neon, cinta };
 const NAMES = ['Vale', 'Tino', 'Maxi', 'Sofi', 'Nacho', 'Lu'];
 /** Los autos que nadie maneja. */
 const BOTS = ['Rayo', 'Tuerca', 'Nafta', 'Pistón', 'Bujía', 'Llanta', 'Cardán'];
-/** Pinturas para el séptimo y el octavo: cada pista trae seis. */
-const EXTRA_PAINT = [0x7a3fd0, 0x3fb8d0];
 /** Sin nadie conectado, la carrera de exhibición lleva esta cantidad de autos; la sala no pasa del segundo número. */
 const MIN_CARS = 6, MAX_CARS = 8;
 /** Cuánto se espera a los que faltan desde que llega el primero. */
 const GRACE = 30;
-/** Hasta dónde se abre la cámara para que entren todos. El elástico de la carrera trae al que queda atrás antes de llegar acá. */
+/** Hasta dónde se abre la cámara de la maqueta para que entren todos los que manejan. */
 const MAX_SPAN = 80;
 const GRID_S = -14;
 
@@ -36,7 +31,7 @@ const query = new URLSearchParams(location.search);
 const key = query.get('t') ?? 'puna';
 /** Tres vueltas, salvo que la dirección pida otra cosa. */
 const LAPS = Math.max(1, Math.min(9, Math.round(Number(query.get('vueltas'))) || 3));
-const theme = THEMES[key] ?? puna;
+const theme = THEMES[key] ?? THEMES.puna;
 // Con [time] la carrera se adelanta sola hasta ese segundo y se dibuja un cuadro: sirve para capturas.
 const frozen = query.has('time') ? Number(query.get('time')) : null;
 const view = query.get('cam') ?? 'chase';
@@ -48,6 +43,12 @@ const demo = query.has('demo') || frozen !== null;
 const hash = new URLSearchParams(location.hash.slice(1));
 const secret = hash.get('s');
 const hosting = secret !== null;
+/**
+ * Con la sala abierta cada uno maneja desde su celular, y la pared pasa a ser la transmisión: una cámara de
+ * espectador que corta de toma en toma. «cam=tele» la prende también en la maqueta.
+ */
+const directed = view === 'tele' || (hosting && view === 'chase');
+const SHOTS = ['persecucion', 'costado', 'frente', 'aerea', 'grua'] as const;
 
 document.querySelectorAll<HTMLAnchorElement>('#pick a').forEach((link) => {
   if (link.id === 'cam') link.href = `?t=${key}&cam=${view === 'tv' ? 'chase' : 'tv'}`;
@@ -131,7 +132,7 @@ async function start(): Promise<void> {
 
   const course = { length: track.length, half: track.half, wall: theme.wall, curvature: (s: number) => curvature(track, s) };
   /** Los autos para elegir: los seis de la pista y dos más con otra pintura. */
-  const liveries = [...theme.cars, ...EXTRA_PAINT.map((paint, k) => ({ ...theme.cars[k], paint }))];
+  const liveries = liveriesOf(theme);
   /** Qué auto lleva cada lugar de la grilla. */
   let livery: number[] = [];
   const styleOf = (i: number) => liveries[livery[i] ?? i % liveries.length];
@@ -410,7 +411,6 @@ async function start(): Promise<void> {
   function host(events: RaceEvent[], order: number[], dt: number): void {
     for (const event of events) {
       if (event.type === 'finish' && firstFinish === 0) firstFinish = race.clock;
-      if (event.type === 'tow') buzz[event.car] = 0.7;
       if (event.type === 'wall' || event.type === 'hit') buzz[event.car] = Math.max(buzz[event.car] ?? 0, Math.min(1, event.force));
     }
     if (stage === 'countdown' && race.phase !== 'countdown') stage = 'race';
@@ -430,9 +430,10 @@ async function start(): Promise<void> {
       }
     }
     share();
-    // Veinte veces por segundo, la carrera entera para que cada celular la dibuje desde su auto.
+    // Veinte veces por segundo, la carrera entera para que cada celular la dibuje desde su auto. En la sala alcanza
+    // con dos: los autos están quietos en la grilla y cada celular muestra el suyo.
     sinceFrame += dt;
-    if (sinceFrame >= 0.05 && stage !== 'lobby') {
+    if (sinceFrame >= (stage === 'lobby' ? 0.5 : 0.05)) {
       sinceFrame = 0;
       session!.stream(encodeFrame({ clock: race.clock, cars: race.cars.map((car) => ({ s: car.s, d: car.d, heading: car.yaw + car.slip, steer: car.steer - car.slip * 1.5, v: car.v, boosting: car.boosting, braking: car.braking, drifting: car.drifting, offTrack: car.offTrack })) }));
     }
@@ -459,6 +460,46 @@ async function start(): Promise<void> {
     }
   }
 
+  /** La transmisión: qué toma está al aire, cuánto le queda, a quién sigue, y dónde quedó plantada la cámara de costado. */
+  let shot = 0, shotLeft = 0, subject = 0, camS = 0, camSide = 1, turn = 0;
+  function direct(order: number[], dt: number): number {
+    shotLeft -= dt;
+    const passed = SHOTS[shot] === 'costado' && subject < race.cars.length && race.cars[subject].s > camS + 38;
+    if (shotLeft > 0 && !passed && subject < race.cars.length) return subject;
+    // La transmisión es de los que manejan. Se busca la pelea más apretada en la que haya alguno y se sigue al que
+    // viene de atrás: adelante suyo queda el que quiere pasar. Sin peleas, se va pasando de un jugador al siguiente.
+    const running = order.filter((i) => race.cars[i].finished === null);
+    const people = running.filter((i) => grid[i] !== null);
+    let pick = people.length ? people[turn++ % people.length] : running[0] ?? order[0], gap = 22;
+    for (let k = 1; k < running.length; k++) {
+      if (people.length && grid[running[k]] === null && grid[running[k - 1]] === null) continue;
+      const close = race.cars[running[k - 1]].s - race.cars[running[k]].s;
+      // Si el de atrás es automático, la cámara se queda con el jugador que lo tiene encima.
+      const who = grid[running[k]] !== null || !people.length ? running[k] : running[k - 1];
+      if (close < gap && who !== subject) { gap = close; pick = who; }
+    }
+    subject = pick;
+    shot = (shot + 1 + (Math.random() < 0.35 ? 1 : 0)) % SHOTS.length;
+    shotLeft = 5 + Math.random() * 3;
+    camS = race.cars[subject].s + 70;
+    camSide = Math.random() < 0.5 ? -1 : 1;
+    snap = true;
+    return subject;
+  }
+
+  if (query.has('dbg')) (window as unknown as { dbg: { air?: unknown } }).dbg.air = () => ({ shot: SHOTS[shot], left: shotLeft, subject, name: names[subject], grid, order: race.order() });
+  const drawMap = hosting || query.has('mapa') ? (() => {
+    const canvas = document.createElement('canvas');
+    canvas.id = 'map';
+    document.body.appendChild(canvas);
+    const paint = mountMap(canvas, track);
+    return (on: boolean) => {
+      canvas.style.display = on ? 'block' : 'none';
+      if (on) paint(race.cars.map((car, i) => ({ s: car.s, d: car.d, color: `#${styleOf(i).paint.toString(16).padStart(6, '0')}`, me: grid[i] !== null })));
+    };
+  })() : null;
+  let sinceMap = 0;
+
   function frame(dt: number, draw = true): void {
     if (session) grid.forEach((id, i) => { if (id !== null && !race.cars[i].bot) Object.assign(race.inputs[i], session.input(id)); });
     else if (!demo) {
@@ -475,20 +516,20 @@ async function start(): Promise<void> {
     const order = race.order();
     const front = Math.max(...watched.map((i) => race.cars[i].s));
     // Los que quedaron demasiado atrás salen de cuadro: la cámara se queda con el grupo de adelante.
-    const inShot = watched.filter((i) => race.cars[i].s >= front - MAX_SPAN);
+    const onAir = directed && stage !== 'lobby';
+    const inShot = onAir ? [direct(order, dt)] : watched.filter((i) => race.cars[i].s >= front - MAX_SPAN);
+    // Lo que se oye: en la transmisión, el auto que está al aire y los dos que tiene más cerca.
+    const heard = onAir ? order.slice().sort((a, b) => Math.abs(race.cars[a].s - race.cars[inShot[0]].s) - Math.abs(race.cars[b].s - race.cars[inShot[0]].s)).slice(0, 3) : inShot;
     const back = Math.min(...inShot.map((i) => race.cars[i].s));
     const focus = inShot.reduce((a, b) => (race.cars[b].s > race.cars[a].s ? b : a));
     for (const event of events) if ((event.type === 'wall' || event.type === 'hit') && inShot.includes(event.car)) shake = Math.max(shake, 0.25 + event.force * 0.6);
     react(events, focus);
-    // Al que trajo el elástico se lo ve titilar un momento: así encuentra dónde reapareció.
-    for (const event of events) if (event.type === 'tow') cars[event.car].userData.blink = 1.4;
     if (session) host(events, order, dt);
     if (sound) {
       for (const event of events) {
-        if (event.type === 'tow') sound.tow();
-        else if (event.type === 'wall' && inShot.includes(event.car)) sound.crash(event.force);
-        else if (event.type === 'hit' && (inShot.includes(event.car) || inShot.includes(event.other))) sound.crash(event.force);
-        else if (event.type === 'lap' && inShot.includes(event.car)) sound.lap();
+        if (event.type === 'wall' && heard.includes(event.car)) sound.crash(event.force);
+        else if (event.type === 'hit' && (heard.includes(event.car) || heard.includes(event.other))) sound.crash(event.force);
+        else if (event.type === 'lap' && heard.includes(event.car)) sound.lap();
         else if (event.type === 'finish' && watched.includes(event.car)) sound.finish();
       }
       // Un tono por cada segundo de la cuenta regresiva y otro, más agudo, al largar.
@@ -497,14 +538,12 @@ async function start(): Promise<void> {
         if (count > 0) sound.count(false); else if (count === 0 && counted > 0) sound.count(true);
         counted = count;
       }
-      sound.update(inShot.map((i) => race.cars[i]), dt, race.phase === 'countdown' || race.phase === 'race');
+      sound.update(heard.map((i) => race.cars[i]), dt, race.phase === 'countdown' || race.phase === 'race');
     }
     clock += dt;
 
     cars.forEach((mesh, i) => {
       const car = race.cars[i];
-      const blink = (mesh.userData.blink = Math.max(0, ((mesh.userData.blink as number | undefined) ?? 0) - dt));
-      mesh.visible = blink <= 0 || Math.floor(blink * 9) % 2 === 0;
       place(track, car.s, car.d, mesh);
       // Derrapando, la cola se cruza y las ruedas de adelante apuntan para el otro lado.
       mesh.rotateY(car.yaw + car.slip);
@@ -554,7 +593,7 @@ async function start(): Promise<void> {
     eye += ((stage === 'lobby' ? GRID_S : back) - eye) * (cut ? 1 : Math.min(1, dt * 10));
     eyeLane += (lane - eyeLane) * (cut ? 1 : ease);
     span += (front - back - span) * (cut ? 1 : Math.min(1, dt * 2.5));
-    fov += ((stage === 'lobby' ? 44 : view === 'tv' ? 30 : view === 'foto' ? 38 : 58 + (me.v / TUNING.topSpeed) * 8 + (me.boosting ? 7 : 0)) - fov) * (cut ? 1 : ease);
+    let wide = stage === 'lobby' ? 44 : view === 'tv' ? 30 : view === 'foto' ? 38 : 58 + (me.v / TUNING.topSpeed) * 8 + (me.boosting ? 7 : 0);
     shake = Math.max(0, shake - dt * 1.8);
     if (stage === 'lobby') {
       // En la sala la cámara da vueltas despacio alrededor de la grilla: cada uno ve aparecer su auto.
@@ -563,6 +602,44 @@ async function start(): Promise<void> {
       place(track, GRID_S, 0, ahead);
       camera.position.copy(probe.position).add(new THREE.Vector3(0, 2 + Math.sin(turn * 0.7) * 0.5, 0));
       camera.lookAt(ahead.position.x, ahead.position.y + 0.6, ahead.position.z);
+    } else if (directed) {
+      const car = cars[focus], kind = race.phase === 'countdown' ? 'largada' : SHOTS[shot];
+      if (kind === 'largada') {
+        // Antes de largar, de frente a la grilla y subiendo despacio.
+        place(track, GRID_S + 24, 0, probe);
+        place(track, GRID_S + 9, 0, ahead);
+        camera.position.copy(probe.position).setY(probe.position.y + 4.2 + Math.max(0, race.clock + TUNING.countdown) * 0.5);
+        camera.lookAt(ahead.position.x, ahead.position.y + 0.2, ahead.position.z);
+        wide = 40;
+      } else if (kind === 'costado') {
+        // Plantada al borde de la pista: ve venir al auto, lo sigue con la lente y lo deja pasar.
+        place(track, camS, camSide * (track.half - 0.7), probe);
+        camera.position.copy(probe.position).setY(probe.position.y + 3.4);
+        camera.lookAt(car.position.x, car.position.y + 0.5, car.position.z);
+        wide = Math.max(14, Math.min(48, (2 * Math.atan(7 / Math.max(1, camera.position.distanceTo(car.position))) * 180) / Math.PI));
+      } else if (kind === 'frente') {
+        // Baja y por delante, mirando hacia atrás: el auto se viene encima.
+        place(track, eye + 12.5, eyeLane + camSide * 2.4, probe);
+        camera.position.copy(probe.position).setY(probe.position.y + 1.1);
+        camera.lookAt(car.position.x, car.position.y + 0.55, car.position.z);
+        wide = 42;
+      } else if (kind === 'aerea') {
+        place(track, eye - 20, eyeLane * 0.5, probe);
+        place(track, eye + 12, eyeLane * 0.5, ahead);
+        camera.position.copy(probe.position).setY(probe.position.y + 22);
+        camera.lookAt(ahead.position);
+        wide = 46;
+      } else if (kind === 'grua') {
+        place(track, eye + 44, -track.half + 0.6, probe);
+        camera.position.copy(probe.position).setY(probe.position.y + 6.2);
+        camera.lookAt(car.position);
+        wide = 30;
+      } else {
+        place(track, eye - 7.2, eyeLane * 0.85, probe);
+        place(track, eye + 16, eyeLane * 0.4, ahead);
+        camera.position.copy(probe.position).add(new THREE.Vector3((Math.random() - 0.5) * shake * 0.5, 1.9 + (Math.random() - 0.5) * shake * 0.5, 0));
+        camera.lookAt(ahead.position.x, ahead.position.y + 0.8, ahead.position.z);
+      }
     } else if (view === 'tv') {
       // Una grúa sobre el borde de la pista: nada del costado se le cruza por delante.
       place(track, eye + 44, -track.half + 0.6, probe);
@@ -580,7 +657,15 @@ async function start(): Promise<void> {
       camera.position.copy(probe.position).add(new THREE.Vector3((Math.random() - 0.5) * shake * 0.5, 2.25 + span * 0.2 + (Math.random() - 0.5) * shake * 0.5, 0));
       camera.lookAt(ahead.position.x, ahead.position.y + 0.8, ahead.position.z);
     }
+    fov += (wide - fov) * (cut ? 1 : ease);
     camera.fov = fov;
+    // Los carteles miden lo mismo en la pantalla con cualquier lente: sin esto, una toma cerrada los agranda.
+    const lens = Math.tan((fov * Math.PI) / 360) / Math.tan(Math.PI / 6);
+    for (const tag of tags) tag.scale.set((tag.userData.wide as number) * lens, (tag.userData.tall as number) * lens, 1);
+    if (drawMap && (sinceMap += dt) >= 0.066) {
+      sinceMap = 0;
+      drawMap(stage === 'race' || stage === 'countdown');
+    }
     // En la sala el código ocupa la izquierda: la imagen se corre para que la grilla quede en lo que se ve.
     const waiting = hosting && (stage === 'lobby' || stage === 'results');
     if (waiting) camera.setViewOffset(innerWidth, innerHeight, -innerHeight * 0.23, 0, innerWidth, innerHeight);

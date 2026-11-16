@@ -170,8 +170,11 @@ class RemoteServer(
 
     companion object {
         const val PORT = 8686
-        /** Un navegador abre hasta seis conexiones a la vez para traer una página. */
-        const val MAX_PER_ADDRESS = 6
+        /**
+         * Un navegador abre hasta seis conexiones a la vez para traer una página, y el volante tiene además la de
+         * la sala abierta mientras baja la carrera en 3D: con seis justas, uno de esos pedidos quedaba afuera.
+         */
+        const val MAX_PER_ADDRESS = 8
         private const val PORT_ATTEMPTS = 5
         /** En una juntada hay muchos celulares consultando a la vez, cada uno un instante. */
         private const val MAX_CONNECTIONS = 32

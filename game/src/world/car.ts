@@ -233,7 +233,10 @@ export function nameTag(name: string, paint: number): THREE.Sprite {
   map.colorSpace = THREE.SRGBColorSpace;
   const tag = new THREE.Sprite(new THREE.SpriteMaterial({ map, transparent: true, depthTest: false, depthWrite: false, fog: false, sizeAttenuation: false }));
   tag.center.set(0.5, 0);
-  tag.scale.set((0.075 * c.width) / c.height, 0.075, 1);
+  // El tamaño es una fracción de la pantalla con una lente de 60 grados; quien cambie la lente lo ajusta con esto.
+  tag.userData.wide = (0.052 * c.width) / c.height;
+  tag.userData.tall = 0.052;
+  tag.scale.set(tag.userData.wide, tag.userData.tall, 1);
   tag.position.y = 1.9;
   tag.renderOrder = 20;
   return tag;
