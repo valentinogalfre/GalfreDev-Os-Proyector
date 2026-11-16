@@ -52,6 +52,8 @@ canvas { display: block; width: 100%; height: 100%; }
 #lobby .qr { width: 36em; height: 36em; }
 #lobby .qr svg { width: 100%; height: 100%; display: block; }
 #lobby .list { justify-content: flex-end; align-items: flex-start; }
+#lobby .join ol { width: 36em; }
+#lobby .list ol { width: 54em; }
 /* Sobre la pista los rótulos van en su bloque liso: sueltos no se leen contra el paisaje. */
 #lobby .list .tag { padding: .45em .7em; background: var(--carbon); }
 #lobby ol { margin: 0; padding: 0; list-style: none; width: 44em; background: var(--carbon-2); border: 1px solid var(--linea-oscura); }

@@ -3,6 +3,7 @@ import './style.css';
 import { mountSound } from './audio';
 import { bakeLight } from './world/bake';
 import { Marks } from './world/marks';
+import { beat, newCup, over, scoreRace, ROUNDS, type Cup, type Records } from './sim/cup';
 import { mountHud } from './hud';
 import { mountLobby } from './host/lobby';
 import { Session } from './host/session';
@@ -22,7 +23,6 @@ const NAMES = ['Vale', 'Tino', 'Maxi', 'Sofi', 'Nacho', 'Lu'];
 const BOTS = ['Rayo', 'Tuerca', 'Nafta', 'Pistón', 'Bujía', 'Llanta', 'Cardán'];
 /** Pinturas para el séptimo y el octavo: cada pista trae seis. */
 const EXTRA_PAINT = [0x7a3fd0, 0x3fb8d0];
-const LAPS = 3;
 /** Sin nadie conectado, la carrera de exhibición lleva esta cantidad de autos; la sala no pasa del segundo número. */
 const MIN_CARS = 6, MAX_CARS = 8;
 /** Cuánto se espera a los que faltan desde que llega el primero. */
@@ -33,6 +33,8 @@ const GRID_S = -14;
 
 const query = new URLSearchParams(location.search);
 const key = query.get('t') ?? 'puna';
+/** Tres vueltas, salvo que la dirección pida otra cosa. */
+const LAPS = Math.max(1, Math.min(9, Math.round(Number(query.get('vueltas'))) || 3));
 const theme = THEMES[key] ?? puna;
 // Con [time] la carrera se adelanta sola hasta ese segundo y se dibuja un cuadro: sirve para capturas.
 const frozen = query.has('time') ? Number(query.get('time')) : null;
@@ -65,6 +67,14 @@ function recall(name: string): string | null {
 }
 function remember(name: string, value: string): void {
   try { sessionStorage.setItem(`carrera.${name}`, value); } catch { /* sin almacenamiento, no se recuerda */ }
+}
+
+/** Lo que la pared guarda para siempre, aunque se apague el proyector: los récords. */
+function kept<T>(name: string, fallback: T): T {
+  try { return (JSON.parse(localStorage.getItem(`carrera.${name}`) ?? 'null') as T | null) ?? fallback; } catch { return fallback; }
+}
+function keep(name: string, value: unknown): void {
+  try { localStorage.setItem(`carrera.${name}`, JSON.stringify(value)); } catch { /* sin almacenamiento, no se guarda */ }
 }
 
 async function start(): Promise<void> {
@@ -238,12 +248,19 @@ async function start(): Promise<void> {
   /** Cuántos rivales automáticos quiere el que lidera. También sobrevive al cambio de pista. */
   let bots = Math.min(MAX_CARS - 1, Math.max(0, Number(query.get('bots') ?? 2) || 0));
   const paintOf = (id: number) => liveries[picks.get(id) ?? -1]?.paint ?? 0x6b6862;
+  /** El campeonato sobrevive al cambio de pista, pero no a cerrar la carrera. Uno ya terminado no se retoma. */
+  let cup: Cup = ((saved: Cup | null) => (saved && !over(saved) ? saved : newCup(saved?.rounds ?? 3)))(JSON.parse(recall('copa') ?? 'null'));
+  const saveCup = (next: Cup) => remember('copa', JSON.stringify((cup = next)));
+  /** Los récords son de cada pista con su cantidad de vueltas. El número cambia si cambia la física: no se comparan. */
+  const recordsKey = `records-1.${theme.name}.${LAPS}`;
+  let records = kept<Records>(recordsKey, { lap: null, race: null });
+  let fresh: { byLap: number | null; byRace: number | null } = { byLap: null, byRace: null };
 
   function share(): void {
     if (!session) return;
     const leadName = session.seats.find((seat) => seat.id === session!.lead)?.name ?? null;
     session.share({
-      phase: stage, track: theme.name, laps: LAPS, bots, room: MAX_CARS - Math.min(MAX_CARS, session.seats.filter((seat) => seat.on).length), lead: session.lead, results, secure: Number(hash.get('tls')) || 0,
+      phase: stage, track: theme.name, laps: LAPS, bots, room: MAX_CARS - Math.min(MAX_CARS, session.seats.filter((seat) => seat.on).length), lead: session.lead, results, cup, record: { ...records, ...fresh }, secure: Number(hash.get('tls')) || 0,
       players: session.seats.map((seat) => ({ id: seat.id, name: seat.name, paint: paintOf(seat.id), on: seat.on })),
       racing: stage === 'lobby' ? [] : grid.filter((id): id is number => id !== null),
     });
@@ -253,7 +270,13 @@ async function start(): Promise<void> {
     lobby?.show({
       track: theme.name, laps: LAPS, lead: leadName, bots: grid.filter((id) => id === null).length,
       players: session.seats.map((seat) => ({ name: seat.name, paint: paintOf(seat.id), on: seat.on })),
-      results: stage === 'results' ? results.map((r, i) => ({ name: r.name, time: r.time, best: r.best, paint: resultPaint[i] })) : null,
+      results: stage === 'results' ? results.map((r, i) => ({
+        name: r.name, time: r.time, best: r.best, paint: resultPaint[i], record: r.id !== null && r.id === fresh.byLap,
+        gain: cup.rounds > 1 && r.id !== null ? cup.table.find((row) => row.id === r.id)?.last ?? null : null,
+      })) : null,
+      cup: cup.rounds > 1 ? { rounds: cup.rounds, done: cup.done, over: over(cup), table: cup.table.map((row) => ({ name: row.name, points: row.points, paint: paintOf(row.id) })) } : null,
+      points: session.seats.map((seat) => (cup.rounds > 1 && cup.done > 0 ? cup.table.find((row) => row.id === seat.id)?.points ?? 0 : null)),
+      record: records.lap,
     });
   }
 
@@ -282,6 +305,9 @@ async function start(): Promise<void> {
   function toLobby(): void {
     stage = 'lobby';
     results = [];
+    fresh = { byLap: null, byRace: null };
+    // Después de la tabla final, el campeonato siguiente arranca de cero.
+    if (over(cup)) saveCup(newCup(cup.rounds));
     seat();
     share();
   }
@@ -316,6 +342,18 @@ async function start(): Promise<void> {
       bots = Math.max(0, Math.min(room, bots) + (command.d === -1 ? -1 : 1));
       bots = Math.min(room, bots);
       seat();
+      share();
+    }
+    else if (command.a === 'rounds') {
+      // La cantidad de carreras se elige antes de la primera: después, la tabla ya está corriendo.
+      if (stage !== 'lobby' || cup.done > 0) return;
+      const at = Math.max(0, ROUNDS.indexOf(cup.rounds)) + (command.d === -1 ? -1 : 1);
+      saveCup(newCup(ROUNDS[Math.max(0, Math.min(ROUNDS.length - 1, at))]));
+      share();
+    }
+    else if (command.a === 'cup') {
+      if (stage !== 'lobby') return;
+      saveCup(newCup(cup.rounds));
       share();
     }
     else if (command.a === 'start') launch();
@@ -361,6 +399,13 @@ async function start(): Promise<void> {
         stage = 'results';
         results = order.map((i) => ({ id: grid[i], name: names[i], time: race.cars[i].finished, best: race.cars[i].best }));
         resultPaint = order.map((i) => styleOf(i).paint);
+        // Una carrera de exhibición, sin jugadores, no mueve ni la tabla ni los récords.
+        if (results.some((r) => r.id !== null)) {
+          const beaten = beat(records, results);
+          fresh = { byLap: beaten.lap, byRace: beaten.race };
+          if (fresh.byLap !== null || fresh.byRace !== null) keep(recordsKey, (records = beaten.records));
+          if (cup.rounds > 1) saveCup(scoreRace(cup, results));
+        }
       }
     }
     share();

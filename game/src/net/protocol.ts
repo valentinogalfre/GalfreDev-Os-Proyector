@@ -1,5 +1,7 @@
 /** Lo que se dicen la pared y los volantes. La sala del launcher solo lo lleva de un lado a otro. */
 
+import type { Cup, Finish, Records } from '../sim/cup';
+
 export type Phase = 'lobby' | 'countdown' | 'race' | 'results';
 
 /** Lo que la pared le cuenta a todos los celulares cada vez que cambia. */
@@ -16,7 +18,11 @@ export interface Shared {
   /** Quiénes corren esta carrera. El que entra con la carrera empezada espera a la siguiente. */
   racing: number[];
   /** Del primero al último, cuando terminó la carrera. */
-  results: { id: number | null; name: string; time: number | null; /** Su mejor vuelta, en segundos. */ best: number | null }[];
+  results: Finish[];
+  /** El campeonato: de cuántas carreras es, cuántas van y la tabla. Con una sola carrera no hay tabla. */
+  cup: Cup;
+  /** Los récords de esta pista, y qué jugador batió cada uno en la carrera que acaba de terminar. */
+  record: Records & { byLap: number | null; byRace: number | null };
   /** Puerto de la misma página por HTTPS, o 0: el sensor de inclinación solo anda en una página segura. */
   secure: number;
 }
@@ -36,7 +42,10 @@ export interface Mine {
 }
 
 /** Lo que pide el que lidera la sala. */
-export type Command = { a: 'track'; d: 1 | -1 } | { a: 'bots'; d: 1 | -1 } | { a: 'start' } | { a: 'lobby' };
+export type Command =
+  | { a: 'track'; d: 1 | -1 } | { a: 'bots'; d: 1 | -1 } | { a: 'start' } | { a: 'lobby' }
+  /** De cuántas carreras es el campeonato (solo antes de la primera), y empezarlo de cero. */
+  | { a: 'rounds'; d: 1 | -1 } | { a: 'cup' };
 
 /** Lo que pide cualquiera en la sala: el auto de al lado. */
 export type Wish = { a: 'car'; d: 1 | -1 };

@@ -125,20 +125,32 @@ function lobby(state: Shared): void {
   const lead = state.lead === me!.id;
   const done = state.phase === 'results';
   const place = done ? state.results.findIndex((r) => r.id === me!.id) + 1 : 0;
+  const cup = state.cup.rounds > 1 ? state.cup : null;
+  const points = (id: number | null) => cup?.table.find((row) => row.id === id);
   const rows = done
-    ? state.results.map((r, i) => `<li><span class="tag">${i + 1}</span>${esc(r.name)}<span class="tag">${r.best === null ? '' : `vuelta ${r.best.toFixed(2)} · `}${r.time === null ? '—' : `${r.time.toFixed(2)} s`}</span></li>`)
-    : state.players.map((p) => `<li class="${p.on ? '' : 'off'}"><i style="background:${hex(p.paint)}"></i>${esc(p.name)}${p.id === state.lead ? '<span class="tag">Elige pista</span>' : ''}</li>`);
+    ? state.results.map((r, i) => `<li><span class="tag">${i + 1}</span>${esc(r.name)}<span class="tag">${r.best === null ? '' : `${r.id !== null && r.id === state.record.byLap ? 'récord' : 'vuelta'} ${r.best.toFixed(2)} · `}${r.time === null ? '—' : `${r.time.toFixed(2)} s`}${points(r.id) ? ` · +${points(r.id)!.last}` : ''}</span></li>`)
+    : state.players.map((p) => `<li class="${p.on ? '' : 'off'}"><i style="background:${hex(p.paint)}"></i>${esc(p.name)}<span class="tag">${p.id === state.lead ? 'Elige pista' : ''}${cup && cup.done > 0 ? `${p.id === state.lead ? ' · ' : ''}${points(p.id)?.points ?? 0} pts` : ''}</span></li>`);
+  // La tabla del campeonato va debajo de la llegada; después de la última carrera, arriba y con el campeón.
+  const ended = cup !== null && cup.done >= cup.rounds;
+  const table = done && cup
+    ? `<p class="tag title">${ended ? `Campeón: ${esc(cup.table[0]?.name ?? '')}` : `Campeonato · carrera ${cup.done} de ${cup.rounds}`}</p><ol>${cup.table.map((row, i) => `<li><span class="tag">${i + 1}</span>${esc(row.name)}<span class="tag">${row.points} pts</span></li>`).join('')}</ol>`
+    : '';
+  const mark = state.record.lap ? `Récord de vuelta ${state.record.lap.time.toFixed(2)} · ${esc(state.record.lap.name)}` : '';
+  const mine = done && (state.record.byLap === me!.id || state.record.byRace === me!.id) ? ' · récord de pista' : '';
   const secure = !isSecureContext && state.secure ? `https://${location.hostname}:${state.secure}${location.pathname}${location.hash}` : '';
   app.innerHTML = `${head()}
-    <div class="me"><div class="chip" style="background:${hex(self?.paint ?? 0xf1ede6)}"></div><div class="fill"><span class="tag">${done ? (place ? `Llegaste ${place}.º` : 'Final') : 'Tu auto'}</span><b>${esc(me!.name)}</b></div>${done ? '' : '<button class="quiet" id="car-prev" aria-label="Auto anterior">‹</button><button class="quiet" id="car-next" aria-label="Auto siguiente">›</button>'}</div>
-    <div class="fill scroll"><ol>${rows.join('')}</ol></div>
+    <div class="me"><div class="chip" style="background:${hex(self?.paint ?? 0xf1ede6)}"></div><div class="fill"><span class="tag">${done ? (place ? `Llegaste ${place}.º${mine}` : 'Final') : 'Tu auto'}</span><b>${esc(me!.name)}</b></div>${done ? '' : '<button class="quiet" id="car-prev" aria-label="Auto anterior">‹</button><button class="quiet" id="car-next" aria-label="Auto siguiente">›</button>'}</div>
+    <div class="fill scroll">${ended ? table : ''}${done && cup ? `<p class="tag title">Llegada</p>` : cup ? `<p class="tag title">Campeonato · carrera ${cup.done + 1} de ${cup.rounds}</p>` : ''}<ol>${rows.join('')}</ol>${ended ? '' : table}${mark ? `<p class="tag title">${mark}</p>` : ''}</div>
     <div class="stack" style="padding-top:14px">
       ${problem ? `<p>${esc(problem)}</p>` : ''}
       <div class="row"><button class="quiet ${useTilt ? '' : 'on'}" id="touch">Botones</button><button class="quiet ${useTilt ? 'on' : ''}" id="tilt">Inclinación</button>${useTilt ? `<button class="quiet ${tilt.invert ? 'on' : ''}" id="invert">Invertir</button>` : ''}</div>
       ${secure ? `<p>La inclinación solo anda en la página segura. <a href="${secure}" style="color:inherit">Abrirla</a>: el navegador va a avisar que el certificado es del proyector.</p>` : ''}
-      ${lead ? `${done ? '' : `<div class="pick"><button class="quiet" id="prev">‹</button><div><span class="tag">Pista · ${state.laps} vueltas</span><b>${esc(state.track)}</b></div><button class="quiet" id="next">›</button></div>
-        <div class="pick"><button class="quiet" id="less" aria-label="Menos rivales">−</button><div><span class="tag">Rivales automáticos</span><b>${Math.min(state.bots, state.room)}</b></div><button class="quiet" id="more" aria-label="Más rivales">+</button></div>`}
-        <button class="go cinta" id="start">${done ? 'Otra carrera' : 'Largar'}</button>` : `<p>${done ? 'Esperando otra carrera.' : `Pista: ${esc(state.track)}. Larga quien entró primero.`}</p>`}
+      ${lead ? `${done ? '' : `<div class="pick"><button class="quiet" id="prev">‹</button><div><span class="tag">Pista · ${state.laps === 1 ? '1 vuelta' : `${state.laps} vueltas`}</span><b>${esc(state.track)}</b></div><button class="quiet" id="next">›</button></div>
+        <div class="pick"><button class="quiet" id="less" aria-label="Menos rivales">−</button><div><span class="tag">Rivales automáticos</span><b>${Math.min(state.bots, state.room)}</b></div><button class="quiet" id="more" aria-label="Más rivales">+</button></div>
+        ${state.cup.done === 0
+          ? `<div class="pick"><button class="quiet" id="fewer" aria-label="Menos carreras">−</button><div><span class="tag">Campeonato</span><b>${state.cup.rounds > 1 ? `${state.cup.rounds} carreras` : 'Carrera suelta'}</b></div><button class="quiet" id="longer" aria-label="Más carreras">+</button></div>`
+          : '<button class="quiet" id="again">Empezar el campeonato de cero</button>'}`}
+        <button class="go cinta" id="start">${!done ? 'Largar' : ended ? 'Campeonato nuevo' : cup ? 'Siguiente carrera' : 'Otra carrera'}</button>` : `<p>${done ? 'Esperando otra carrera.' : `Pista: ${esc(state.track)}. Larga quien entró primero.`}</p>`}
     </div>`;
   const on = (id: string, act: () => void) => app.querySelector(`#${id}`)?.addEventListener('click', act);
   on('touch', () => { store('control', 'botones'); void setTilt(false); });
@@ -154,6 +166,9 @@ function lobby(state: Shared): void {
   on('next', () => command({ a: 'track', d: 1 }));
   on('less', () => command({ a: 'bots', d: -1 }));
   on('more', () => command({ a: 'bots', d: 1 }));
+  on('fewer', () => command({ a: 'rounds', d: -1 }));
+  on('longer', () => command({ a: 'rounds', d: 1 }));
+  on('again', () => command({ a: 'cup' }));
   on('start', () => {
     // Pantalla completa y acostada, donde el navegador lo permita: tiene que salir de un toque.
     void document.documentElement.requestFullscreen?.().then(() => (screen.orientation as unknown as { lock?: (o: string) => Promise<void> }).lock?.('landscape')).catch(() => undefined);

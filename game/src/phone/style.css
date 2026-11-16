@@ -39,8 +39,9 @@ input:focus { border-color: var(--hueso); }
 ol { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--linea); }
 ol li { display: flex; align-items: center; gap: 12px; height: 44px; border-bottom: 1px solid var(--linea); }
 ol li i { width: 12px; height: 12px; flex: none; }
-ol li span { margin-left: auto; }
+ol li span:last-child { margin-left: auto; }
 ol li.off { opacity: .4; }
+.title { margin: 0; padding: 14px 0 8px; }
 .pick { display: flex; align-items: center; gap: 10px; }
 .pick button { width: 56px; flex: none; font-size: 22px; }
 .pick div { flex: 1; text-align: center; }
