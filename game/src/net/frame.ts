@@ -1,6 +1,6 @@
 /**
  * Un cuadro de la carrera tal como viaja de la pared a los celulares: lo justo para dibujar cada auto en otro
- * equipo. Va como texto corto y no como objeto: son veinte por segundo y la sala del proyector los reparte sin abrirlos.
+ * equipo. Va como texto corto y no como objeto: son treinta por segundo y la sala del proyector los reparte sin abrirlos.
  */
 export interface CarFrame {
   /** Metros recorridos y posición a lo ancho de la pista. */

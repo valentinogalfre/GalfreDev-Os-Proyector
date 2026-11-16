@@ -430,10 +430,10 @@ async function start(): Promise<void> {
       }
     }
     share();
-    // Veinte veces por segundo, la carrera entera para que cada celular la dibuje desde su auto. En la sala alcanza
+    // Treinta veces por segundo, la carrera entera para que cada celular la dibuje desde su auto. En la sala alcanza
     // con dos: los autos están quietos en la grilla y cada celular muestra el suyo.
     sinceFrame += dt;
-    if (sinceFrame >= (stage === 'lobby' ? 0.5 : 0.05)) {
+    if (sinceFrame >= (stage === 'lobby' ? 0.5 : 0.033)) {
       sinceFrame = 0;
       session!.stream(encodeFrame({ clock: race.clock, cars: race.cars.map((car) => ({ s: car.s, d: car.d, heading: car.yaw + car.slip, steer: car.steer - car.slip * 1.5, v: car.v, boosting: car.boosting, braking: car.braking, drifting: car.drifting, offTrack: car.offTrack })) }));
     }

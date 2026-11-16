@@ -25,8 +25,8 @@ export interface View {
   stop(): void;
 }
 
-/** Cuántos cuadros se guardan para suavizar: a veinte por segundo, más de un segundo. */
-const KEPT = 24;
+/** Cuántos cuadros se guardan para suavizar: a treinta por segundo, un segundo. */
+const KEPT = 30;
 /** Hasta cuánto se sigue de largo cuando no llega el cuadro siguiente, en segundos. Pasado eso el auto espera. */
 const COAST = 0.25;
 
@@ -77,7 +77,7 @@ export async function mountView(canvas: HTMLCanvasElement, mapCanvas: HTMLCanvas
   /** Los últimos cuadros, del más viejo al más nuevo. */
   const frames: Frame[] = [];
   /** Cuánto hay que sumarle al reloj de este celular para tener el de la carrera, y cada cuánto llegan los cuadros. */
-  let offset = NaN, every = 0.05, lastArrival = 0;
+  let offset = NaN, every = 0.033, lastArrival = 0;
   let pose: CarFrame[] | null = null;
 
   function seat(list: Shared['cars'], me: number): void {
@@ -116,7 +116,7 @@ export async function mountView(canvas: HTMLCanvasElement, mapCanvas: HTMLCanvas
   /** Los autos en el instante que se dibuja: un poco atrás del último cuadro, para tener siempre entre cuáles suavizar. */
   function sample(): CarFrame[] | null {
     if (!frames.length) return null;
-    const when = (drawing = performance.now() / 1000 + offset - Math.min(0.3, Math.max(0.06, every * 1.5)));
+    const when = (drawing = performance.now() / 1000 + offset - Math.min(0.3, Math.max(0.045, every * 1.3)));
     let k = frames.length - 1;
     while (k > 0 && frames[k - 1].clock > when) k--;
     const b = frames[k], a = frames[k - 1];
