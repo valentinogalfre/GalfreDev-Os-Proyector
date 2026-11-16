@@ -7,6 +7,9 @@ export interface Shared {
   phase: Phase;
   track: string;
   laps: number;
+  /** Cuántos autos automáticos pidió el que lidera, y cuántos entran con los que ya están. */
+  bots: number;
+  room: number;
   /** Quién elige pista y larga: el primero que entró y sigue conectado. */
   lead: number | null;
   players: { id: number; name: string; paint: number; on: boolean }[];
@@ -31,7 +34,7 @@ export interface Mine {
 }
 
 /** Lo que pide el que lidera la sala. */
-export type Command = { a: 'track'; d: 1 | -1 } | { a: 'start' } | { a: 'lobby' };
+export type Command = { a: 'track'; d: 1 | -1 } | { a: 'bots'; d: 1 | -1 } | { a: 'start' } | { a: 'lobby' };
 
 /** Lo que pide cualquiera en la sala: el auto de al lado. */
 export type Wish = { a: 'car'; d: 1 | -1 };

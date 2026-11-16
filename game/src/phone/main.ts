@@ -116,7 +116,8 @@ function lobby(state: Shared): void {
       ${problem ? `<p>${esc(problem)}</p>` : ''}
       <div class="row"><button class="quiet ${useTilt ? '' : 'on'}" id="touch">Botones</button><button class="quiet ${useTilt ? 'on' : ''}" id="tilt">Inclinación</button>${useTilt ? `<button class="quiet ${tilt.invert ? 'on' : ''}" id="invert">Invertir</button>` : ''}</div>
       ${secure ? `<p>La inclinación solo anda en la página segura. <a href="${secure}" style="color:inherit">Abrirla</a>: el navegador va a avisar que el certificado es del proyector.</p>` : ''}
-      ${lead ? `${done ? '' : `<div class="pick"><button class="quiet" id="prev">‹</button><div><span class="tag">Pista · ${state.laps} vueltas</span><b>${esc(state.track)}</b></div><button class="quiet" id="next">›</button></div>`}
+      ${lead ? `${done ? '' : `<div class="pick"><button class="quiet" id="prev">‹</button><div><span class="tag">Pista · ${state.laps} vueltas</span><b>${esc(state.track)}</b></div><button class="quiet" id="next">›</button></div>
+        <div class="pick"><button class="quiet" id="less" aria-label="Menos rivales">−</button><div><span class="tag">Rivales automáticos</span><b>${Math.min(state.bots, state.room)}</b></div><button class="quiet" id="more" aria-label="Más rivales">+</button></div>`}
         <button class="go cinta" id="start">${done ? 'Otra carrera' : 'Largar'}</button>` : `<p>${done ? 'Esperando otra carrera.' : `Pista: ${esc(state.track)}. Larga quien entró primero.`}</p>`}
     </div>`;
   const on = (id: string, act: () => void) => app.querySelector(`#${id}`)?.addEventListener('click', act);
@@ -131,6 +132,8 @@ function lobby(state: Shared): void {
   on('car-next', () => command({ a: 'car', d: 1 }));
   on('prev', () => command({ a: 'track', d: -1 }));
   on('next', () => command({ a: 'track', d: 1 }));
+  on('less', () => command({ a: 'bots', d: -1 }));
+  on('more', () => command({ a: 'bots', d: 1 }));
   on('start', () => {
     // Pantalla completa y acostada, donde el navegador lo permita: tiene que salir de un toque.
     void document.documentElement.requestFullscreen?.().then(() => (screen.orientation as unknown as { lock?: (o: string) => Promise<void> }).lock?.('landscape')).catch(() => undefined);

@@ -6,7 +6,7 @@ import { mountLobby } from './host/lobby';
 import { Session } from './host/session';
 import type { Command, Shared } from './net/protocol';
 import { Race, TUNING, type RaceEvent } from './sim/race';
-import { animate, bakeMatcap, buildCar, Fleet, repaint, loadCarKits } from './world/car';
+import { animate, bakeMatcap, buildCar, Fleet, nameTag, repaint, loadCarKits } from './world/car';
 import { Puffs } from './world/spray';
 import { buildTrack, curvature, place } from './world/track';
 import { cinta } from './themes/cinta';
@@ -17,11 +17,11 @@ import type { Theme } from './themes/theme';
 const THEMES: Record<string, Theme> = { puna, neon, cinta };
 const NAMES = ['Vale', 'Tino', 'Maxi', 'Sofi', 'Nacho', 'Lu'];
 /** Los autos que nadie maneja. */
-const BOTS = ['Rayo', 'Tuerca', 'Nafta', 'Pistón', 'Bujía', 'Llanta'];
+const BOTS = ['Rayo', 'Tuerca', 'Nafta', 'Pistón', 'Bujía', 'Llanta', 'Cardán'];
 /** Pinturas para el séptimo y el octavo: cada pista trae seis. */
 const EXTRA_PAINT = [0x7a3fd0, 0x3fb8d0];
 const LAPS = 3;
-/** La grilla se completa con bots hasta acá, y no pasa de lo que entra en la sala. */
+/** Sin nadie conectado, la carrera de exhibición lleva esta cantidad de autos; la sala no pasa del segundo número. */
 const MIN_CARS = 6, MAX_CARS = 8;
 /** Cuánto se espera a los que faltan desde que llega el primero. */
 const GRACE = 30;
@@ -111,6 +111,7 @@ async function start(): Promise<void> {
   if (fleet) scene.add(fleet.group);
   const showHud = query.get('hud') !== '0';
   const cars: THREE.Group[] = [];
+  const tags: THREE.Sprite[] = [];
   /** Quién maneja cada auto de la grilla: el número de jugador en la sala, o null si es un bot. */
   let grid: (number | null)[] = [];
   let names: string[] = [];
@@ -130,6 +131,18 @@ async function start(): Promise<void> {
       scene.add(car);
     }
     cars.forEach((car, i) => repaint(car, styleOf(i)));
+    // Cada uno encuentra su auto por el nombre que lleva encima; los automáticos no llevan nada.
+    for (const tag of tags.splice(0)) {
+      tag.removeFromParent();
+      tag.material.map?.dispose();
+      tag.material.dispose();
+    }
+    grid.forEach((id, i) => {
+      if (id === null) return;
+      const tag = nameTag(names[i], styleOf(i).paint);
+      cars[i].add(tag);
+      tags.push(tag);
+    });
     hud = showHud ? mountHud({ track: theme.name, laps: LAPS, cinta: theme.trail === undefined, players: grid.map((_, i) => ({ name: names[i], paint: styleOf(i).paint })) }) : null;
   }
   // En la maqueta el primer auto es del teclado (jugador 0) y el resto corre solo.
@@ -200,13 +213,15 @@ async function start(): Promise<void> {
   const lobby = hosting ? mountLobby(hash.get('qr') ?? '') : null;
   /** El auto que eligió cada uno. Sobrevive al cambio de pista, que recarga la página. */
   const picks = new Map<number, number>((query.get('autos') ?? '').split('-').filter(Boolean).map((pair) => pair.split('.').map(Number) as [number, number]));
+  /** Cuántos rivales automáticos quiere el que lidera. También sobrevive al cambio de pista. */
+  let bots = Math.min(MAX_CARS - 1, Math.max(0, Number(query.get('bots') ?? 2) || 0));
   const paintOf = (id: number) => liveries[picks.get(id) ?? -1]?.paint ?? 0x6b6862;
 
   function share(): void {
     if (!session) return;
     const leadName = session.seats.find((seat) => seat.id === session!.lead)?.name ?? null;
     session.share({
-      phase: stage, track: theme.name, laps: LAPS, lead: session.lead, results, secure: Number(hash.get('tls')) || 0,
+      phase: stage, track: theme.name, laps: LAPS, bots, room: MAX_CARS - Math.min(MAX_CARS, session.seats.filter((seat) => seat.on).length), lead: session.lead, results, secure: Number(hash.get('tls')) || 0,
       players: session.seats.map((seat) => ({ id: seat.id, name: seat.name, paint: paintOf(seat.id), on: seat.on })),
       racing: stage === 'lobby' ? [] : grid.filter((id): id is number => id !== null),
     });
@@ -214,7 +229,7 @@ async function start(): Promise<void> {
     hud?.show(!waiting);
     if (!waiting) return lobby?.hide();
     lobby?.show({
-      track: theme.name, laps: LAPS, lead: leadName,
+      track: theme.name, laps: LAPS, lead: leadName, bots: grid.filter((id) => id === null).length,
       players: session.seats.map((seat) => ({ name: seat.name, paint: paintOf(seat.id), on: seat.on })),
       results: stage === 'results' ? results.map((r, i) => ({ name: r.name, time: r.time, paint: resultPaint[i] })) : null,
     });
@@ -223,7 +238,7 @@ async function start(): Promise<void> {
   /** Sienta en la grilla a los que están conectados y completa con bots. */
   function seat(): void {
     const seats = session!.seats.filter((s) => s.on).slice(0, MAX_CARS);
-    const fill = Math.max(0, MIN_CARS - seats.length);
+    const fill = seats.length ? Math.min(bots, MAX_CARS - seats.length) : MIN_CARS;
     // Cada uno con el auto que eligió si sigue libre, o el primero que quede; los bots, con lo que sobra.
     const free = liveries.map((_, k) => k);
     const take = (wanted?: number) => free.splice(Math.max(0, free.indexOf(wanted ?? -1)), 1)[0];
@@ -265,6 +280,7 @@ async function start(): Promise<void> {
   function otherTrack(step: number): void {
     if (stage !== 'lobby' && stage !== 'results') return;
     const all = Object.keys(THEMES);
+    query.set('bots', String(bots));
     query.set('autos', [...picks].map(([id, look]) => `${id}.${look}`).join('-'));
     query.set('t', all[(all.indexOf(THEMES[key] ? key : 'puna') + step + all.length) % all.length]);
     location.replace(`?${query.toString()}${location.hash}`);
@@ -272,6 +288,14 @@ async function start(): Promise<void> {
 
   function obey(command: Command): void {
     if (command.a === 'track') otherTrack(command.d);
+    else if (command.a === 'bots') {
+      if (stage !== 'lobby') return;
+      const room = MAX_CARS - Math.min(MAX_CARS, session!.seats.filter((s) => s.on).length);
+      bots = Math.max(0, Math.min(room, bots) + (command.d === -1 ? -1 : 1));
+      bots = Math.min(room, bots);
+      seat();
+      share();
+    }
     else if (command.a === 'start') launch();
     else if (stage === 'results') toLobby();
   }

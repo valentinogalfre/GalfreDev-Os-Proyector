@@ -192,6 +192,40 @@ export function buildCar(kit: CarKit, style: CarStyle, fine: boolean, night: boo
   return car;
 }
 
+/** El cartel que flota sobre el auto de cada jugador: su nombre y su pintura, siempre del mismo tamaño en pantalla. */
+export function nameTag(name: string, paint: number): THREE.Sprite {
+  const c = document.createElement('canvas'), g = c.getContext('2d')!;
+  const font = '800 40px Archivo, system-ui, sans-serif', text = name.length > 12 ? `${name.slice(0, 11)}…` : name;
+  g.font = font;
+  const w = Math.ceil(g.measureText(text).width) + 86, h = 68, tip = 22;
+  c.width = w;
+  c.height = h + tip;
+  g.fillStyle = 'rgba(17,17,17,.9)';
+  g.fillRect(0, 0, w, h);
+  g.beginPath();
+  g.moveTo(w / 2 - 16, h);
+  g.lineTo(w / 2 + 16, h);
+  g.lineTo(w / 2, h + tip);
+  g.fill();
+  g.fillStyle = `#${paint.toString(16).padStart(6, '0')}`;
+  g.fillRect(16, 16, 36, 36);
+  g.strokeStyle = '#f1ede6';
+  g.lineWidth = 3;
+  g.strokeRect(16, 16, 36, 36);
+  g.font = font;
+  g.textBaseline = 'middle';
+  g.fillStyle = '#f1ede6';
+  g.fillText(text, 68, h / 2 + 2);
+  const map = new THREE.CanvasTexture(c);
+  map.colorSpace = THREE.SRGBColorSpace;
+  const tag = new THREE.Sprite(new THREE.SpriteMaterial({ map, transparent: true, depthTest: false, depthWrite: false, fog: false, sizeAttenuation: false }));
+  tag.center.set(0.5, 0);
+  tag.scale.set((0.075 * c.width) / c.height, 0.075, 1);
+  tag.position.y = 1.9;
+  tag.renderOrder = 20;
+  return tag;
+}
+
 /** Cambia la pintura de un auto ya armado: elegir otro no rehace el modelo. */
 export function repaint(car: THREE.Group, style: CarStyle): void {
   const { paint, caliper, fire, under } = car.userData as { paint: THREE.MeshStandardMaterial; caliper: THREE.MeshStandardMaterial; fire: THREE.MeshBasicMaterial; under?: THREE.MeshBasicMaterial };
