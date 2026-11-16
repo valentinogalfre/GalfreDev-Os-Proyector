@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import './style.css';
 import { mountSound } from './audio';
 import { bakeLight } from './world/bake';
+import { Marks } from './world/marks';
 import { mountHud } from './hud';
 import { mountLobby } from './host/lobby';
 import { Session } from './host/session';
@@ -173,6 +174,10 @@ async function start(): Promise<void> {
   const smoke = new Puffs({ color: theme.night ? 0x9aa6c4 : 0xe6e0d6, opacity: theme.night ? 0.13 : 0.15, size: 2.6, additive: false, life: 0.7, rise: 1.6 }, 320);
   scene.add(smoke.points);
 
+  const marks = new Marks();
+  scene.add(marks.mesh);
+  const across = new THREE.Vector3();
+
   const sun = fine ? world.sun : undefined;
   const range = world.shadowRange ?? 45;
   if (sun) {
@@ -248,7 +253,7 @@ async function start(): Promise<void> {
     lobby?.show({
       track: theme.name, laps: LAPS, lead: leadName, bots: grid.filter((id) => id === null).length,
       players: session.seats.map((seat) => ({ name: seat.name, paint: paintOf(seat.id), on: seat.on })),
-      results: stage === 'results' ? results.map((r, i) => ({ name: r.name, time: r.time, paint: resultPaint[i] })) : null,
+      results: stage === 'results' ? results.map((r, i) => ({ name: r.name, time: r.time, best: r.best, paint: resultPaint[i] })) : null,
     });
   }
 
@@ -354,7 +359,7 @@ async function start(): Promise<void> {
       const humansIn = grid.every((id, i) => id === null || race.cars[i].bot || race.cars[i].finished !== null);
       if (race.phase === 'done' || (firstFinish > 0 && race.clock - firstFinish > (humansIn ? 3 : GRACE))) {
         stage = 'results';
-        results = order.map((i) => ({ id: grid[i], name: names[i], time: race.cars[i].finished }));
+        results = order.map((i) => ({ id: grid[i], name: names[i], time: race.cars[i].finished, best: race.cars[i].best }));
         resultPaint = order.map((i) => styleOf(i).paint);
       }
     }
@@ -365,7 +370,7 @@ async function start(): Promise<void> {
     grid.forEach((id, i) => {
       if (id === null || race.cars[i].bot) return;
       const car = race.cars[i];
-      session!.tell(id, { place: order.indexOf(i) + 1, of: grid.length, lap: car.lap, nitro: Math.round(car.nitro * 100) / 100, speed: Math.round(car.v * 3.6), off: car.offTrack, buzz: buzz[i] ?? 0 });
+      session!.tell(id, { place: order.indexOf(i) + 1, of: grid.length, lap: car.lap, nitro: Math.round(car.nitro * 100) / 100, speed: Math.round(car.v * 3.6), off: car.offTrack, plus: car.draft > 0.5 ? 'rebufo' : car.flow >= 1 ? 'ritmo' : '', buzz: buzz[i] ?? 0 });
       buzz[i] = 0;
     });
   }
@@ -437,6 +442,13 @@ async function start(): Promise<void> {
         place(track, car.s - 1.9, car.d + (Math.random() < 0.5 ? -0.85 : 0.85), probe);
         dust.emit(at.copy(probe.position).setY(probe.position.y + 0.15), 0, 0.6, 0, car.offTrack ? 3 : 1.4);
       }
+      // Derrapando o clavando los frenos, las ruedas de atrás dejan su huella en el asfalto.
+      const marking = !car.offTrack && (car.drifting || (car.braking && car.v > 25));
+      [-0.85, 0.85].forEach((side, w) => {
+        if (!marking) return marks.lay(i * 2 + w, null);
+        place(track, car.s - 1.7, car.d + side - Math.sin(car.slip) * 1.7, probe);
+        marks.lay(i * 2 + w, at.copy(probe.position).setY(probe.position.y + 0.03), across.set(1, 0, 0).applyQuaternion(probe.quaternion));
+      });
       // El humo sale de las dos ruedas de atrás, por tiempo y no por cuadro: a 30 cuadros no es la mitad de humo.
       if (car.drifting) for (const side of [-0.85, 0.85]) {
         if (Math.random() > dt * 26 * Math.min(1, Math.abs(car.slip) * 4)) continue;

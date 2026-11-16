@@ -16,7 +16,7 @@ export interface Shared {
   /** Quiénes corren esta carrera. El que entra con la carrera empezada espera a la siguiente. */
   racing: number[];
   /** Del primero al último, cuando terminó la carrera. */
-  results: { id: number | null; name: string; time: number | null }[];
+  results: { id: number | null; name: string; time: number | null; /** Su mejor vuelta, en segundos. */ best: number | null }[];
   /** Puerto de la misma página por HTTPS, o 0: el sensor de inclinación solo anda en una página segura. */
   secure: number;
 }
@@ -29,6 +29,8 @@ export interface Mine {
   nitro: number;
   speed: number;
   off: boolean;
+  /** Qué le está dando velocidad de más: el rebufo de otro auto, el ritmo de no cometer errores, o nada. */
+  plus: '' | 'rebufo' | 'ritmo';
   /** Fuerza de un golpe recién sufrido, de 0 a 1: el celular vibra. */
   buzz: number;
 }

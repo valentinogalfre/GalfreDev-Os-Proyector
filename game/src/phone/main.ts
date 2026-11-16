@@ -106,7 +106,7 @@ function lobby(state: Shared): void {
   const done = state.phase === 'results';
   const place = done ? state.results.findIndex((r) => r.id === me!.id) + 1 : 0;
   const rows = done
-    ? state.results.map((r, i) => `<li><span class="tag">${i + 1}</span>${esc(r.name)}<span class="tag">${r.time === null ? '—' : `${r.time.toFixed(2)} s`}</span></li>`)
+    ? state.results.map((r, i) => `<li><span class="tag">${i + 1}</span>${esc(r.name)}<span class="tag">${r.best === null ? '' : `vuelta ${r.best.toFixed(2)} · `}${r.time === null ? '—' : `${r.time.toFixed(2)} s`}</span></li>`)
     : state.players.map((p) => `<li class="${p.on ? '' : 'off'}"><i style="background:${hex(p.paint)}"></i>${esc(p.name)}${p.id === state.lead ? '<span class="tag">Elige pista</span>' : ''}</li>`);
   const secure = !isSecureContext && state.secure ? `https://${location.hostname}:${state.secure}${location.pathname}${location.hash}` : '';
   app.innerHTML = `${head()}
@@ -166,7 +166,11 @@ function paintDrive(): void {
   const place = drive.querySelector('.place')!, lap = drive.querySelector('.lap')!, note = drive.querySelector('.note')!;
   place.innerHTML = mine ? `${mine.place}<sup>/${mine.of}</sup>` : '';
   lap.textContent = mine && shared ? `Vuelta ${Math.min(shared.laps, mine.lap + 1)}/${shared.laps}` : 'Preparados';
-  note.classList.toggle('on', mine?.off === true);
+  // Un solo cartel: lo malo tapa a lo bueno.
+  const word = mine?.off ? 'Fuera de pista' : mine?.plus === 'rebufo' ? 'Rebufo' : mine?.plus === 'ritmo' ? 'Ritmo' : '';
+  if (word) note.textContent = word;
+  note.classList.toggle('on', word !== '');
+  note.classList.toggle('good', word !== '' && !mine?.off);
   const tank = drive.querySelector<HTMLElement>('[data-pad="nitro"] u');
   if (tank) tank.style.height = `${Math.round((mine?.nitro ?? 0) * 100)}%`;
 }

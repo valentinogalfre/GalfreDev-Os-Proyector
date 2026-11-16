@@ -75,3 +75,4 @@ body.driving #app { display: none; }
 /* El aviso ocupa su lugar aunque esté apagado, para que el tablero no salte al prenderse. */
 .note { visibility: hidden; padding: 7px 12px; background: var(--cinta); color: var(--carbon); font: 800 15px/1 'Archivo', system-ui, sans-serif; }
 .note.on { visibility: visible; }
+.note.good { background: var(--hueso); }

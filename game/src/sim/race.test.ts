@@ -89,8 +89,10 @@ describe('la carrera', () => {
       run(race, TUNING.countdown + 30);
       return race.cars[1].v;
     };
-    assert.ok(Math.abs(top(10) - TUNING.topSpeed) < 0.5);
-    assert.ok(top(2000) > TUNING.topSpeed * (1 + TUNING.catchUp) - 0.5);
+    // Treinta segundos derecho y sin errores: los dos van con el ritmo completo.
+    const clean = TUNING.topSpeed * (1 + TUNING.flowGain);
+    assert.ok(Math.abs(top(10) - clean) < 0.5);
+    assert.ok(top(2000) > clean * (1 + TUNING.catchUp) - 0.5);
   });
 
   it('el elástico trae a la cola del grupo al jugador que quedó muy atrás, sin nitro; a un automático no', () => {
@@ -108,6 +110,43 @@ describe('la carrera', () => {
     assert.ok(person.nitro < 0.1);
     assert.equal(robot.towed, 0);
     assert.ok(robot.gap > 300);
+  });
+
+  it('el elástico deja último al que trae: detrás de los autos que siguen en el grupo', () => {
+    const race = new Race({ length: 100000, half: 7, wall: 8.6, curvature: () => 0 }, 1, [false, false, true]);
+    race.cars[0].s = 400;
+    race.cars[2].s = 350;
+    race.start();
+    const events = run(race, TUNING.countdown + TUNING.towGrace + 0.2);
+    assert.equal(events.filter((e) => e.type === 'tow' && e.car === 1).length, 1);
+    assert.ok(race.cars[1].s < race.cars[2].s, 'quedó delante del automático');
+    assert.ok(race.cars[0].s - race.cars[1].s < TUNING.towSpan);
+  });
+
+  it('pegado detrás de otro auto se va más rápido que solo, y un toque al muro corta el ritmo', () => {
+    const top = (lane: number) => {
+      const race = new Race({ length: 100000, half: 7, wall: 8.6, curvature: () => 0 }, 1, [false, false]);
+      race.start();
+      run(race, TUNING.countdown + 25);
+      // El de atrás se acomoda a doce metros del otro, en su línea o en la de al lado.
+      const [ahead, behind] = race.cars;
+      for (let t = 0; t < 600; t++) {
+        behind.s = ahead.s - 12;
+        behind.d = ahead.d + lane;
+        race.advance(1 / 60);
+      }
+      return behind;
+    };
+    const tucked = top(0), beside = top(4);
+    assert.ok(tucked.draft > 0.9 && beside.draft < 0.1);
+    assert.ok(tucked.v > beside.v + TUNING.topSpeed * TUNING.draftGain * 0.5, `${tucked.v} contra ${beside.v}`);
+    const race = new Race({ length: 100000, half: 7, wall: 8.6, curvature: () => 0 }, 1, [false]);
+    race.start();
+    run(race, TUNING.countdown + 12);
+    assert.equal(race.cars[0].flow, 1);
+    race.inputs[0].steer = 1;
+    run(race, 2);
+    assert.equal(race.cars[0].flow, 0);
   });
 
   it('derrapando el auto toma una curva que derecho no entra, y carga nitro', () => {

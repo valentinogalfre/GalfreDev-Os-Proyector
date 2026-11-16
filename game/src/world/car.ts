@@ -388,6 +388,8 @@ export class Fleet {
   private readonly tiers: { paint: THREE.InstancedMesh; rest: THREE.InstancedMesh; tail: THREE.InstancedMesh; wheels: THREE.InstancedMesh; n: number }[];
   private readonly flats: THREE.InstancedMesh[] = [];
   private readonly under: THREE.InstancedMesh | null = null;
+  /** La estela de luz que deja el nitro detrás de cada auto que lo está usando. */
+  private readonly streak: THREE.InstancedMesh;
   private readonly tint = new THREE.Color();
   private readonly gaze = new THREE.Vector3();
   private readonly capacity: number;
@@ -420,9 +422,12 @@ export class Fleet {
     if (night) flat(4.6, 11, 0.05, 7.2, 0.28, true, 0xffe2b0);
     if (underglow) this.under = flat(5.8, 9, 0.045, 0, 0.9, true);
 
+    this.streak = new THREE.InstancedMesh(new THREE.PlaneGeometry(1.7, 13).rotateX(-Math.PI / 2).translate(0, 0.4, -8.6), new THREE.MeshBasicMaterial({
+      map: glow(), transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false,
+    }), capacity);
     // Sin flatMap: el navegador del proyector es de 2018 y no lo tiene.
     const pieces = this.tiers.reduce<THREE.InstancedMesh[]>((all, t) => all.concat(t.paint, t.rest, t.tail, t.wheels), []);
-    for (const mesh of pieces.concat(this.flats)) {
+    for (const mesh of pieces.concat(this.flats, this.streak)) {
       mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       // Los autos están repartidos por toda la pista: no hay una caja que sirva para descartarlos juntos.
       mesh.frustumCulled = false;
@@ -446,6 +451,7 @@ export class Fleet {
       if (first < 0 || range[i] < range[first]) { second = first; first = i; } else if (second < 0 || range[i] < range[second]) second = i;
     }
     for (const tier of this.tiers) tier.n = 0;
+    let boosting = 0;
     for (let i = 0; i < n; i++) {
       const car = cars[i];
       const { body, wheels, style, braking } = car.userData as { body: THREE.Group; wheels: THREE.Object3D[]; style: CarStyle; braking: boolean };
@@ -453,6 +459,10 @@ export class Fleet {
       this.flats[0].setMatrixAt(i, car.matrixWorld);
       this.under?.setColorAt(i, style.underglow === undefined ? OFF : this.tint.set(style.underglow));
       if (range[i] === Infinity) continue;
+      if ((car.userData.flame as THREE.Object3D).visible) {
+        this.streak.setMatrixAt(boosting, car.matrixWorld);
+        this.streak.setColorAt(boosting++, this.tint.set(style.underglow ?? 0x6ad0ff));
+      }
       const tier = this.tiers[i === first || i === second ? 0 : this.tiers.length - 1], k = tier.n++;
       tier.paint.setMatrixAt(k, body.matrixWorld);
       for (let w = 0; w < 4; w++) tier.wheels.setMatrixAt(k * 4 + w, wheels[w].matrixWorld);
@@ -465,6 +475,9 @@ export class Fleet {
       tier.paint.instanceMatrix.needsUpdate = tier.wheels.instanceMatrix.needsUpdate = true;
       for (const mesh of [tier.paint, tier.tail]) if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
     }
+    this.streak.count = boosting;
+    this.streak.instanceMatrix.needsUpdate = true;
+    if (this.streak.instanceColor) this.streak.instanceColor.needsUpdate = true;
     for (const mesh of this.flats) mesh.count = n;
     this.flats[0].instanceMatrix.needsUpdate = true;
     if (this.under?.instanceColor) this.under.instanceColor.needsUpdate = true;

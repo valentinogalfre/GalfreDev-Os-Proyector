@@ -47,6 +47,15 @@ export interface Car {
   /** Tiempo de llegada, o null si sigue corriendo. */
   finished: number | null;
   bot: boolean;
+  /** Rebufo, de 0 a 1: va pegado detrás de otro auto y el aire le pesa menos. */
+  draft: number;
+  /** Ritmo, de 0 a 1: lleva un rato sin tocar muro, pasto ni a otro auto. */
+  flow: number;
+  /** Segundos desde el último error. */
+  clean: number;
+  /** Mejor vuelta, en segundos, y cuándo empezó la que está dando. */
+  best: number | null;
+  lapStart: number;
 }
 
 export type RaceEvent =
@@ -72,7 +81,7 @@ export const TUNING = {
   nitroBurn: 0.34,
   nitroFill: 0.07,
   /** Derrapando el auto dobla esto de más, corre esto de menos y carga el nitro así de rápido. */
-  driftGrip: 1.9,
+  driftGrip: 2.1,
   driftSpeed: 0.88,
   driftFill: 0.2,
   driftFrom: 20,
@@ -90,6 +99,15 @@ export const TUNING = {
   towSpan: 60,
   towGrace: 1.2,
   towBack: 45,
+  /** Manejar bien da velocidad. El rebufo: a entre [draftFrom] y [draftTo] metros detrás de otro, en su misma línea. */
+  draftGain: 0.07,
+  draftFrom: 3,
+  draftTo: 26,
+  draftWidth: 1.7,
+  /** El ritmo: tras [flowAfter] segundos sin errores la máxima empieza a subir, y llega a [flowGain] a los [flowFull]. */
+  flowGain: 0.05,
+  flowAfter: 3,
+  flowFull: 9,
   carLength: 4.5,
   carWidth: 2.1,
   countdown: 3,
@@ -120,7 +138,7 @@ export class Race {
     bots.forEach((bot, i) => {
       this.cars.push({
         s: -6 - Math.floor(i / 2) * 9 - (i % 2) * 3, d: (i % 2 ? -1 : 1) * course.half * 0.42,
-        v: 0, yaw: 0, steer: 0, nitro: 0.35, boosting: false, braking: false, drifting: false, slip: 0, offTrack: false, spin: 0, lap: 0, finished: null, bot,
+        v: 0, yaw: 0, steer: 0, nitro: 0.35, boosting: false, braking: false, drifting: false, slip: 0, offTrack: false, spin: 0, lap: 0, finished: null, bot, draft: 0, flow: 0, clean: 0, best: null, lapStart: 0,
       });
       this.inputs.push({ steer: 0, brake: false, nitro: false, drift: false });
     });
@@ -155,6 +173,7 @@ export class Race {
       this.phase = 'race';
     }
     this.front = Math.max(...this.cars.map((car) => car.s));
+    this.reward();
     this.cars.forEach((car, i) => {
       if (car.bot) this.drive(car, this.inputs[i], i);
       this.move(car, this.inputs[i], i, events);
@@ -165,6 +184,9 @@ export class Race {
       const lap = Math.floor(car.s / this.course.length);
       if (lap > car.lap && car.finished === null) {
         car.lap = lap;
+        const took = this.clock - car.lapStart;
+        if (car.best === null || took < car.best) car.best = took;
+        car.lapStart = this.clock;
         if (lap >= this.laps) {
           car.finished = this.clock;
           events.push({ type: 'finish', car: i, place: ++this.placed });
@@ -180,6 +202,7 @@ export class Race {
     const steerIn = done ? clamp(-car.d * 0.1 - car.yaw * 2, -1, 1) : clamp(input.steer, -1, 1);
     car.steer += (steerIn - car.steer) * Math.min(1, STEP * 9);
     car.offTrack = Math.abs(car.d) > course.half + 0.3;
+    if (car.offTrack || car.spin > 0) car.clean = 0;
     car.braking = !done && input.brake;
     car.boosting = !done && input.nitro && car.nitro > 0 && car.spin <= 0 && !car.offTrack;
     // El derrape arranca doblando y se sostiene mientras se mantenga el botón y quede velocidad.
@@ -188,6 +211,7 @@ export class Race {
     car.nitro = clamp(car.nitro + (car.boosting ? -T.nitroBurn : car.drifting ? T.driftFill : T.nitroFill) * STEP, 0, 1);
 
     let top = T.topSpeed * (car.boosting ? T.nitroGain : 1) * (car.drifting ? T.driftSpeed : 1) * (car.offTrack ? T.offTrackSpeed : 1);
+    top *= (1 + T.draftGain * car.draft) * (1 + T.flowGain * car.flow);
     top *= 1 + T.catchUp * clamp((this.front - car.s - T.catchUpFrom) / (T.catchUpFull - T.catchUpFrom), 0, 1);
     if (done) top *= 0.4;
     if (car.spin > 0) {
@@ -225,8 +249,28 @@ export class Race {
       car.d = side * course.wall;
       car.yaw = -car.yaw * 0.35 - side * 0.04;
       car.v *= 1 - Math.min(0.5, 0.1 + into * 0.035);
-      if (into > 1.5) events.push({ type: 'wall', car: index, force: Math.min(1, into / 14) });
+      if (into > 1.5) {
+        events.push({ type: 'wall', car: index, force: Math.min(1, into / 14) });
+        // El muro no solo frena: corta el ritmo y se lleva parte del nitro.
+        car.clean = 0;
+        car.nitro *= 0.6;
+      }
       if (into > 13) car.spin = 0.9;
+    }
+  }
+
+  /** Lo que se gana manejando bien: rebufo detrás de otro auto y ritmo por no cometer errores. */
+  private reward(): void {
+    const T = TUNING;
+    for (const car of this.cars) {
+      let behind = false;
+      for (const other of this.cars) {
+        const gap = other.s - car.s;
+        if (other !== car && gap > T.draftFrom && gap < T.draftTo && Math.abs(other.d - car.d) < T.draftWidth && other.v > 20) behind = true;
+      }
+      car.draft += ((behind ? 1 : 0) - car.draft) * Math.min(1, STEP * (behind ? 1.2 : 3));
+      car.clean += STEP;
+      car.flow = clamp((car.clean - T.flowAfter) / (T.flowFull - T.flowAfter), 0, 1);
     }
   }
 
@@ -243,7 +287,11 @@ export class Race {
       this.lost[i] = (this.lost[i] ?? 0) + STEP;
       if (this.lost[i] < T.towGrace) return;
       this.lost[i] = 0;
-      car.s = lead.s - T.towBack;
+      // Reaparece último: detrás de todos los que siguen en el grupo, sin salirse otra vez del alcance.
+      let last = lead.s - T.towBack + 7;
+      for (const other of this.cars) if (other !== car && other.finished === null && other.s >= lead.s - T.towSpan && other.s < last) last = other.s;
+      car.s = Math.max(lead.s - T.towSpan + 4, last - 7);
+      car.clean = 0;
       car.d = clamp(car.d, -room, room);
       car.v = Math.max(car.v, lead.v * 0.9);
       car.yaw = car.slip = car.spin = car.steer = car.nitro = 0;
@@ -273,6 +321,7 @@ export class Race {
         A.v *= 0.985;
         B.v *= 0.985;
         events.push({ type: 'hit', car: a, other: b, force: Math.min(1, 0.2 + overD) });
+        if (overD > 0.25) A.clean = B.clean = 0;
       } else {
         // De atrás: el de adelante recibe el envión y el de atrás lo paga.
         const [front, back] = ds > 0 ? [B, A] : [A, B];
@@ -282,6 +331,8 @@ export class Race {
         front.v = shared + closing * 0.35;
         back.v = shared - closing * 0.35;
         if (closing > 1) events.push({ type: 'hit', car: a, other: b, force: Math.min(1, closing / 18) });
+        // El que choca de atrás pierde el ritmo; al que le pegaron, no.
+        if (closing > 4) back.clean = 0;
         if (closing > 20) back.spin = 0.8;
       }
     }

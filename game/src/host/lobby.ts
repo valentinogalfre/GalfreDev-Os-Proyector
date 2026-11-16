@@ -1,7 +1,7 @@
 import logoUrl from '../../../app/src/main/assets/remote/logo.svg';
 
 export interface LobbyState {
-  results: { name: string; paint: number; time: number | null }[] | null;
+  results: { name: string; paint: number; time: number | null; best: number | null }[] | null;
   track: string;
   laps: number;
   bots: number;
@@ -41,7 +41,7 @@ export function mountLobby(qr: string): { show(state: LobbyState): void; hide():
     show(state) {
       const done = state.results !== null;
       const rows = done
-        ? state.results!.map((r, i) => `<li><span class="n">${i + 1}</span><i style="background:${hex(r.paint)}"></i><b>${esc(r.name)}</b><span class="gap">${r.time === null ? '—' : `${r.time.toFixed(2)} S`}</span></li>`)
+        ? state.results!.map((r, i) => `<li><span class="n">${i + 1}</span><i style="background:${hex(r.paint)}"></i><b>${esc(r.name)}</b><span class="gap">${r.best === null ? '' : `VUELTA ${r.best.toFixed(2)} · `}${r.time === null ? '—' : `${r.time.toFixed(2)} S`}</span></li>`)
         : state.players.map((p) => `<li class="${p.on ? '' : 'off'}"><span class="n"></span><i style="background:${hex(p.paint)}"></i><b>${esc(p.name)}</b><span class="gap">${p.on ? 'LISTO' : 'SIN SEÑAL'}</span></li>`);
       const html = `
         <header><img src="${logoUrl}" alt="galfredev"><span class="tag">CARRERA · ${esc(state.track.toUpperCase())} · ${state.laps} VUELTAS · ${state.bots === 1 ? '1 RIVAL AUTOMÁTICO' : `${state.bots} RIVALES AUTOMÁTICOS`}</span></header>
