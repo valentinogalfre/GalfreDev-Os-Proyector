@@ -28,6 +28,21 @@ let shared: Shared | null = null;
 let mine: Mine | null = null;
 let problem = '';
 let useTilt = false;
+
+/**
+ * El sensor de inclinación solo se entrega a páginas seguras. Si el proyector tiene la dirección segura que los
+ * celulares aceptan sin avisos, el volante se muda a ella antes de entrar a la sala; si no responde, se queda acá.
+ */
+function upgrade(): void {
+  const port = new URLSearchParams(location.hash.slice(1)).get('p');
+  if (isSecureContext || !port || !/^\d+\.\d+\.\d+\.\d+$/.test(location.hostname)) return;
+  const secure = `https://${location.hostname.replace(/\./g, '-')}.local-ip.sh:${port}`;
+  const late = new Promise<never>((_, fail) => setTimeout(fail, 3000));
+  Promise.race([fetch(`${secure}/carrera/volante.html`, { mode: 'no-cors', cache: 'no-store' }), late])
+    .then(() => { if (!me) location.replace(`${secure}${location.pathname}${location.hash}`); })
+    .catch(() => undefined);
+}
+upgrade();
 const held = { left: false, right: false, brake: false, nitro: false, drift: false };
 
 const hex = (color: number) => `#${color.toString(16).padStart(6, '0')}`;
@@ -94,7 +109,12 @@ function render(): void {
       <input id="name" maxlength="16" autocomplete="off" autocapitalize="words" placeholder="Tu nombre" value="${esc(store('name'))}">
       <button class="go cinta" id="enter">Entrar</button></div>`;
     const input = app.querySelector<HTMLInputElement>('#name')!;
-    app.querySelector('#enter')!.addEventListener('click', () => input.value.trim() && join(input.value.trim()));
+    app.querySelector('#enter')!.addEventListener('click', () => {
+      if (!input.value.trim()) return;
+      // En la página segura el volante es el celular mismo, salvo que alguien ya haya elegido los botones.
+      if (isSecureContext && store('control') !== 'botones') void setTilt(true);
+      join(input.value.trim());
+    });
   } else if (!shared) {
     app.innerHTML = `${head()}<div class="fill stack" style="justify-content:center"><span class="tag">Carrera</span><h1>Esperando a la pared</h1><p>Abrí Carrera en el proyector.</p></div>`;
   } else lobby(shared);
@@ -121,8 +141,8 @@ function lobby(state: Shared): void {
         <button class="go cinta" id="start">${done ? 'Otra carrera' : 'Largar'}</button>` : `<p>${done ? 'Esperando otra carrera.' : `Pista: ${esc(state.track)}. Larga quien entró primero.`}</p>`}
     </div>`;
   const on = (id: string, act: () => void) => app.querySelector(`#${id}`)?.addEventListener('click', act);
-  on('touch', () => void setTilt(false));
-  on('tilt', () => void setTilt(true));
+  on('touch', () => { store('control', 'botones'); void setTilt(false); });
+  on('tilt', () => { store('control', 'inclinacion'); void setTilt(true); });
   on('invert', () => {
     tilt.invert = !tilt.invert;
     store('invert', tilt.invert ? '1' : '0');

@@ -14,6 +14,7 @@ import ar.vale.projectorlauncher.Prefs
 import ar.vale.projectorlauncher.R
 import ar.vale.projectorlauncher.carrera.CarreraHub
 import ar.vale.projectorlauncher.juntada.JuntadaHub
+import java.io.File
 import java.io.IOException
 import java.net.Inet4Address
 
@@ -24,6 +25,9 @@ object RemoteState {
 
     /** El puerto de la misma página por HTTPS, o 0 si este equipo no pudo abrirlo. */
     @Volatile var securePort = 0
+
+    /** El puerto del volante con un certificado que los celulares aceptan sin avisos, o 0 si hoy no lo hay. */
+    @Volatile var publicPort = 0
 
     val running: Boolean get() = port > 0
 
@@ -51,6 +55,7 @@ class RemoteService : Service() {
 
     private var server: RemoteServer? = null
     private var secureServer: RemoteServer? = null
+    private var publicServer: RemoteServer? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -74,7 +79,11 @@ class RemoteService : Service() {
             return
         }
         // Crear la clave del certificado puede tardar en un equipo lento: no frena el arranque.
-        Thread({ startSecure(router) }, "gd-remote-tls").start()
+        val game = Router(pairing, AndroidRemote(applicationContext), race = CarreraHub.carrera::serve, files = RemotePage(applicationContext), gameOnly = true)
+        Thread({
+            startSecure(router)
+            startPublic(game)
+        }, "gd-remote-tls").start()
     }
 
     private fun startSecure(router: Router) {
@@ -90,7 +99,24 @@ class RemoteService : Service() {
         }
     }
 
+    /** El volante por una dirección segura sin advertencias. Baja el certificado de internet: si no hay, no hay puerto. */
+    private fun startPublic(game: Router) {
+        val sockets = PublicTls.sockets(File(filesDir, "volante-tls")) ?: return
+        val created = RemoteServer(game, sockets, secure = true)
+        runCatching { created.start(PUBLIC_PORT) }.onSuccess { port ->
+            if (server == null) {
+                created.stop()
+            } else {
+                publicServer = created
+                RemoteState.publicPort = port
+            }
+        }
+    }
+
     override fun onDestroy() {
+        publicServer?.stop()
+        publicServer = null
+        RemoteState.publicPort = 0
         server?.stop()
         server = null
         secureServer?.stop()
@@ -119,6 +145,7 @@ class RemoteService : Service() {
         private const val CHANNEL = "gd_remote"
         private const val NOTIFICATION_ID = 8686
         private const val SECURE_PORT = 8696
+        private const val PUBLIC_PORT = 8697
 
         fun start(context: Context) {
             context.startForegroundService(Intent(context, RemoteService::class.java))

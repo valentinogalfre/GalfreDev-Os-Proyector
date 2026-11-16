@@ -58,6 +58,8 @@ class Router(
     private val race: SocketHandler? = null,
     /** El puerto de la misma página por HTTPS, o 0 si no lo hay. */
     private val securePort: () -> Int = { 0 },
+    /** Solo la carrera: las páginas del volante y su conexión. Es lo único que atiende el puerto del certificado público. */
+    private val gameOnly: Boolean = false,
     private val files: StaticFiles
 ) {
 
@@ -69,6 +71,7 @@ class Router(
      * El archivo de una presentación lo manda también un invitado, pero solo uno al que dejaron pasar.
      */
     fun isLong(r: HttpRequest): Boolean {
+        if (gameOnly) return false
         val header = r.header("authorization")
         return when (r.path) {
             "/api/upload" -> pairing.authorized(header)
@@ -97,6 +100,7 @@ class Router(
     }
 
     private fun route(r: HttpRequest): HttpResponse {
+        if (gameOnly && !r.path.startsWith(GAME_PAGES)) return HttpResponse.error(404, "not_found")
         if (!r.path.startsWith("/api/")) {
             if (r.method != "GET") return HttpResponse.error(405, "method")
             val page = files.open(r.path) ?: return HttpResponse.error(404, "not_found")
@@ -284,6 +288,7 @@ class Router(
         const val OWNER = "owner"
         const val NONE = "none"
         const val SOCKET_PATH = "/api/carrera/socket"
+        const val GAME_PAGES = "/carrera/"
         val READS = setOf("/api/state", "/api/apps", "/api/claude/state", "/api/access/list", "/api/report")
         const val DEMO_UPLOAD = JuntadaRoutes.PREFIX + JuntadaRoutes.UPLOAD
 

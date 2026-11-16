@@ -166,9 +166,10 @@ class HttpResponse(
          * explícito porque no todos los navegadores lo cuentan dentro de 'self'. Los modelos y sus
          * texturas se arman en memoria, de ahí `blob:`.
          */
+        /** El volante prueba si le responde su dirección segura sin advertencias ([PublicTls]): por eso ese dominio. */
         const val GAME_POLICY =
             "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; " +
-                "connect-src 'self' ws: wss: data: blob:; worker-src 'self' blob:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+                "connect-src 'self' ws: wss: data: blob: https://*.local-ip.sh:*; worker-src 'self' blob:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
 
         fun json(status: Int, value: JSONObject) =
             HttpResponse(status, "application/json; charset=utf-8", value.toString().toByteArray(Charsets.UTF_8))

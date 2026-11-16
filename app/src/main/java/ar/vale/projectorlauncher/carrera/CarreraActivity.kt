@@ -142,7 +142,7 @@ class CarreraActivity : Activity() {
         }
         view.addJavascriptInterface(host, "CarreraHost")
         val room = CarreraHub.carrera.open()
-        val join = RemoteState.address(this)?.let { "http://$it:${RemoteState.port}/carrera/volante.html#r=${room.code}" }
+        val join = RemoteState.address(this)?.let { "http://$it:${RemoteState.port}/carrera/volante.html#r=${room.code}" + (if (RemoteState.publicPort > 0) "&p=${RemoteState.publicPort}" else "") }
         frame.removeAllViews()
         frame.addView(view)
         web = view
