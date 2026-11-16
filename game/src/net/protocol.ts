@@ -4,6 +4,9 @@ import type { Cup, Finish, Records } from '../sim/cup';
 
 export type Phase = 'lobby' | 'countdown' | 'race' | 'results';
 
+/** Los modelos de auto entre los que elige cada uno, en el orden en que los carga la pared. */
+export const MODELS = ['Prototipo', 'Deportivo', 'Coupé'];
+
 /** Lo que la pared le cuenta a todos los celulares cada vez que cambia. */
 export interface Shared {
   phase: Phase;
@@ -14,7 +17,7 @@ export interface Shared {
   room: number;
   /** Quién elige pista y larga: el primero que entró y sigue conectado. */
   lead: number | null;
-  players: { id: number; name: string; paint: number; on: boolean }[];
+  players: { id: number; name: string; paint: number; /** Qué modelo de MODELS maneja. */ model: number; on: boolean }[];
   /** Quiénes corren esta carrera. El que entra con la carrera empezada espera a la siguiente. */
   racing: number[];
   /** Del primero al último, cuando terminó la carrera. */
@@ -47,8 +50,8 @@ export type Command =
   /** De cuántas carreras es el campeonato (solo antes de la primera), y empezarlo de cero. */
   | { a: 'rounds'; d: 1 | -1 } | { a: 'cup' };
 
-/** Lo que pide cualquiera en la sala: el auto de al lado. */
-export type Wish = { a: 'car'; d: 1 | -1 };
+/** Lo que pide cualquiera en la sala: la pintura de al lado, o el modelo de al lado. */
+export type Wish = { a: 'car'; d: 1 | -1 } | { a: 'model'; d: 1 | -1 };
 
 export interface RosterEntry { id: number; name: string; on: boolean }
 

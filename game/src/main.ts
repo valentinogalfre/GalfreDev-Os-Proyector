@@ -147,17 +147,19 @@ async function start(): Promise<void> {
   let hud: ReturnType<typeof mountHud> | null = null;
 
   /** Arma la grilla: una carrera nueva con un auto por cada uno, parados detrás de la línea. */
-  function line(drivers: (number | null)[], labels: string[], looks: number[] = drivers.map((_, i) => i % liveries.length)): void {
+  function line(drivers: (number | null)[], labels: string[], looks: number[] = drivers.map((_, i) => i % liveries.length), shapes: number[] = drivers.map((_, i) => i % kits.length)): void {
     grid = drivers;
     names = labels;
     livery = looks;
     race = new Race(course, LAPS, grid.map((id) => id === null));
     while (cars.length > grid.length) scene.remove(cars.pop()!);
-    while (cars.length < grid.length) {
-      const car = buildCar(kits[0], styleOf(cars.length), fine, theme.night ?? false, fleet !== null);
-      cars.push(car);
-      scene.add(car);
-    }
+    grid.forEach((_, i) => {
+      // El auto se arma de nuevo solo si cambió de modelo: el esqueleto (ejes, ruedas) es distinto en cada uno.
+      if (cars[i]?.userData.model === shapes[i]) return;
+      if (cars[i]) scene.remove(cars[i]);
+      cars[i] = buildCar(kits[shapes[i]][0], styleOf(i), fine, theme.night ?? false, fleet !== null, shapes[i]);
+      scene.add(cars[i]);
+    });
     cars.forEach((car, i) => repaint(car, styleOf(i)));
     // Cada uno encuentra su auto por el nombre que lleva encima; los automáticos no llevan nada.
     for (const tag of tags.splice(0)) {
@@ -248,6 +250,9 @@ async function start(): Promise<void> {
   /** Cuántos rivales automáticos quiere el que lidera. También sobrevive al cambio de pista. */
   let bots = Math.min(MAX_CARS - 1, Math.max(0, Number(query.get('bots') ?? 2) || 0));
   const paintOf = (id: number) => liveries[picks.get(id) ?? -1]?.paint ?? 0x6b6862;
+  /** El modelo que eligió cada uno. También sobrevive al cambio de pista. */
+  const shapes = new Map<number, number>((query.get('modelos') ?? '').split('-').filter(Boolean).map((pair) => pair.split('.').map(Number) as [number, number]));
+  const shapeOf = (id: number) => Math.min(kits.length - 1, shapes.get(id) ?? 0);
   /** El campeonato sobrevive al cambio de pista, pero no a cerrar la carrera. Uno ya terminado no se retoma. */
   let cup: Cup = ((saved: Cup | null) => (saved && !over(saved) ? saved : newCup(saved?.rounds ?? 3)))(JSON.parse(recall('copa') ?? 'null'));
   const saveCup = (next: Cup) => remember('copa', JSON.stringify((cup = next)));
@@ -261,7 +266,7 @@ async function start(): Promise<void> {
     const leadName = session.seats.find((seat) => seat.id === session!.lead)?.name ?? null;
     session.share({
       phase: stage, track: theme.name, laps: LAPS, bots, room: MAX_CARS - Math.min(MAX_CARS, session.seats.filter((seat) => seat.on).length), lead: session.lead, results, cup, record: { ...records, ...fresh }, secure: Number(hash.get('tls')) || 0,
-      players: session.seats.map((seat) => ({ id: seat.id, name: seat.name, paint: paintOf(seat.id), on: seat.on })),
+      players: session.seats.map((seat) => ({ id: seat.id, name: seat.name, paint: paintOf(seat.id), model: shapeOf(seat.id), on: seat.on })),
       racing: stage === 'lobby' ? [] : grid.filter((id): id is number => id !== null),
     });
     const waiting = stage === 'lobby' || stage === 'results';
@@ -288,7 +293,9 @@ async function start(): Promise<void> {
     const free = liveries.map((_, k) => k);
     const take = (wanted?: number) => free.splice(Math.max(0, free.indexOf(wanted ?? -1)), 1)[0];
     for (const s of seats) picks.set(s.id, take(picks.get(s.id)));
-    line([...seats.map((s) => s.id), ...Array<null>(fill).fill(null)], [...seats.map((s) => s.name), ...BOTS.slice(0, fill)], [...seats.map((s) => picks.get(s.id)!), ...Array.from({ length: fill }, () => take())]);
+    line([...seats.map((s) => s.id), ...Array<null>(fill).fill(null)], [...seats.map((s) => s.name), ...BOTS.slice(0, fill)], [...seats.map((s) => picks.get(s.id)!), ...Array.from({ length: fill }, () => take())],
+      // Los automáticos se reparten entre los modelos, para que la grilla no sea toda igual.
+      [...seats.map((s) => shapeOf(s.id)), ...Array.from({ length: fill }, (_, k) => k % kits.length)]);
     snap = true;
   }
 
@@ -330,6 +337,7 @@ async function start(): Promise<void> {
     const all = Object.keys(THEMES);
     query.set('bots', String(bots));
     query.set('autos', [...picks].map(([id, look]) => `${id}.${look}`).join('-'));
+    query.set('modelos', [...shapes].map(([id, shape]) => `${id}.${shape}`).join('-'));
     query.set('t', all[(all.indexOf(THEMES[key] ? key : 'puna') + step + all.length) % all.length]);
     location.replace(`?${query.toString()}${location.hash}`);
   }
@@ -369,6 +377,13 @@ async function start(): Promise<void> {
     },
     command(from, command) {
       if (command.a === 'car') otherCar(from, command.d === -1 ? -1 : 1);
+      else if (command.a === 'model') {
+        // El modelo no es exclusivo: dos pueden manejar el mismo, los distingue la pintura.
+        if (stage !== 'lobby') return;
+        shapes.set(from, (shapeOf(from) + (command.d === -1 ? -1 : 1) + kits.length) % kits.length);
+        seat();
+        share();
+      }
       else if (from === session!.lead) obey(command);
     },
   }) : null;

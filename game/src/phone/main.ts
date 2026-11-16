@@ -1,7 +1,7 @@
 import './style.css';
 import logoUrl from '../../../app/src/main/assets/remote/logo.svg';
 import { connect, type Link } from '../net/link';
-import type { Command, FromRoom, Mine, Shared, Wish } from '../net/protocol';
+import { MODELS, type Command, type FromRoom, type Mine, type Shared, type Wish } from '../net/protocol';
 import { Tilt } from './tilt';
 
 const room = new URLSearchParams(location.hash.slice(1)).get('r') ?? '';
@@ -139,10 +139,11 @@ function lobby(state: Shared): void {
   const mine = done && (state.record.byLap === me!.id || state.record.byRace === me!.id) ? ' · récord de pista' : '';
   const secure = !isSecureContext && state.secure ? `https://${location.hostname}:${state.secure}${location.pathname}${location.hash}` : '';
   app.innerHTML = `${head()}
-    <div class="me"><div class="chip" style="background:${hex(self?.paint ?? 0xf1ede6)}"></div><div class="fill"><span class="tag">${done ? (place ? `Llegaste ${place}.º${mine}` : 'Final') : 'Tu auto'}</span><b>${esc(me!.name)}</b></div>${done ? '' : '<button class="quiet" id="car-prev" aria-label="Auto anterior">‹</button><button class="quiet" id="car-next" aria-label="Auto siguiente">›</button>'}</div>
+    <div class="me"><div class="chip" style="background:${hex(self?.paint ?? 0xf1ede6)}"></div><div class="fill"><span class="tag">${done ? (place ? `Llegaste ${place}.º${mine}` : 'Final') : 'Tu pintura'}</span><b>${esc(me!.name)}</b></div>${done ? '' : '<button class="quiet" id="car-prev" aria-label="Pintura anterior">‹</button><button class="quiet" id="car-next" aria-label="Pintura siguiente">›</button>'}</div>
     <div class="fill scroll">${ended ? table : ''}${done && cup ? `<p class="tag title">Llegada</p>` : cup ? `<p class="tag title">Campeonato · carrera ${cup.done + 1} de ${cup.rounds}</p>` : ''}<ol>${rows.join('')}</ol>${ended ? '' : table}${mark ? `<p class="tag title">${mark}</p>` : ''}</div>
     <div class="stack" style="padding-top:14px">
       ${problem ? `<p>${esc(problem)}</p>` : ''}
+      ${done ? '' : `<div class="pick"><button class="quiet" id="model-prev" aria-label="Modelo anterior">‹</button><div><span class="tag">Modelo</span><b>${esc(MODELS[self?.model ?? 0] ?? MODELS[0])}</b></div><button class="quiet" id="model-next" aria-label="Modelo siguiente">›</button></div>`}
       <div class="row"><button class="quiet ${useTilt ? '' : 'on'}" id="touch">Botones</button><button class="quiet ${useTilt ? 'on' : ''}" id="tilt">Inclinación</button>${useTilt ? `<button class="quiet ${tilt.invert ? 'on' : ''}" id="invert">Invertir</button>` : ''}</div>
       ${secure ? `<p>La inclinación solo anda en la página segura. <a href="${secure}" style="color:inherit">Abrirla</a>: el navegador va a avisar que el certificado es del proyector.</p>` : ''}
       ${lead ? `${done ? '' : `<div class="pick"><button class="quiet" id="prev">‹</button><div><span class="tag">Pista · ${state.laps === 1 ? '1 vuelta' : `${state.laps} vueltas`}</span><b>${esc(state.track)}</b></div><button class="quiet" id="next">›</button></div>
@@ -162,6 +163,8 @@ function lobby(state: Shared): void {
   });
   on('car-prev', () => command({ a: 'car', d: -1 }));
   on('car-next', () => command({ a: 'car', d: 1 }));
+  on('model-prev', () => command({ a: 'model', d: -1 }));
+  on('model-next', () => command({ a: 'model', d: 1 }));
   on('prev', () => command({ a: 'track', d: -1 }));
   on('next', () => command({ a: 'track', d: 1 }));
   on('less', () => command({ a: 'bots', d: -1 }));

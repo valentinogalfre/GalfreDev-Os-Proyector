@@ -4,23 +4,32 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import fineUrl from '../assets/car.glb?url';
 import nearUrl from '../assets/car-cerca.glb?url';
 import farUrl from '../assets/car-lejos.glb?url';
+import sportUrl from '../assets/car-deportivo.glb?url';
+import coupeUrl from '../assets/car-coupe.glb?url';
 
 export interface CarStyle { paint: number; accent: number; underglow?: number }
 
 interface Part { geometry: THREE.BufferGeometry; matrix: THREE.Matrix4; role: string; ao: THREE.Texture | null }
 
 /** Las piezas del modelo, cargadas una vez y compartidas por todos los autos. */
-export interface CarKit { body: Part[]; wheel: Part[]; hub: THREE.Vector3; /** Radio y ancho de la goma, en metros. */ radius: number; width: number }
+export interface CarKit {
+  body: Part[]; wheel: Part[]; hub: THREE.Vector3;
+  /** Radio y ancho de la goma, en metros. */
+  radius: number; width: number;
+  /** Cuánto más atrás va el eje trasero respecto del delantero. */
+  wheelbase: number;
+}
 
-/** Cuánto más atrás va el eje trasero respecto del delantero. */
+/** La distancia entre ejes del modelo que no la trae anotada. */
 const WHEELBASE = 2.8;
 
 /**
- * Carga el auto. Con [fine] es el modelo completo; sin él son dos, uno para los autos que están cerca de la cámara y
- * otro mucho más liviano para el resto: en el proyector lo que se paga es cada triángulo, y un auto lejano no los necesita.
+ * Carga los modelos de auto, en el orden de MODELS. El primero, con [fine], es el modelo completo; sin él son dos, uno
+ * para los autos que están cerca de la cámara y otro mucho más liviano para el resto: en el proyector lo que se paga
+ * es cada triángulo, y un auto lejano no los necesita. Los otros ya son livianos y van con una sola versión.
  */
-export function loadCarKits(fine: boolean): Promise<CarKit[]> {
-  return Promise.all((fine ? [fineUrl] : [nearUrl, farUrl]).map(loadCarKit));
+export function loadCarKits(fine: boolean): Promise<CarKit[][]> {
+  return Promise.all([fine ? [fineUrl] : [nearUrl, farUrl], [sportUrl], [coupeUrl]].map((urls) => Promise.all(urls.map(loadCarKit))));
 }
 
 async function loadCarKit(url: string): Promise<CarKit> {
@@ -42,7 +51,7 @@ async function loadCarKit(url: string): Promise<CarKit> {
   const recenter = new THREE.Matrix4().makeTranslation(-hub.x, -hub.y, -hub.z);
   wheel.forEach((part) => part.matrix.premultiply(recenter));
   const size = tyre.getSize(new THREE.Vector3());
-  return { body, wheel, hub, radius: size.y / 2, width: size.x };
+  return { body, wheel, hub, radius: size.y / 2, width: size.x, wheelbase: (gltf.scene.userData.wheelbase as number | undefined) ?? WHEELBASE };
 }
 
 let glowTexture: THREE.Texture | null = null;
@@ -122,7 +131,7 @@ function common(role: string, ao: THREE.Texture | null): THREE.Material {
 }
 
 /** Un auto listo para la pista: mira hacia +Z y apoya las ruedas en y = 0. */
-export function buildCar(kit: CarKit, style: CarStyle, fine: boolean, night: boolean, fleet = false): THREE.Group {
+export function buildCar(kit: CarKit, style: CarStyle, fine: boolean, night: boolean, fleet = false, model = 0): THREE.Group {
   const car = new THREE.Group();
   const ao = kit.body.find((part) => part.role === 'paint')?.ao ?? null;
   const paint = fine
@@ -149,7 +158,7 @@ export function buildCar(kit: CarKit, style: CarStyle, fine: boolean, night: boo
   });
 
   const wheels: THREE.Object3D[] = [];
-  for (const side of [1, -1]) for (const z of [kit.hub.z, kit.hub.z - WHEELBASE]) {
+  for (const side of [1, -1]) for (const z of [kit.hub.z, kit.hub.z - kit.wheelbase]) {
     const mount = new THREE.Group(), spin = new THREE.Group();
     mount.position.set(kit.hub.x * side, kit.hub.y, z);
     mount.rotation.y = side > 0 ? 0 : Math.PI;
@@ -164,10 +173,10 @@ export function buildCar(kit: CarKit, style: CarStyle, fine: boolean, night: boo
   // La llama del nitro: dos conos que solo se ven mientras empuja.
   const flame = new THREE.Group();
   const fire = new THREE.MeshBasicMaterial({ color: new THREE.Color(style.underglow ?? 0x6ad0ff).multiplyScalar(4), transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
-  for (const x of [-0.42, 0.42]) flame.add(new THREE.Mesh(new THREE.ConeGeometry(0.17, 2.4, 8, 1, true).rotateX(-Math.PI / 2).translate(x, 0.42, kit.hub.z - WHEELBASE - 1.75), fire));
+  for (const x of [-0.42, 0.42]) flame.add(new THREE.Mesh(new THREE.ConeGeometry(0.17, 2.4, 8, 1, true).rotateX(-Math.PI / 2).translate(x, 0.42, kit.hub.z - kit.wheelbase - 1.75), fire));
   flame.visible = false;
   body.add(flame);
-  car.userData = { radius: kit.radius, wheels, body, flame, tail, paint, caliper, fire, style, braking: false, front: wheels.slice(0, 1).concat(wheels.slice(2, 3)).map((w) => w.parent!) };
+  car.userData = { model, radius: kit.radius, wheels, body, flame, tail, paint, caliper, fire, style, braking: false, front: wheels.slice(0, 1).concat(wheels.slice(2, 3)).map((w) => w.parent!) };
   if (fleet) return car;
 
   const flat = (w: number, l: number, color: number, opacity: number, additive: boolean) => {
@@ -384,8 +393,12 @@ const IDLE = new THREE.Color(0.5, 0.02, 0.012), BRAKING = new THREE.Color(1, 0.2
  */
 export class Fleet {
   readonly group = new THREE.Group();
-  /** Un juego de piezas por nivel de detalle: el primero para los autos cercanos, el último para los lejanos. */
-  private readonly tiers: { paint: THREE.InstancedMesh; rest: THREE.InstancedMesh; tail: THREE.InstancedMesh; wheels: THREE.InstancedMesh; n: number }[];
+  /**
+   * Por cada modelo, un juego de piezas por nivel de detalle: el primero para los autos cercanos, el último para
+   * los lejanos. El modelo que nadie eligió no cuesta nada: una pieza sin autos no se dibuja.
+   */
+  private readonly sets: { paint: THREE.InstancedMesh; rest: THREE.InstancedMesh; tail: THREE.InstancedMesh; wheels: THREE.InstancedMesh; n: number }[][];
+  private readonly tiers: Fleet['sets'][number];
   private readonly flats: THREE.InstancedMesh[] = [];
   private readonly under: THREE.InstancedMesh | null = null;
   /** La estela de luz que deja el nitro detrás de cada auto que lo está usando. */
@@ -394,19 +407,21 @@ export class Fleet {
   private readonly gaze = new THREE.Vector3();
   private readonly capacity: number;
 
-  constructor(kits: CarKit[], matcap: THREE.Texture, night: boolean, underglow: boolean, capacity: number) {
+  constructor(models: CarKit[][], matcap: THREE.Texture, night: boolean, underglow: boolean, capacity: number) {
     this.capacity = capacity;
     const shiny = () => new THREE.MeshMatcapMaterial({ matcap, vertexColors: true });
-    this.tiers = kits.map((kit, tier) => {
+    this.sets = models.map((kits) => kits.map((kit, tier) => {
       const of = (role: (r: string) => boolean) => weld(kit.body.filter((part) => role(part.role)));
       const paint = new THREE.InstancedMesh(of((r) => r === 'paint'), shiny(), capacity);
       const rest = new THREE.InstancedMesh(of((r) => r !== 'paint' && r !== 'tail'), shiny(), capacity);
       const tail = new THREE.InstancedMesh(of((r) => r === 'tail'), new THREE.MeshBasicMaterial({ fog: false }), capacity);
-      const wheels = new THREE.InstancedMesh(wheelGeometry(kits[0].radius, kits[0].width, tier === 0 ? 24 : 12), shiny(), capacity * 4);
+      const wheels = new THREE.InstancedMesh(wheelGeometry(kits[0].radius, kits[0].width, kits.length === 1 ? 16 : tier === 0 ? 24 : 12), shiny(), capacity * 4);
       // Las piezas de un mismo auto se mueven igual: comparten la tabla de posiciones.
       rest.instanceMatrix = tail.instanceMatrix = paint.instanceMatrix;
       return { paint, rest, tail, wheels, n: 0 };
-    });
+    }));
+    // Sin flatMap: el navegador del proyector es de 2018 y no lo tiene.
+    this.tiers = this.sets.reduce((all, set) => all.concat(set), []);
 
     const flat = (w: number, l: number, y: number, z: number, opacity: number, additive: boolean, color = 0xffffff) => {
       const mesh = new THREE.InstancedMesh(new THREE.PlaneGeometry(w, l).rotateX(-Math.PI / 2).translate(0, y, z), new THREE.MeshBasicMaterial({
@@ -425,7 +440,6 @@ export class Fleet {
     this.streak = new THREE.InstancedMesh(new THREE.PlaneGeometry(1.7, 13).rotateX(-Math.PI / 2).translate(0, 0.4, -8.6), new THREE.MeshBasicMaterial({
       map: glow(), transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false,
     }), capacity);
-    // Sin flatMap: el navegador del proyector es de 2018 y no lo tiene.
     const pieces = this.tiers.reduce<THREE.InstancedMesh[]>((all, t) => all.concat(t.paint, t.rest, t.tail, t.wheels), []);
     for (const mesh of pieces.concat(this.flats, this.streak)) {
       mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -447,14 +461,14 @@ export class Fleet {
       const p = cars[i].position, e = camera.position;
       const ahead = (p.x - e.x) * this.gaze.x + (p.y - e.y) * this.gaze.y + (p.z - e.z) * this.gaze.z;
       range[i] = ahead < -6 || !cars[i].visible ? Infinity : p.distanceToSquared(e);
-      if (range[i] > NEAR * NEAR || this.tiers.length < 2) continue;
+      if (range[i] > NEAR * NEAR) continue;
       if (first < 0 || range[i] < range[first]) { second = first; first = i; } else if (second < 0 || range[i] < range[second]) second = i;
     }
     for (const tier of this.tiers) tier.n = 0;
     let boosting = 0;
     for (let i = 0; i < n; i++) {
       const car = cars[i];
-      const { body, wheels, style, braking } = car.userData as { body: THREE.Group; wheels: THREE.Object3D[]; style: CarStyle; braking: boolean };
+      const { model, body, wheels, style, braking } = car.userData as { model: number; body: THREE.Group; wheels: THREE.Object3D[]; style: CarStyle; braking: boolean };
       car.updateMatrixWorld(true);
       this.flats[0].setMatrixAt(i, car.matrixWorld);
       this.under?.setColorAt(i, style.underglow === undefined ? OFF : this.tint.set(style.underglow));
@@ -463,7 +477,7 @@ export class Fleet {
         this.streak.setMatrixAt(boosting, car.matrixWorld);
         this.streak.setColorAt(boosting++, this.tint.set(style.underglow ?? 0x6ad0ff));
       }
-      const tier = this.tiers[i === first || i === second ? 0 : this.tiers.length - 1], k = tier.n++;
+      const set = this.sets[model], tier = set[i === first || i === second ? 0 : set.length - 1], k = tier.n++;
       tier.paint.setMatrixAt(k, body.matrixWorld);
       for (let w = 0; w < 4; w++) tier.wheels.setMatrixAt(k * 4 + w, wheels[w].matrixWorld);
       tier.paint.setColorAt(k, this.tint.set(style.paint));
