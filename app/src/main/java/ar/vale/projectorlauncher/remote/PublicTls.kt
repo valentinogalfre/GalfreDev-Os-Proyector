@@ -53,9 +53,12 @@ object PublicTls {
 
     /** Arma el contexto de TLS con la cadena y la clave en PEM, o null si el certificado no sirve hoy. */
     fun context(chainPem: String, keyPem: String, now: Long): SSLContext? {
-        val certs = CertificateFactory.getInstance("X.509")
-            .generateCertificates(ByteArrayInputStream(chainPem.toByteArray()))
-            .map { it as X509Certificate }
+        // Certificado por certificado: leído de una vez, hay equipos que se quedan solo con el primero y el
+        // celular, sin los intermedios, no puede comprobar la cadena.
+        val factory = CertificateFactory.getInstance("X.509")
+        val certs = Regex("-----BEGIN CERTIFICATE-----[\\s\\S]*?-----END CERTIFICATE-----").findAll(chainPem)
+            .map { factory.generateCertificate(ByteArrayInputStream(it.value.toByteArray())) as X509Certificate }
+            .toList()
         val leaf = certs.firstOrNull() ?: return null
         if (now < leaf.notBefore.time || now > leaf.notAfter.time - DAY_MS) return null
         val private = KeyFactory.getInstance("RSA").generatePrivate(PKCS8EncodedKeySpec(pkcs8(keyPem) ?: return null))
