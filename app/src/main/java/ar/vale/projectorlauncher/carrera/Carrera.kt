@@ -84,6 +84,11 @@ class Carrera(private val random: SecureRandom = SecureRandom(), private val now
                         synchronized(this) { lastForAll = text }
                         tellPhones(text)
                     }
+                    // La carrera cuadro a cuadro, para que cada celular la dibuje. Va como texto ya armado: son
+                    // muchos por segundo y no se guardan, al que entra tarde le llega el siguiente.
+                    "st" -> message.optString("d").takeIf { it.isNotEmpty() && it.length <= STATE_CHARS }?.let { state ->
+                        tellPhones(JSONObject().put("t", "st").put("d", state).toString())
+                    }
                     "to" -> message.optJSONObject("d")?.let { data ->
                         val to = synchronized(this) { players.firstOrNull { it.id == message.optInt("id") }?.channel }
                         to?.send(JSONObject().put("t", "you").put("d", data).toString())
@@ -218,6 +223,8 @@ class Carrera(private val random: SecureRandom = SecureRandom(), private val now
         const val MAX_PER_ADDRESS = 2
         /** Un volante manda treinta por segundo. El resto se descarta. */
         const val MAX_PER_SECOND = 90
+        /** Lo más largo que puede ser un cuadro de la carrera: ocho autos entran en menos de la mitad. */
+        const val STATE_CHARS = 1024
         private const val CODE_BYTES = 8
         private const val SECRET_BYTES = 24
 

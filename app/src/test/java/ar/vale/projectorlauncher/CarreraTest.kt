@@ -183,6 +183,28 @@ class CarreraTest {
     }
 
     @Test
+    fun `sala - un cuadro de la carrera llega a todos los celulares, no se guarda y tiene un largo maximo`() {
+        val room = carrera.open()
+        val wall = host(room)
+        val a = join(room, "Ana", "192.168.0.21")
+        val b = join(room, "Beto", "192.168.0.22")
+        a.next("joined")
+        b.next("joined")
+        wall.say(JSONObject().put("t", "all").put("d", JSONObject().put("phase", "race")))
+        wall.say(JSONObject().put("t", "st").put("d", "4.5|10,0,0,0,30,1"))
+        assertEquals("4.5|10,0,0,0,30,1", a.next("st").getString("d"))
+        assertEquals("4.5|10,0,0,0,30,1", b.next("st").getString("d"))
+        // Uno más largo de lo que ocupan ocho autos no pasa.
+        wall.say(JSONObject().put("t", "st").put("d", "9".repeat(Carrera.STATE_CHARS + 1)))
+        assertNull(b.heard.poll(300, TimeUnit.MILLISECONDS))
+        // Quien entra tarde recibe cómo está la sala, pero no un cuadro viejo.
+        val late = join(room, "Caro", "192.168.0.23")
+        assertEquals("race", late.next("all").getJSONObject("d").getString("phase"))
+        val rest = generateSequence { late.heard.poll(300, TimeUnit.MILLISECONDS) }.toList()
+        assertEquals(emptyList<String>(), rest.filter { JSONObject(it).getString("t") == "st" })
+    }
+
+    @Test
     fun `sala - un celular que se cae vuelve a su auto con su clave`() {
         val room = carrera.open()
         val wall = host(room)

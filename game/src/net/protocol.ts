@@ -18,6 +18,8 @@ export interface Shared {
   /** Quién elige pista y larga: el primero que entró y sigue conectado. */
   lead: number | null;
   players: { id: number; name: string; paint: number; /** Qué modelo de MODELS maneja. */ model: number; on: boolean }[];
+  /** Los autos en pista, en el orden en que llegan en cada cuadro: de quién es, cómo se llama y cómo se ve. */
+  cars: { id: number | null; name: string; look: number; model: number }[];
   /** Quiénes corren esta carrera. El que entra con la carrera empezada espera a la siguiente. */
   racing: number[];
   /** Del primero al último, cuando terminó la carrera. */
@@ -60,6 +62,8 @@ export type FromRoom =
   | { t: 'error'; code: 'room' | 'name' | 'full' | 'moved' }
   | { t: 'all'; d: Shared }
   | { t: 'you'; d: Mine }
+  /** Un cuadro de la carrera, armado por encodeFrame. */
+  | { t: 'st'; d: string }
   | { t: 'host'; on: boolean }
   | { t: 'pong'; n: number }
   | { t: 'roster'; players: RosterEntry[] }

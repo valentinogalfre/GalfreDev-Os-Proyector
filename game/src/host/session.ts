@@ -45,6 +45,11 @@ export class Session {
     this.link.send({ t: 'all', d: state });
   }
 
+  /** Un cuadro de la carrera, para todos los celulares. No se guarda ni se repite. */
+  stream(frame: string): void {
+    this.link.send({ t: 'st', d: frame });
+  }
+
   tell(id: number, mine: Mine): void {
     this.link.send({ t: 'to', id, d: mine });
   }

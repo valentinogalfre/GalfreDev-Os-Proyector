@@ -3,6 +3,7 @@ import './style.css';
 import { mountSound } from './audio';
 import { bakeLight } from './world/bake';
 import { Marks } from './world/marks';
+import { encodeFrame } from './net/frame';
 import { beat, newCup, over, scoreRace, ROUNDS, type Cup, type Records } from './sim/cup';
 import { mountHud } from './hud';
 import { mountLobby } from './host/lobby';
@@ -246,7 +247,7 @@ async function start(): Promise<void> {
   let stage: Shared['phase'] = hosting ? 'lobby' : 'countdown';
   let results: Shared['results'] = [];
   let resultPaint: number[] = [];
-  let firstFinish = 0, sinceTold = 0;
+  let firstFinish = 0, sinceTold = 0, sinceFrame = 0;
   const buzz: number[] = [];
   const lobby = hosting ? mountLobby(hash.get('qr') ?? '') : null;
   /** El auto que eligió cada uno. Sobrevive al cambio de pista, que recarga la página. */
@@ -271,6 +272,7 @@ async function start(): Promise<void> {
     session.share({
       phase: stage, track: theme.name, laps: LAPS, bots, room: MAX_CARS - Math.min(MAX_CARS, session.seats.filter((seat) => seat.on).length), lead: session.lead, results, cup, record: { ...records, ...fresh }, secure: Number(hash.get('tls')) || 0,
       players: session.seats.map((seat) => ({ id: seat.id, name: seat.name, paint: paintOf(seat.id), model: shapeOf(seat.id), on: seat.on })),
+      cars: grid.map((id, i) => ({ id, name: names[i], look: livery[i], model: cars[i].userData.model as number })),
       racing: stage === 'lobby' ? [] : grid.filter((id): id is number => id !== null),
     });
     const waiting = stage === 'lobby' || stage === 'results';
@@ -428,6 +430,12 @@ async function start(): Promise<void> {
       }
     }
     share();
+    // Veinte veces por segundo, la carrera entera para que cada celular la dibuje desde su auto.
+    sinceFrame += dt;
+    if (sinceFrame >= 0.05 && stage !== 'lobby') {
+      sinceFrame = 0;
+      session!.stream(encodeFrame({ clock: race.clock, cars: race.cars.map((car) => ({ s: car.s, d: car.d, heading: car.yaw + car.slip, steer: car.steer - car.slip * 1.5, v: car.v, boosting: car.boosting, braking: car.braking, drifting: car.drifting, offTrack: car.offTrack })) }));
+    }
     sinceTold += dt;
     if (sinceTold < 0.1 || stage === 'lobby') return;
     sinceTold = 0;
