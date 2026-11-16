@@ -99,9 +99,23 @@ class RemoteService : Service() {
         }
     }
 
-    /** El volante por una dirección segura sin advertencias. Baja el certificado de internet: si no hay, no hay puerto. */
+    /**
+     * El volante por una dirección segura sin advertencias. Baja el certificado de internet, y mientras no se pueda
+     * no hay puerto. Recién prendido el equipo todavía no tiene red ni la hora puesta, y sin la hora cualquier
+     * certificado parece inválido: por eso se reintenta, cada vez más espaciado, mientras el servicio siga vivo.
+     */
     private fun startPublic(game: Router) {
-        val sockets = PublicTls.sockets(File(filesDir, "volante-tls")) ?: return
+        var sockets = PublicTls.sockets(File(filesDir, "volante-tls"))
+        var wait = RETRY_MS
+        while (sockets == null) {
+            // De a un segundo, para soltar el hilo apenas se apaga el servicio.
+            for (second in 0 until wait / 1000) {
+                if (server == null) return
+                Thread.sleep(1000)
+            }
+            wait = (wait * 2).coerceAtMost(RETRY_MAX_MS)
+            sockets = PublicTls.sockets(File(filesDir, "volante-tls"))
+        }
         val created = RemoteServer(game, sockets, secure = true)
         runCatching { created.start(PUBLIC_PORT) }.onSuccess { port ->
             if (server == null) {
@@ -146,6 +160,8 @@ class RemoteService : Service() {
         private const val NOTIFICATION_ID = 8686
         private const val SECURE_PORT = 8696
         private const val PUBLIC_PORT = 8697
+        private const val RETRY_MS = 15_000L
+        private const val RETRY_MAX_MS = 5 * 60_000L
 
         fun start(context: Context) {
             context.startForegroundService(Intent(context, RemoteService::class.java))

@@ -403,6 +403,8 @@ export class Fleet {
   private readonly under: THREE.InstancedMesh | null = null;
   /** La estela de luz que deja el nitro detrás de cada auto que lo está usando. */
   private readonly streak: THREE.InstancedMesh;
+  /** Perilla de medición: sin la estela del nitro. */
+  trails = true;
   private readonly tint = new THREE.Color();
   private readonly gaze = new THREE.Vector3();
   private readonly capacity: number;
@@ -473,7 +475,7 @@ export class Fleet {
       this.flats[0].setMatrixAt(i, car.matrixWorld);
       this.under?.setColorAt(i, style.underglow === undefined ? OFF : this.tint.set(style.underglow));
       if (range[i] === Infinity) continue;
-      if ((car.userData.flame as THREE.Object3D).visible) {
+      if (this.trails && (car.userData.flame as THREE.Object3D).visible) {
         this.streak.setMatrixAt(boosting, car.matrixWorld);
         this.streak.setColorAt(boosting++, this.tint.set(style.underglow ?? 0x6ad0ff));
       }
@@ -486,10 +488,14 @@ export class Fleet {
     for (const tier of this.tiers) {
       tier.paint.count = tier.rest.count = tier.tail.count = tier.n;
       tier.wheels.count = tier.n * 4;
+      // La pieza que este cuadro no lleva ningún auto se saca de la lista: vacía no se dibuja, pero prepararla cuesta.
+      tier.paint.visible = tier.rest.visible = tier.tail.visible = tier.wheels.visible = tier.n > 0;
+      if (tier.n === 0) continue;
       tier.paint.instanceMatrix.needsUpdate = tier.wheels.instanceMatrix.needsUpdate = true;
       for (const mesh of [tier.paint, tier.tail]) if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
     }
     this.streak.count = boosting;
+    this.streak.visible = boosting > 0;
     this.streak.instanceMatrix.needsUpdate = true;
     if (this.streak.instanceColor) this.streak.instanceColor.needsUpdate = true;
     for (const mesh of this.flats) mesh.count = n;

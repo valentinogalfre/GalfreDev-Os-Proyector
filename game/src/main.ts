@@ -134,6 +134,8 @@ async function start(): Promise<void> {
   /** Qué auto lleva cada lugar de la grilla. */
   let livery: number[] = [];
   const styleOf = (i: number) => liveries[livery[i] ?? i % liveries.length];
+  // Perillas de medición: «sin=marcas,estela,modelos» apaga lo que se sumó último, para saber cuánto cuesta cada cosa.
+  const knobs = new Set((query.get('sin') ?? '').split(','));
   const fleet = matcap ? new Fleet(kits, matcap, theme.night ?? false, liveries.some((look) => look.underglow !== undefined), 8) : null;
   if (fleet) scene.add(fleet.group);
   const showHud = query.get('hud') !== '0';
@@ -151,6 +153,7 @@ async function start(): Promise<void> {
     grid = drivers;
     names = labels;
     livery = looks;
+    if (knobs.has('modelos')) shapes = shapes.map(() => 0);
     race = new Race(course, LAPS, grid.map((id) => id === null));
     while (cars.length > grid.length) scene.remove(cars.pop()!);
     grid.forEach((_, i) => {
@@ -186,8 +189,9 @@ async function start(): Promise<void> {
   const smoke = new Puffs({ color: theme.night ? 0x9aa6c4 : 0xe6e0d6, opacity: theme.night ? 0.13 : 0.15, size: 2.6, additive: false, life: 0.7, rise: 1.6 }, 320);
   scene.add(smoke.points);
 
-  const marks = new Marks();
-  scene.add(marks.mesh);
+  const marks = knobs.has('marcas') ? null : new Marks();
+  if (marks) scene.add(marks.mesh);
+  if (fleet) fleet.trails = !knobs.has('estela');
   const across = new THREE.Vector3();
 
   const sun = fine ? world.sun : undefined;
@@ -505,6 +509,7 @@ async function start(): Promise<void> {
       // Derrapando o clavando los frenos, las ruedas de atrás dejan su huella en el asfalto.
       const marking = !car.offTrack && (car.drifting || (car.braking && car.v > 25));
       [-0.85, 0.85].forEach((side, w) => {
+        if (!marks) return;
         if (!marking) return marks.lay(i * 2 + w, null);
         place(track, car.s - 1.7, car.d + side - Math.sin(car.slip) * 1.7, probe);
         marks.lay(i * 2 + w, at.copy(probe.position).setY(probe.position.y + 0.03), across.set(1, 0, 0).applyQuaternion(probe.quaternion));
