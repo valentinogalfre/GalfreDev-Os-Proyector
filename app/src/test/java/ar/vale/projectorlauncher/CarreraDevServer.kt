@@ -15,7 +15,7 @@ import java.io.File
  */
 fun main(args: Array<String>) {
     val dist = File(args.getOrElse(0) { "game/dist" }).canonicalFile
-    val types = mapOf("html" to "text/html; charset=utf-8", "js" to "text/javascript", "css" to "text/css", "svg" to "image/svg+xml", "ttf" to "font/ttf", "glb" to "model/gltf-binary")
+    val types = mapOf("html" to "text/html; charset=utf-8", "js" to "text/javascript", "css" to "text/css", "svg" to "image/svg+xml", "ttf" to "font/ttf", "glb" to "model/gltf-binary", "wav" to "audio/wav")
     val carrera = Carrera()
     val router = Router(Pairing("t".repeat(48), {}), FakeDevice(), race = carrera::serve) { path ->
         val file = File(dist, path.removePrefix("/carrera/")).canonicalFile

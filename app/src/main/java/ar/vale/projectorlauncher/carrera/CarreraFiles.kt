@@ -28,7 +28,8 @@ class CarreraFiles(private val context: Context) {
         val NAME = Regex("(?:assets/)?[A-Za-z0-9_-]+(?:\\.[A-Za-z0-9]+)+")
         val TYPES = mapOf(
             "html" to "text/html; charset=utf-8", "js" to "text/javascript; charset=utf-8", "css" to "text/css; charset=utf-8",
-            "svg" to "image/svg+xml", "ttf" to "font/ttf", "glb" to "model/gltf-binary"
+            "svg" to "image/svg+xml", "ttf" to "font/ttf", "glb" to "model/gltf-binary",
+            "wav" to "audio/wav"
         )
     }
 }
