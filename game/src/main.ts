@@ -25,8 +25,8 @@ const LAPS = 3;
 const MIN_CARS = 6, MAX_CARS = 8;
 /** Cuánto se espera a los que faltan desde que llega el primero. */
 const GRACE = 30;
-/** Hasta dónde se abre la cámara para que entren todos: más atrás que eso, sigue a los de adelante. */
-const MAX_SPAN = 70;
+/** Hasta dónde se abre la cámara para que entren todos. El elástico de la carrera trae al que queda atrás antes de llegar acá. */
+const MAX_SPAN = 80;
 const GRID_S = -14;
 
 const query = new URLSearchParams(location.search);
@@ -328,6 +328,7 @@ async function start(): Promise<void> {
   function host(events: RaceEvent[], order: number[], dt: number): void {
     for (const event of events) {
       if (event.type === 'finish' && firstFinish === 0) firstFinish = race.clock;
+      if (event.type === 'tow') buzz[event.car] = 0.7;
       if (event.type === 'wall' || event.type === 'hit') buzz[event.car] = Math.max(buzz[event.car] ?? 0, Math.min(1, event.force));
     }
     if (stage === 'countdown' && race.phase !== 'countdown') stage = 'race';
@@ -384,15 +385,19 @@ async function start(): Promise<void> {
     const focus = inShot.reduce((a, b) => (race.cars[b].s > race.cars[a].s ? b : a));
     for (const event of events) if ((event.type === 'wall' || event.type === 'hit') && inShot.includes(event.car)) shake = Math.max(shake, 0.25 + event.force * 0.6);
     react(events, focus);
+    // Al que trajo el elástico se lo ve titilar un momento: así encuentra dónde reapareció.
+    for (const event of events) if (event.type === 'tow') cars[event.car].userData.blink = 1.4;
     if (session) host(events, order, dt);
     clock += dt;
 
     cars.forEach((mesh, i) => {
       const car = race.cars[i];
+      const blink = (mesh.userData.blink = Math.max(0, ((mesh.userData.blink as number | undefined) ?? 0) - dt));
+      mesh.visible = blink <= 0 || Math.floor(blink * 9) % 2 === 0;
       place(track, car.s, car.d, mesh);
       // Derrapando, la cola se cruza y las ruedas de adelante apuntan para el otro lado.
       mesh.rotateY(car.yaw + car.slip);
-      animate(mesh, { metres: car.s, steer: car.steer - car.slip * 1.5, speed: car.v, boosting: car.boosting, braking: car.braking, time: clock });
+      animate(mesh, { metres: car.s, steer: car.steer - car.slip * 1.5, speed: car.v, boosting: car.boosting, braking: car.braking, time: clock, rough: car.offTrack });
       // Las ruedas traseras levantan polvo o agua: más cuanto más rápido, y mucho más fuera del asfalto.
       if (dust && car.v > 12 && Math.random() < (car.offTrack ? 1 : car.v / 140)) {
         place(track, car.s - 1.9, car.d + (Math.random() < 0.5 ? -0.85 : 0.85), probe);

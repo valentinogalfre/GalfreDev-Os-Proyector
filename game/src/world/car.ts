@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import fineUrl from '../assets/car.glb?url';
 import nearUrl from '../assets/car-cerca.glb?url';
 import farUrl from '../assets/car-lejos.glb?url';
@@ -9,7 +10,7 @@ export interface CarStyle { paint: number; accent: number; underglow?: number }
 interface Part { geometry: THREE.BufferGeometry; matrix: THREE.Matrix4; role: string; ao: THREE.Texture | null }
 
 /** Las piezas del modelo, cargadas una vez y compartidas por todos los autos. */
-export interface CarKit { body: Part[]; wheel: Part[]; hub: THREE.Vector3 }
+export interface CarKit { body: Part[]; wheel: Part[]; hub: THREE.Vector3; /** Radio y ancho de la goma, en metros. */ radius: number; width: number }
 
 /** Cuánto más atrás va el eje trasero respecto del delantero. */
 const WHEELBASE = 2.8;
@@ -33,13 +34,15 @@ async function loadCarKit(url: string): Promise<CarKit> {
     const source = mesh.material as THREE.MeshStandardMaterial;
     const part: Part = { geometry: mesh.geometry, matrix: mesh.matrixWorld.clone(), role: source.name, ao: source.aoMap };
     if (part.role === 'rim' || part.role === 'tyre') wheel.push(part); else body.push(part);
-    if (part.role === 'tyre') tyre.setFromObject(mesh);
+    // Vértice por vértice: la rueda viene girada en el modelo y la caja aproximada la da más grande de lo que es.
+    if (part.role === 'tyre') tyre.expandByObject(mesh, true);
   });
   const hub = tyre.getCenter(new THREE.Vector3());
   // La rueda queda centrada en su eje para poder girarla y repetirla en las cuatro esquinas.
   const recenter = new THREE.Matrix4().makeTranslation(-hub.x, -hub.y, -hub.z);
   wheel.forEach((part) => part.matrix.premultiply(recenter));
-  return { body, wheel, hub };
+  const size = tyre.getSize(new THREE.Vector3());
+  return { body, wheel, hub, radius: size.y / 2, width: size.x };
 }
 
 let glowTexture: THREE.Texture | null = null;
@@ -154,7 +157,8 @@ export function buildCar(kit: CarKit, style: CarStyle, fine: boolean, night: boo
     if (!fleet) kit.wheel.forEach((part) => spin.add(mesh(part)));
     mount.add(spin);
     mount.userData.rest = mount.rotation.y;
-    body.add(mount);
+    // Las ruedas cuelgan del auto y no de la carrocería: ella se inclina y cabecea, ellas siguen apoyadas en el piso.
+    car.add(mount);
     wheels.push(spin);
   }
   // La llama del nitro: dos conos que solo se ven mientras empuja.
@@ -163,7 +167,7 @@ export function buildCar(kit: CarKit, style: CarStyle, fine: boolean, night: boo
   for (const x of [-0.42, 0.42]) flame.add(new THREE.Mesh(new THREE.ConeGeometry(0.17, 2.4, 8, 1, true).rotateX(-Math.PI / 2).translate(x, 0.42, kit.hub.z - WHEELBASE - 1.75), fire));
   flame.visible = false;
   body.add(flame);
-  car.userData = { wheels, body, flame, tail, paint, caliper, fire, style, braking: false, front: wheels.slice(0, 1).concat(wheels.slice(2, 3)).map((w) => w.parent!) };
+  car.userData = { radius: kit.radius, wheels, body, flame, tail, paint, caliper, fire, style, braking: false, front: wheels.slice(0, 1).concat(wheels.slice(2, 3)).map((w) => w.parent!) };
   if (fleet) return car;
 
   const flat = (w: number, l: number, color: number, opacity: number, additive: boolean) => {
@@ -236,20 +240,77 @@ export function repaint(car: THREE.Group, style: CarStyle): void {
   if (style.underglow !== undefined) under?.color.set(style.underglow);
 }
 
-export interface Pose { metres: number; steer: number; speed: number; boosting: boolean; braking: boolean; time: number }
+export interface Pose { metres: number; steer: number; speed: number; boosting: boolean; braking: boolean; time: number; /** Va por la banquina: la carrocería tiembla. */ rough?: boolean }
+
+/** Lo que el auto recuerda de un cuadro al otro para moverse con peso. */
+interface Rig { radius: number; time?: number; metres?: number; speed?: number; roll?: number; sway?: Spring; nod?: Spring }
+interface Spring { at: number; rate: number }
+
+/** Cuánto puede girar una rueda entre dos cuadros. Con cinco rayos, más que esto se ve girando para atrás. */
+const SPIN_CAP = 0.42;
+
+/** Un resorte con amortiguador: la carrocería llega a su inclinación con un rebote corto, no de golpe. */
+function settle(spring: Spring, target: number, dt: number): number {
+  spring.rate += ((target - spring.at) * 130 - spring.rate * 15) * dt;
+  return (spring.at += spring.rate * dt);
+}
 
 /** Lleva al modelo lo que hace el auto: ruedas, volante, inclinación, luces de freno y llama. */
 export function animate(car: THREE.Group, pose: Pose): void {
   const { wheels, body, flame, tail, front } = car.userData as { wheels: THREE.Object3D[]; body: THREE.Group; flame: THREE.Group; tail: THREE.MeshBasicMaterial; front: THREE.Object3D[] };
-  for (const wheel of wheels) wheel.rotation.x = (pose.metres / 0.38) * wheel.userData.dir;
-  for (const mount of front) mount.rotation.y = mount.userData.rest + pose.steer * 0.32;
-  // El auto se acuesta hacia afuera en la curva, levanta la trompa con el nitro y la clava al frenar.
-  body.rotation.z = -pose.steer * Math.min(1, pose.speed / 50) * 0.055;
-  body.rotation.x += ((pose.braking ? 0.022 : pose.boosting ? -0.02 : 0) - body.rotation.x) * 0.15;
+  const rig = car.userData as Rig;
+  const dt = Math.min(0.05, Math.max(0, pose.time - (rig.time ?? pose.time)));
+  // Las ruedas giran lo que avanzó el auto. A fondo darían varias vueltas por cuadro y el ojo las vería quietas o al revés:
+  // ahí se quedan en el giro más rápido que todavía se lee hacia adelante.
+  const turned = (pose.metres - (rig.metres ?? pose.metres)) / rig.radius;
+  rig.roll = (rig.roll ?? 0) + Math.max(-SPIN_CAP, Math.min(SPIN_CAP, turned));
+  for (const wheel of wheels) wheel.rotation.x = rig.roll * wheel.userData.dir;
+  for (const mount of front) mount.rotation.y = mount.userData.rest + pose.steer * 0.38;
+  // La carrocería va sobre resortes: se acuesta hacia afuera en la curva, clava la trompa al frenar y la levanta al acelerar.
+  const push = dt > 0 ? (pose.speed - (rig.speed ?? pose.speed)) / dt : 0;
+  const lean = -pose.steer * Math.min(1, pose.speed / 50) * 0.065;
+  const dive = Math.max(-0.035, Math.min(0.045, -push * 0.0013)) - (pose.boosting ? 0.012 : 0);
+  body.rotation.z = settle((rig.sway ??= { at: 0, rate: 0 }), lean, dt);
+  body.rotation.x = settle((rig.nod ??= { at: 0, rate: 0 }), dive, dt);
+  body.position.y = pose.rough ? (Math.random() - 0.5) * 0.035 * Math.min(1, pose.speed / 20) : 0;
+  rig.time = pose.time;
+  rig.metres = pose.metres;
+  rig.speed = pose.speed;
   tail.color.setRGB(1, 0.1, 0.04).multiplyScalar(pose.braking ? 14 : 5);
   car.userData.braking = pose.braking;
   flame.visible = pose.boosting;
   if (pose.boosting) flame.scale.set(1, 1, 0.8 + 0.35 * Math.sin(pose.time * 61) + 0.2 * Math.sin(pose.time * 37));
+}
+
+/**
+ * Una rueda hecha a medida para el proyector: goma redonda de verdad y una llanta de cinco rayos gruesos. La del modelo
+ * original, reducida a tan pocos triángulos, quedaba hecha un manojo de puntas que además se bamboleaba al girar.
+ * El eje es X y la cara de afuera mira a +X; [around] es cuántos lados tiene el círculo.
+ */
+function wheelGeometry(radius: number, width: number, around: number): THREE.BufferGeometry {
+  const w = width / 2, rim = radius * 0.7, face = w * 0.55;
+  const paint = (g: THREE.BufferGeometry, tint: THREE.Color) => {
+    const flat = g.index ? g.toNonIndexed() : g;
+    flat.deleteAttribute('uv');
+    const color = new Float32Array(flat.attributes.position.count * 3);
+    for (let i = 0; i < color.length; i += 3) tint.toArray(color, i);
+    flat.setAttribute('color', new THREE.BufferAttribute(color, 3));
+    return flat;
+  };
+  // La goma es un perfil que da la vuelta: flanco, hombro, banda de rodadura, hombro, flanco.
+  const profile = [[rim, -w], [radius * 0.9, -w], [radius, -w * 0.7], [radius, w * 0.7], [radius * 0.9, w], [rim, w], [rim * 0.94, face]].map(([r, x]) => new THREE.Vector2(r, x));
+  const parts = [
+    paint(new THREE.LatheGeometry(profile, around).rotateZ(-Math.PI / 2), TINT.tyre),
+    // El fondo oscuro de la llanta y el aro que la bordea.
+    paint(new THREE.CircleGeometry(rim, around).rotateY(Math.PI / 2).translate(face - w * 0.35, 0, 0), TINT.dark),
+    paint(new THREE.RingGeometry(rim * 0.84, rim * 0.96, around).rotateY(Math.PI / 2).translate(face, 0, 0), TINT.rim),
+    paint(new THREE.CylinderGeometry(radius * 0.13, radius * 0.17, w * 0.3, Math.max(6, around / 2)).rotateZ(-Math.PI / 2).translate(face, 0, 0), TINT.rim),
+  ];
+  for (let k = 0; k < 5; k++) {
+    const spoke = new THREE.BoxGeometry(w * 0.22, rim * 0.78, radius * 0.17).translate(face - w * 0.06, rim * 0.5, 0).rotateX((k / 5) * Math.PI * 2);
+    parts.push(paint(spoke, TINT.rim));
+  }
+  return mergeGeometries(parts)!;
 }
 
 /** Lee la oclusión de una textura en un punto, para dejarla escrita en los vértices. */
@@ -334,12 +395,12 @@ export class Fleet {
   constructor(kits: CarKit[], matcap: THREE.Texture, night: boolean, underglow: boolean, capacity: number) {
     this.capacity = capacity;
     const shiny = () => new THREE.MeshMatcapMaterial({ matcap, vertexColors: true });
-    this.tiers = kits.map((kit) => {
+    this.tiers = kits.map((kit, tier) => {
       const of = (role: (r: string) => boolean) => weld(kit.body.filter((part) => role(part.role)));
       const paint = new THREE.InstancedMesh(of((r) => r === 'paint'), shiny(), capacity);
       const rest = new THREE.InstancedMesh(of((r) => r !== 'paint' && r !== 'tail'), shiny(), capacity);
       const tail = new THREE.InstancedMesh(of((r) => r === 'tail'), new THREE.MeshBasicMaterial({ fog: false }), capacity);
-      const wheels = new THREE.InstancedMesh(weld(kit.wheel), shiny(), capacity * 4);
+      const wheels = new THREE.InstancedMesh(wheelGeometry(kits[0].radius, kits[0].width, tier === 0 ? 24 : 12), shiny(), capacity * 4);
       // Las piezas de un mismo auto se mueven igual: comparten la tabla de posiciones.
       rest.instanceMatrix = tail.instanceMatrix = paint.instanceMatrix;
       return { paint, rest, tail, wheels, n: 0 };
@@ -380,7 +441,7 @@ export class Fleet {
     for (let i = 0; i < n; i++) {
       const p = cars[i].position, e = camera.position;
       const ahead = (p.x - e.x) * this.gaze.x + (p.y - e.y) * this.gaze.y + (p.z - e.z) * this.gaze.z;
-      range[i] = ahead < -6 ? Infinity : p.distanceToSquared(e);
+      range[i] = ahead < -6 || !cars[i].visible ? Infinity : p.distanceToSquared(e);
       if (range[i] > NEAR * NEAR || this.tiers.length < 2) continue;
       if (first < 0 || range[i] < range[first]) { second = first; first = i; } else if (second < 0 || range[i] < range[second]) second = i;
     }
