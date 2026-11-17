@@ -74,6 +74,16 @@ class CarreraTest {
 
     private fun host(room: Carrera.Room, from: String = "127.0.0.1") = connect(JSONObject().put("t", "host").put("secret", room.hostSecret), from)
 
+    /**
+     * La pared ya sentada en la sala. Cada conexión corre en su hilo: sin esperar, un volante puede ganarle a la
+     * pared, y entonces ella se pierde lo que él manda y recibe una lista de jugadores menos.
+     */
+    private fun wall(room: Carrera.Room): FakeChannel = host(room).also { seat ->
+        val until = System.currentTimeMillis() + 3000
+        while (seat.heard.peek() == null && System.currentTimeMillis() < until) Thread.sleep(2)
+        assertNotNull("la pared no entró a la sala", seat.heard.peek())
+    }
+
     private fun join(room: Carrera.Room, name: String, from: String = "192.168.0.20", key: String? = null) =
         connect(JSONObject().put("t", "join").put("room", room.code).put("name", name).put("key", key ?: ""), from)
 
@@ -171,7 +181,7 @@ class CarreraTest {
     @Test
     fun `sala - el giro de un volante le llega a la pared acotado y con su numero`() {
         val room = carrera.open()
-        val wall = host(room)
+        val wall = wall(room)
         val phone = join(room, "  Vale  ")
         val joined = phone.next("joined")
         assertEquals("Vale", joined.getString("name"))
@@ -189,7 +199,7 @@ class CarreraTest {
     @Test
     fun `sala - la palanca del futbol le llega a la pared acotada, y sin numeros de mas`() {
         val room = carrera.open()
-        val wall = host(room)
+        val wall = wall(room)
         val phone = join(room, "Vale")
         phone.next("joined")
         phone.say(JSONObject().put("t", "in").put("x", -3.0).put("y", 0.25).put("k", 1))
@@ -205,7 +215,7 @@ class CarreraTest {
     @Test
     fun `sala - lo que dice la pared llega a todos, y a uno solo cuando es para el`() {
         val room = carrera.open()
-        val wall = host(room)
+        val wall = wall(room)
         val a = join(room, "Ana", "192.168.0.21")
         val b = join(room, "Beto", "192.168.0.22")
         val idA = a.next("joined").getInt("id")
@@ -223,7 +233,7 @@ class CarreraTest {
     @Test
     fun `sala - un cuadro de la carrera llega a todos los celulares, no se guarda y tiene un largo maximo`() {
         val room = carrera.open()
-        val wall = host(room)
+        val wall = wall(room)
         val a = join(room, "Ana", "192.168.0.21")
         val b = join(room, "Beto", "192.168.0.22")
         a.next("joined")
@@ -245,7 +255,7 @@ class CarreraTest {
     @Test
     fun `sala - el que se va deja el lugar, y al que sacan se le avisa para que no vuelva solo`() {
         val room = carrera.open()
-        val wall = host(room)
+        val wall = wall(room)
         val a = join(room, "Ana", "192.168.0.21")
         val b = join(room, "Beto", "192.168.0.22")
         val idA = a.next("joined").getInt("id")
@@ -305,7 +315,7 @@ class CarreraTest {
     @Test
     fun `sala - con el pase de mando entra el celular del dueño, y sin el no`() {
         val room = carrera.open()
-        val wall = host(room)
+        val wall = wall(room)
         fun bosses(): List<Boolean> = wall.next("roster").getJSONArray("players").let { list -> (0 until list.length()).map { list.getJSONObject(it).getBoolean("boss") } }
         wall.next("roster")
         connect(JSONObject().put("t", "join").put("room", room.code).put("name", "Ana").put("lead", "no es"), "192.168.0.21").next("joined")
@@ -318,7 +328,7 @@ class CarreraTest {
     @Test
     fun `sala - un celular que se cae vuelve a su auto con su clave`() {
         val room = carrera.open()
-        val wall = host(room)
+        val wall = wall(room)
         val first = join(room, "Vale")
         val joined = first.next("joined")
         first.hangUp()
@@ -363,7 +373,7 @@ class CarreraTest {
     @Test
     fun `sala - un volante no puede inundar a la pared`() {
         val room = carrera.open()
-        val wall = host(room)
+        val wall = wall(room)
         val phone = join(room, "Vale")
         phone.next("joined")
         repeat(400) { phone.say(JSONObject().put("t", "in").put("s", 0.1)) }
