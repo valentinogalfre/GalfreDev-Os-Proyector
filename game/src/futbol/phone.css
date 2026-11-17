@@ -3,10 +3,11 @@
 @font-face { font-family: 'Geist Mono'; font-weight: 500; src: url('../../../app/src/main/res/font/geist_mono_medium.ttf'); }
 
 :root { --carbon: #111111; --hueso: #f1ede6; --cinta: #e4a32b; --pasto: #276b45; --linea: rgba(241, 237, 230, .16); --tenue: rgba(241, 237, 230, .6); }
-* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; touch-action: manipulation; }
 html, body { height: 100%; margin: 0; background: var(--carbon); color: var(--hueso); overflow: hidden; overscroll-behavior: none; }
-body { font: 500 16px/1.4 'Instrument Sans', system-ui, sans-serif; -webkit-user-select: none; user-select: none; touch-action: manipulation; }
-#app { height: 100%; display: flex; flex-direction: column; padding: max(18px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left)); }
+body { font: 500 16px/1.4 'Instrument Sans', system-ui, sans-serif; -webkit-user-select: none; user-select: none; touch-action: manipulation; position: fixed; top: 0; left: 0; width: 100%; height: var(--h, 100%); }
+#app { height: var(--h, 100%); display: flex; flex-direction: column; padding: max(18px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left)); }
 
 .tag { font: 500 11px/1 'Geist Mono', ui-monospace, monospace; letter-spacing: .14em; text-transform: uppercase; color: var(--tenue); }
 h1 { font: 800 34px/1.05 'Archivo', system-ui, sans-serif; letter-spacing: -.01em; margin: 10px 0 0; }
@@ -16,7 +17,8 @@ header img { height: 18px; display: block; }
 header .tag i { display: inline-block; width: 7px; height: 7px; margin-right: 7px; border-radius: 50%; background: var(--tenue); }
 header .tag.up i { background: var(--hueso); }
 
-button, input { font: inherit; color: inherit; border: 0; border-radius: 0; outline: 0; }
+button, input { font: inherit; color: inherit; border: 0; border-radius: 0; outline: 0; -webkit-appearance: none; appearance: none; touch-action: manipulation; }
+button { cursor: pointer; }
 input { width: 100%; height: 56px; padding: 0 16px; background: transparent; border: 1px solid var(--linea); font-size: 20px; -webkit-user-select: text; user-select: text; }
 input:focus { border-color: var(--hueso); }
 .go { width: 100%; height: 60px; background: var(--hueso); color: var(--carbon); font: 800 18px/1 'Archivo', system-ui, sans-serif; }
@@ -66,12 +68,13 @@ ol li span:last-child { margin-left: auto; }
 ol li.off { opacity: .4; }
 
 /* El control. Siempre acostado: si el celular está parado, se gira la pantalla entera. */
-#pad { --kit: var(--hueso); --ink: var(--carbon); position: fixed; top: 0; right: 0; bottom: 0; left: 0; display: none; background: radial-gradient(circle at 30% 60%, #2a7149, #1a4f31 70%); touch-action: none;
+#pad { --kit: var(--hueso); --ink: var(--carbon); position: fixed; top: 0; right: 0; bottom: 0; left: 0; height: var(--h, 100%); display: none; background: radial-gradient(circle at 30% 60%, #2a7149, #1a4f31 70%); touch-action: none;
   --sl: max(14px, env(safe-area-inset-left)); --sr: max(14px, env(safe-area-inset-right)); --sb: max(12px, env(safe-area-inset-bottom)); --st: max(10px, env(safe-area-inset-top)); }
 body.playing #pad { display: block; }
+#pad, #pad * { touch-action: none; -webkit-user-select: none; user-select: none; }
 body.playing #app { display: none; }
 @media (orientation: portrait) {
-  body.playing #pad { width: 100vh; height: 100vw; right: auto; bottom: auto; top: 0; left: 100vw; transform-origin: top left; transform: rotate(90deg); }
+  body.playing #pad { width: var(--h, 100vh); height: var(--w, 100vw); right: auto; bottom: auto; top: 0; left: var(--w, 100vw); transform-origin: top left; transform: rotate(90deg); }
 }
 /* Las líneas de la cancha, tenues, para que se sienta el lugar. */
 #pad::before { content: ''; position: absolute; top: 8%; bottom: 8%; left: 50%; border-left: 2px solid rgba(241, 237, 230, .12); }

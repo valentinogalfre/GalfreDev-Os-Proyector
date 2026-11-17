@@ -2,6 +2,7 @@ import './phone.css';
 import logoUrl from '../../../app/src/main/assets/remote/logo.svg';
 import { connect, type Link } from '../net/link';
 import { KITS, cleanAvatar, type Command, type FromRoom, type Shared, type Team, type Wish } from './protocol';
+import { goFull, holdStill } from './touch';
 
 const room = new URLSearchParams(location.hash.slice(1)).get('r') ?? '';
 const store = (key: string, value?: string): string => {
@@ -296,5 +297,7 @@ document.addEventListener('visibilitychange', () => {
 });
 void (navigator as unknown as { wakeLock?: { request(type: string): Promise<unknown> } }).wakeLock?.request('screen').catch(() => undefined);
 
+holdStill();
+goFull();
 render();
 if (room && store('room') === room && store('key') && store('name')) join(store('name'));
