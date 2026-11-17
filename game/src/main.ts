@@ -272,7 +272,7 @@ async function start(): Promise<void> {
     const leadName = session.seats.find((seat) => seat.id === session!.lead)?.name ?? null;
     session.share({
       phase: stage, track: theme.name, laps: LAPS, bots, room: MAX_CARS - Math.min(MAX_CARS, session.seats.filter((seat) => seat.on).length), lead: session.lead, results, cup, record: { ...records, ...fresh }, secure: Number(hash.get('tls')) || 0,
-      players: session.seats.map((seat) => ({ id: seat.id, name: seat.name, paint: paintOf(seat.id), model: shapeOf(seat.id), on: seat.on })),
+      players: session.seats.map((seat) => ({ id: seat.id, name: seat.name, paint: paintOf(seat.id), model: shapeOf(seat.id), on: seat.on, boss: seat.boss === true })),
       cars: grid.map((id, i) => ({ id, name: names[i], look: livery[i], model: cars[i].userData.model as number })),
       racing: stage === 'lobby' ? [] : grid.filter((id): id is number => id !== null),
     });
@@ -339,9 +339,11 @@ async function start(): Promise<void> {
   }
 
   /** Otra pista es otra página: el mundo anterior se suelta entero, que en un equipo con poca memoria importa. */
-  function otherTrack(step: number): void {
+  function otherTrack(step: number, laps = LAPS): void {
     if (stage !== 'lobby' && stage !== 'results') return;
     const all = Object.keys(THEMES);
+    query.set('vueltas', String(Math.max(1, Math.min(9, laps))));
+    if (session?.handed != null) query.set('mando', String(session.handed)); else query.delete('mando');
     query.set('bots', String(bots));
     query.set('autos', [...picks].map(([id, look]) => `${id}.${look}`).join('-'));
     query.set('modelos', [...shapes].map(([id, shape]) => `${id}.${shape}`).join('-'));
@@ -349,8 +351,21 @@ async function start(): Promise<void> {
     location.replace(`?${query.toString()}${location.hash}`);
   }
 
-  function obey(command: Command): void {
+  function obey(command: Command, from: number | null = null): void {
     if (command.a === 'track') otherTrack(command.d);
+    // Las vueltas cambian la carrera entera (y sus récords): se arma de nuevo, como al cambiar de pista.
+    else if (command.a === 'laps') { if (LAPS + command.d >= 1 && LAPS + command.d <= 9) otherTrack(0, LAPS + (command.d === -1 ? -1 : 1)); }
+    else if (command.a === 'restart') {
+      if (stage !== 'lobby') toLobby();
+      launch();
+    }
+    else if (command.a === 'close') (window as unknown as { CarreraHost?: { exit?(): void } }).CarreraHost?.exit?.();
+    else if (command.a === 'kick') { if (typeof command.id === 'number' && command.id !== from) session?.drop(command.id); }
+    else if (command.a === 'lead') {
+      if (!session || !session.seats.some((s) => s.id === command.id && s.on)) return;
+      session.handed = command.id;
+      share();
+    }
     else if (command.a === 'bots') {
       if (stage !== 'lobby') return;
       const room = MAX_CARS - Math.min(MAX_CARS, session!.seats.filter((s) => s.on).length);
@@ -372,7 +387,8 @@ async function start(): Promise<void> {
       share();
     }
     else if (command.a === 'start') launch();
-    else if (stage === 'results') toLobby();
+    // Volver a la sala se puede en cualquier momento: la carrera que se estaba corriendo no cuenta.
+    else if (stage !== 'lobby') toLobby();
   }
 
   const session = hosting ? new Session(secret, {
@@ -391,15 +407,18 @@ async function start(): Promise<void> {
         seat();
         share();
       }
-      else if (from === session!.lead) obey(command);
+      else if (session!.rules(from)) obey(command, from);
     },
   }) : null;
+  if (session && query.has('mando')) session.handed = Number(query.get('mando'));
   if (hosting) {
     // El control remoto del proyector también maneja la sala.
     const remote = (key: string) => {
       sound?.wake();
       if (key === 'left' || key === 'right') otherTrack(key === 'left' ? -1 : 1);
-      else if (key === 'ok') obey(stage === 'lobby' ? { a: 'start' } : { a: 'lobby' });
+      // En plena carrera OK no hace nada: un toque de más en el control no la corta.
+      else if (key === 'ok' && stage === 'lobby') obey({ a: 'start' });
+      else if (key === 'ok' && stage === 'results') obey({ a: 'lobby' });
     };
     // En el proyector las teclas las manda el launcher; en una notebook, el teclado.
     (window as unknown as { carreraKey: typeof remote }).carreraKey = remote;

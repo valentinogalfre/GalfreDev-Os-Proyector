@@ -33,6 +33,9 @@ interface RemoteDevice {
     fun apps(): JSONObject
     fun open(pkg: String): Result
 
+    /** Abre la carrera en la pared, si no está abierta ya. */
+    fun race(): Result = Result.UNKNOWN
+
     /** Abre en la pared la app que recibe la pantalla de un celular, si el equipo tiene una. */
     fun cast(): Result = Result.NOT_INSTALLED
     fun fits(length: Long): Boolean
@@ -56,6 +59,11 @@ class Router(
     private val access: Access = Access(),
     /** Quién atiende a los volantes de la carrera. Sin esto, la ruta no existe. */
     private val race: SocketHandler? = null,
+    /**
+     * La sala de la carrera que está abierta, para entrar desde el control sin escanear el código de la pared:
+     * su código y, solo para el dueño, el pase de mando. Null si no hay carrera abierta.
+     */
+    private val raceDoor: (owner: Boolean) -> JSONObject? = { null },
     /** El puerto de la misma página por HTTPS, o 0 si no lo hay. */
     private val securePort: () -> Int = { 0 },
     /** Solo la carrera: las páginas del volante y su conexión. Es lo único que atiende el puerto del certificado público. */
@@ -124,6 +132,8 @@ class Router(
             if (r.path == DEMO_UPLOAD) return party.upload(r, owner)
             return party.handle(r.path.removePrefix(JuntadaRoutes.PREFIX), json(r), owner, if (owner) null else access.pass(header))
         }
+        // El código de la sala es el mismo que muestra la pared en su QR: lo ve cualquiera a quien dejaron pasar.
+        if (r.path == RACE_DOOR) return HttpResponse.ok(raceDoor(owner)?.put("open", true) ?: JSONObject().put("open", false))
         if (!owner && (level != Access.Level.CONTROL || r.path !in CONTROL)) return HttpResponse.error(403, "owner")
         // Con alguien en escena la pared es de quien presenta: el control prestado espera a que termine.
         if (!owner && r.path in HANDS && party?.staged() == true) return HttpResponse.error(403, "stage")
@@ -134,6 +144,10 @@ class Router(
             "/api/apps" -> HttpResponse.ok(device.apps())
             "/api/open" -> result(open(json(r).getString("package"), owner))
             "/api/cast" -> result(device.cast())
+            RACE_OPEN -> {
+                hands(false)
+                result(device.race())
+            }
             "/api/tap" -> json(r).let {
                 hands(false)
                 result(device.tap(spot(it, "x"), spot(it, "y")))
@@ -289,12 +303,14 @@ class Router(
         const val NONE = "none"
         const val SOCKET_PATH = "/api/carrera/socket"
         const val GAME_PAGES = "/carrera/"
-        val READS = setOf("/api/state", "/api/apps", "/api/claude/state", "/api/access/list", "/api/report")
+        const val RACE_DOOR = "/api/carrera"
+        const val RACE_OPEN = "/api/carrera/open"
+        val READS = setOf("/api/state", "/api/apps", "/api/claude/state", "/api/access/list", "/api/report", RACE_DOOR)
         const val DEMO_UPLOAD = JuntadaRoutes.PREFIX + JuntadaRoutes.UPLOAD
 
         /** Lo que alcanza un invitado con control: lo mismo que el control remoto, y nada más. */
         val CONTROL = setOf(
-            "/api/state", "/api/apps", "/api/open", "/api/cast", "/api/tap", "/api/swipe", "/api/key", "/api/text", "/api/pointer"
+            "/api/state", "/api/apps", "/api/open", "/api/cast", "/api/tap", "/api/swipe", "/api/key", "/api/text", "/api/pointer", RACE_OPEN
         )
 
         /** De eso, lo que mueve la pared. Mirar qué hay sigue permitido con alguien en escena. */

@@ -117,6 +117,7 @@ nav button.on{background:var(--cinta);color:var(--carbon)}
 #pair{position:fixed;inset:0;background:var(--carbon);display:none;flex-direction:column;gap:16px;padding:calc(30px + env(safe-area-inset-top)) 20px 30px}
 #pair.on{display:flex}
 #pair img{height:22px;width:auto;align-self:flex-start;margin-bottom:26px}
+#race{width:100%;margin-bottom:14px;background:var(--cinta,#e4a32b);border-color:var(--cinta,#e4a32b);color:#111;font-weight:800}
 #pin{font:800 40px Archivo,sans-serif;letter-spacing:.12em;text-align:left}
 @media (min-width:560px){main,header,nav{max-width:520px;width:100%;margin:0 auto}}
 </style>
@@ -124,6 +125,7 @@ nav button.on{background:var(--cinta);color:var(--carbon)}
 <body>
 <header><img src="/logo.svg" alt="galfredev"><div id="device"></div></header>
 <main>
+  <button id="race" class="main" hidden></button>
   <section id="control" class="on">
     <div class="row two">
       <button id="use-pad" class="main" aria-pressed="true">Flechas</button><button id="use-track" aria-pressed="false">Trackpad</button>
@@ -1319,7 +1321,45 @@ async function watchParty() {
   const moving = data && (data.demos.live || data.demos.thanks !== null || uploading || (data.poll && data.poll.open && data.poll.of_ms));
   if (!document.hidden) partyTimer = setTimeout(watchParty, asking ? 700 : moving ? 1100 : 1500);
 }
-document.addEventListener('visibilitychange', () => { if (!document.hidden) { watchParty(); watchClaude(); watchPass(); watchAsks(); } });
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { watchParty(); watchClaude(); watchPass(); watchAsks(); watchRace(); } });
+
+// --- Carrera ---
+// Quien ya está conectado al proyector entra a la carrera desde acá, sin escanear el código de la pared.
+// El dueño lleva además el pase de mando: maneja la sala aunque no haya entrado primero.
+let raceDoor = null;
+let raceTimer = 0;
+async function watchRace() {
+  clearTimeout(raceTimer);
+  const button = $('#race');
+  if (!inParty()) { button.hidden = true; return; }
+  const response = await fetch('/api/carrera', { headers: { Authorization: bearer() } }).catch(() => null);
+  raceDoor = response && response.ok ? await response.json().catch(() => null) : null;
+  const open = raceDoor && raceDoor.open;
+  // Abrirla en la pared es manejar el proyector: lo hace quien tiene el control. Entrar, cualquiera de la juntada.
+  button.hidden = !open && !hasControl();
+  button.textContent = open ? 'Entrar a la carrera' : 'Correr una carrera';
+  if (!document.hidden) raceTimer = setTimeout(watchRace, open ? 6000 : 3000);
+}
+function enterRace() {
+  const hash = new URLSearchParams({ r: raceDoor.code, c: '1' });
+  if (raceDoor.port) hash.set('p', raceDoor.port);
+  if (raceDoor.lead) hash.set('l', raceDoor.lead);
+  const who = load('gd.jname');
+  if (who) hash.set('n', who);
+  location.href = '/carrera/volante.html#' + hash.toString();
+}
+$('#race').onclick = async () => {
+  if (raceDoor && raceDoor.open) return enterRace();
+  if (!(await post('carrera/open', {}))) return;
+  // La pared tarda un momento en abrir la sala: se espera a que exista antes de entrar.
+  for (let i = 0; i < 20; i++) {
+    await new Promise(done => setTimeout(done, 400));
+    await watchRace();
+    if (raceDoor && raceDoor.open) return enterRace();
+  }
+  note('La carrera no abrió en el proyector.', true);
+};
+watchRace();
 
 function showPane(name) {
   pane = name;

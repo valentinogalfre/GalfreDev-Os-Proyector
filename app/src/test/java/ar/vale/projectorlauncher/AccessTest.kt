@@ -2,6 +2,7 @@ package ar.vale.projectorlauncher
 
 import ar.vale.projectorlauncher.juntada.Juntada
 import ar.vale.projectorlauncher.juntada.TriviaSource
+import ar.vale.projectorlauncher.carrera.Carrera
 import ar.vale.projectorlauncher.remote.Access
 import ar.vale.projectorlauncher.remote.HttpParser
 import ar.vale.projectorlauncher.remote.HttpResponse
@@ -55,7 +56,12 @@ class AccessTest {
     private val device = Device()
     private val access = Access(now = { clock })
     private val house = Juntada(null, { clock })
-    private val router = Router(pairing, device, JuntadaRoutes(house, TriviaSource { _, _ -> error("sin trivia") }), access) { null }
+    /** La carrera abierta que ve el control, o ninguna. */
+    private var door: Carrera.Room? = null
+    private val router = Router(
+        pairing, device, JuntadaRoutes(house, TriviaSource { _, _ -> error("sin trivia") }), access,
+        raceDoor = { owner -> door?.let { JSONObject().put("code", it.code).apply { if (owner) put("lead", it.leadTicket) } } }
+    ) { null }
 
     private fun call(path: String, body: String = "{}", token: String?, method: String = "POST", extra: String = ""): HttpResponse {
         val head = StringBuilder("$method $path HTTP/1.1\r\nHost: 10.0.0.2:8686\r\nContent-Type: application/json\r\n")
@@ -368,5 +374,19 @@ class AccessTest {
         access.forgetAll()
         assertFalse(access.claimed)
         assertEquals(401, call("/api/juntada/state", token = pass).status)
+    }
+
+    @Test
+    fun `la carrera abierta - el codigo lo ve quien paso, el pase de mando solo el dueño`() {
+        val guest = approved(Access.Level.PARTY)
+        assertFalse(call("/api/carrera", token = guest, method = "GET").json().getBoolean("open"))
+        door = Carrera.Room("c0de", "secreto", "pase")
+        val seen = call("/api/carrera", token = guest, method = "GET").json()
+        assertEquals("c0de", seen.getString("code"))
+        assertFalse(seen.has("lead"))
+        assertEquals("pase", call("/api/carrera", token = pairing.token, method = "GET").json().getString("lead"))
+        // Sin que lo hayan dejado pasar no se ve nada, y abrirla en la pared es del que tiene el control.
+        assertEquals(401, call("/api/carrera", token = ask("Otro"), method = "GET").status)
+        assertEquals(403, call("/api/carrera/open", token = guest).status)
     }
 }

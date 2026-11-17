@@ -20,6 +20,8 @@ interface Bridge {
   send(text: string): void;
   /** Los mensajes pendientes como una lista JSON, o `null` si el canal se cerró. */
   poll(): string | null;
+  /** Cierra la pantalla de la carrera y vuelve al inicio del proyector. */
+  exit?(): void;
 }
 
 function overBridge(host: Bridge, hello: () => object, onMessage: (message: FromRoom) => void, onLine: (up: boolean) => void): Link {

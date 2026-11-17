@@ -205,6 +205,39 @@ class CarreraTest {
     }
 
     @Test
+    fun `sala - el que se va deja el lugar, y al que sacan se le avisa para que no vuelva solo`() {
+        val room = carrera.open()
+        val wall = host(room)
+        val a = join(room, "Ana", "192.168.0.21")
+        val b = join(room, "Beto", "192.168.0.22")
+        val idA = a.next("joined").getInt("id")
+        val keyB = b.next("joined").getString("key")
+        b.say(JSONObject().put("t", "leave"))
+        // La clave del que se fue ya no vale: si vuelve, entra de cero.
+        val back = join(room, "Beto", "192.168.0.22", keyB)
+        val idBack = back.next("joined").getInt("id")
+        assertFalse(idBack == idA)
+        wall.say(JSONObject().put("t", "drop").put("id", idA))
+        assertEquals("out", a.next("error").getString("code"))
+        var names = emptyList<String>()
+        repeat(8) { if (names != listOf("Beto")) names = wall.next("roster").getJSONArray("players").let { list -> (0 until list.length()).map { list.getJSONObject(it).getString("name") } } }
+        assertEquals(listOf("Beto"), names)
+    }
+
+    @Test
+    fun `sala - con el pase de mando entra el celular del dueño, y sin el no`() {
+        val room = carrera.open()
+        val wall = host(room)
+        fun bosses(): List<Boolean> = wall.next("roster").getJSONArray("players").let { list -> (0 until list.length()).map { list.getJSONObject(it).getBoolean("boss") } }
+        wall.next("roster")
+        connect(JSONObject().put("t", "join").put("room", room.code).put("name", "Ana").put("lead", "no es"), "192.168.0.21").next("joined")
+        assertEquals(listOf(false), bosses())
+        connect(JSONObject().put("t", "join").put("room", room.code).put("name", "Vale").put("lead", room.leadTicket), "192.168.0.22").next("joined")
+        assertEquals(listOf(false, true), bosses())
+        assertFalse(room.leadTicket == room.code || room.leadTicket == room.hostSecret)
+    }
+
+    @Test
     fun `sala - un celular que se cae vuelve a su auto con su clave`() {
         val room = carrera.open()
         val wall = host(room)

@@ -16,6 +16,8 @@ export class Session {
   private readonly inputs = new Map<number, Input>();
   private readonly link: Link;
   private lastShared = '';
+  /** A quién le pasaron el mando. Mientras siga conectado manda él; si no, vuelve a quien corresponde. */
+  handed: number | null = null;
   private readonly on: Handlers;
 
   constructor(secret: string, on: Handlers) {
@@ -26,9 +28,23 @@ export class Session {
     });
   }
 
-  /** Quién elige pista y larga: el que entró primero entre los que siguen conectados. */
+  /**
+   * Quién elige pista y larga: a quien le pasaron el mando; si no, el celular del dueño del proyector; si no,
+   * el que entró primero. Siempre entre los que siguen conectados.
+   */
   get lead(): number | null {
-    return this.seats.find((seat) => seat.on)?.id ?? null;
+    const on = this.seats.filter((seat) => seat.on);
+    return (on.find((seat) => seat.id === this.handed) ?? on.find((seat) => seat.boss) ?? on[0])?.id ?? null;
+  }
+
+  /** Si puede manejar la sala: el que tiene el mando, y siempre el dueño del proyector. */
+  rules(id: number): boolean {
+    return id === this.lead || this.seats.some((seat) => seat.id === id && seat.on && seat.boss === true);
+  }
+
+  /** Saca a uno de la sala: su celular vuelve a la pantalla de entrada. */
+  drop(id: number): void {
+    this.link.send({ t: 'drop', id });
   }
 
   input(id: number): Input {

@@ -8,7 +8,9 @@ import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.view.KeyEvent
+import ar.vale.projectorlauncher.carrera.CarreraActivity
 import ar.vale.projectorlauncher.carrera.CarreraFiles
+import ar.vale.projectorlauncher.carrera.CarreraHub
 import ar.vale.projectorlauncher.ApkInstaller
 import ar.vale.projectorlauncher.AppRepository
 import ar.vale.projectorlauncher.FileKind
@@ -242,6 +244,10 @@ class AndroidRemote(private val context: Context) : RemoteDevice {
             .put("apps", others)
             .put("cast", receiver?.let { JSONObject().put("name", it.name) } ?: JSONObject.NULL)
     }
+
+    /** Si la carrera ya está en la pared no se abre otra: eso cerraría la sala con todos adentro. */
+    override fun race(): RemoteDevice.Result =
+        if (CarreraHub.carrera.room != null) RemoteDevice.Result.OK else start(Intent(context, CarreraActivity::class.java))
 
     override fun cast(): RemoteDevice.Result {
         val receiver = Casting.best(context) ?: return RemoteDevice.Result.NOT_INSTALLED

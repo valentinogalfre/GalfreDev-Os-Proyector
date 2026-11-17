@@ -42,7 +42,7 @@ class CarreraActivity : Activity() {
     private lateinit var frame: FrameLayout
     private var web: WebView? = null
     private var waiting = false
-    private val host = Host()
+    private val host = Host { runOnUiThread { finish() } }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -150,11 +150,15 @@ class CarreraActivity : Activity() {
     }
 
     /**
-     * Lo único del launcher que la página puede tocar: su canal con la sala. La página es la del
-     * APK y no navega a otro lado, pero igual esto no da más que mandar y recibir mensajes de la carrera.
+     * Lo único del launcher que la página puede tocar: su canal con la sala y cerrar esta pantalla. La página es
+     * la del APK y no navega a otro lado, pero igual esto no da más que mandar y recibir mensajes de la carrera.
      */
-    private class Host {
+    private class Host(private val leave: () -> Unit) {
         @Volatile private var pipe: Pipe? = null
+
+        /** El que maneja la sala cerró la carrera desde su celular: se vuelve al inicio, como con Atrás. */
+        @JavascriptInterface
+        fun exit() = leave()
 
         @JavascriptInterface
         fun open() {

@@ -6,7 +6,17 @@ import { MODELS, type Command, type FromRoom, type Mine, type Shared, type Wish 
 import { Tilt } from './tilt';
 import type { View } from './view';
 
-const room = new URLSearchParams(location.hash.slice(1)).get('r') ?? '';
+const params = new URLSearchParams(location.hash.slice(1));
+const room = params.get('r') ?? '';
+/** El pase de mando: lo trae solo quien entra desde el control del proyector siendo su dueño. */
+const ticket = params.get('l') ?? '';
+/**
+ * Quien entra desde el control del proyector puede volver a él. En la dirección segura sin advertencias esa
+ * página no existe (ahí solo se atiende la carrera): se vuelve a la dirección de siempre.
+ */
+const control = !params.has('c') ? '' : /\.local-ip\.sh$/.test(location.hostname)
+  ? `http://${location.hostname.replace('.local-ip.sh', '').replace(/-/g, '.')}:${params.get('h') || '8686'}/`
+  : '/';
 const store = (key: string, value?: string): string => {
   try {
     if (value !== undefined) localStorage.setItem(`carrera.${key}`, value);
@@ -30,21 +40,33 @@ let shared: Shared | null = null;
 let mine: Mine | null = null;
 let problem = '';
 let useTilt = false;
+/** El menú de la carrera abierto, y el nombre en edición en la sala. */
+let menu = false;
+let renaming = false;
 
 /**
  * El sensor de inclinación solo se entrega a páginas seguras. Si el proyector tiene la dirección segura que los
  * celulares aceptan sin avisos, el volante se muda a ella antes de entrar a la sala; si no responde, se queda acá.
  */
 function upgrade(): void {
-  const port = new URLSearchParams(location.hash.slice(1)).get('p');
+  const port = params.get('p');
   if (isSecureContext || !port || !/^\d+\.\d+\.\d+\.\d+$/.test(location.hostname)) return;
   const secure = `https://${location.hostname.replace(/\./g, '-')}.local-ip.sh:${port}`;
   const late = new Promise<never>((_, fail) => setTimeout(fail, 3000));
   Promise.race([fetch(`${secure}/carrera/volante.html`, { mode: 'no-cors', cache: 'no-store' }), late])
-    .then(() => { if (!me) location.replace(`${secure}${location.pathname}${location.hash}`); })
+    .then(() => { if (!me) location.replace(`${secure}${location.pathname}${location.hash}&h=${location.port || '80'}`); })
     .catch(() => undefined);
 }
 upgrade();
+/** Cuánto hay que mover la mano para doblar a fondo: grados de inclinación, y recorrido de la palanca. */
+const FEEL = [{ name: 'Suave', lock: 40, reach: 1.25 }, { name: 'Normal', lock: 30, reach: 1 }, { name: 'Rápido', lock: 21, reach: 0.72 }];
+let feel = 1;
+function setFeel(index: number): void {
+  feel = FEEL[index] ? index : 1;
+  tilt.lock = FEEL[feel].lock;
+  store('giro', String(feel));
+}
+setFeel(store('giro') === '' ? 1 : Number(store('giro')));
 const held = { brake: false, nitro: false, drift: false };
 /** La palanca: de -1 a 1, positivo a la izquierda como en la carrera. */
 let stick = 0;
@@ -90,10 +112,24 @@ function join(name: string): void {
   link?.close();
   // La clave vale para esta sala: con otra sala se entra de cero.
   const key = () => (store('room') === room ? store('key') : '');
-  link = connect(() => ({ t: 'join', room, name, key: key() }), onMessage, (up) => {
+  link = connect(() => ({ t: 'join', room, name, key: key(), lead: ticket }), onMessage, (up) => {
     online = up;
     render();
   });
+}
+
+/** Deja la sala: el lugar queda libre y, si estaba corriendo, su auto sigue solo. */
+function leave(): void {
+  link?.send({ t: 'leave' });
+  link?.close();
+  link = null;
+  me = null;
+  shared = null;
+  mine = null;
+  menu = renaming = false;
+  store('key', '');
+  problem = '';
+  render();
 }
 
 function onMessage(message: FromRoom): void {
@@ -102,7 +138,9 @@ function onMessage(message: FromRoom): void {
     store('room', room);
     store('key', message.key);
   } else if (message.t === 'error') {
-    problem = { room: 'Esta sala ya cerró. Escaneá de nuevo el código de la pared.', name: 'Ese nombre no sirve. Probá con otro.', full: 'La sala está llena.', moved: 'Este volante se abrió en otra pestaña. Entrá de nuevo para manejar desde acá.' }[message.code];
+    problem = { room: 'Esta sala ya cerró. Escaneá de nuevo el código de la pared.', name: 'Ese nombre no sirve. Probá con otro.', full: 'La sala está llena.', moved: 'Este volante se abrió en otra pestaña. Entrá de nuevo para manejar desde acá.', out: 'Te sacaron de la sala. Podés volver a entrar.' }[message.code];
+    if (message.code === 'out') store('key', '');
+    menu = renaming = false;
     link?.close();
     link = null;
     me = null;
@@ -111,6 +149,9 @@ function onMessage(message: FromRoom): void {
     shared = message.d;
     if (me) stage(shared);
     if (was !== shared.phase && (shared.phase === 'countdown' || shared.phase === 'lobby')) mine = null;
+    // Al largar, como se esté sosteniendo el celular pasa a ser «derecho»: nadie arranca doblando.
+    if (was !== shared.phase && (shared.phase === 'countdown' || shared.phase === 'race')) tilt.center();
+    if (shared.phase !== 'countdown' && shared.phase !== 'race') menu = false;
   } else if (message.t === 'st') {
     const frame = decodeFrame(message.d);
     if (frame) view?.push(frame);
@@ -129,7 +170,7 @@ async function setTilt(on: boolean): Promise<void> {
   if (on) {
     useTilt = await tilt.start();
     if (useTilt) tilt.center();
-    else problem = isSecureContext ? 'Este celular no informa la inclinación. Queda la palanca.' : '';
+    else problem = isSecureContext ? 'Este celular no informa la inclinación. Queda la palanca.' : 'La inclinación necesita la página segura. Queda la palanca.';
   } else {
     tilt.stop();
     useTilt = false;
@@ -150,9 +191,11 @@ function render(): void {
   else if (!me) {
     app.innerHTML = `${head()}<div class="fill stack" style="justify-content:center">
       <div><span class="tag">Carrera</span><h1>Tu celular es el volante</h1><p>${problem ? esc(problem) : 'Poné tu nombre y entrá a la sala.'}</p></div>
-      <input id="name" maxlength="16" autocomplete="off" autocapitalize="words" placeholder="Tu nombre" value="${esc(store('name'))}">
-      <button class="go cinta" id="enter">Entrar</button></div>`;
+      <input id="name" maxlength="16" autocomplete="off" autocapitalize="words" placeholder="Tu nombre" enterkeyhint="go" value="${esc(store('name') || params.get('n') || '')}">
+      <button class="go cinta" id="enter">Entrar</button>
+      ${control ? `<a class="quiet link" href="${control}">Volver al control del proyector</a>` : ''}</div>`;
     const input = app.querySelector<HTMLInputElement>('#name')!;
+    input.addEventListener('keydown', (event) => { if (event.key === 'Enter') app.querySelector<HTMLElement>('#enter')!.click(); });
     app.querySelector('#enter')!.addEventListener('click', () => {
       if (!input.value.trim()) return;
       void document.documentElement.requestFullscreen?.().catch(() => undefined);
@@ -186,14 +229,15 @@ function dock(into: Element | null): void {
 
 function lobby(state: Shared): void {
   const self = state.players.find((p) => p.id === me!.id);
-  const lead = state.lead === me!.id;
+  // Maneja la sala quien tiene el mando, y siempre el celular del dueño del proyector.
+  const lead = state.lead === me!.id || self?.boss === true;
   const done = state.phase === 'results';
   const place = done ? state.results.findIndex((r) => r.id === me!.id) + 1 : 0;
   const cup = state.cup.rounds > 1 ? state.cup : null;
   const points = (id: number | null) => cup?.table.find((row) => row.id === id);
   const rows = done
     ? state.results.map((r, i) => `<li><span class="tag">${i + 1}</span>${esc(r.name)}<span class="tag">${r.best === null ? '' : `${r.id !== null && r.id === state.record.byLap ? 'récord' : 'vuelta'} ${r.best.toFixed(2)} · `}${r.time === null ? '—' : `${r.time.toFixed(2)} s`}${points(r.id) ? ` · +${points(r.id)!.last}` : ''}</span></li>`)
-    : state.players.map((p) => `<li class="${p.on ? '' : 'off'}"><i style="background:${hex(p.paint)}"></i>${esc(p.name)}<span class="tag">${p.id === state.lead ? 'Elige pista' : ''}${cup && cup.done > 0 ? `${p.id === state.lead ? ' · ' : ''}${points(p.id)?.points ?? 0} pts` : ''}</span></li>`);
+    : state.players.map((p) => `<li class="${p.on ? '' : 'off'}"><i style="background:${hex(p.paint)}"></i><span class="name">${esc(p.name)}${p.id === me!.id ? ' <small class="tag">vos</small>' : ''}</span><span class="tag">${p.id === state.lead ? 'Mando' : ''}${cup && cup.done > 0 ? `${p.id === state.lead ? ' · ' : ''}${points(p.id)?.points ?? 0} pts` : ''}</span>${lead && p.id !== me!.id ? `${p.on && p.id !== state.lead ? `<button class="mini" data-lead="${p.id}">Dar mando</button>` : ''}<button class="mini" data-kick="${p.id}">Sacar</button>` : ''}</li>`);
   // La tabla del campeonato va debajo de la llegada; después de la última carrera, arriba y con el campeón.
   const ended = cup !== null && cup.done >= cup.rounds;
   const table = done && cup
@@ -214,17 +258,39 @@ function lobby(state: Shared): void {
         ${ended ? table : ''}${done && cup ? `<p class="tag title">Llegada</p>` : cup ? `<p class="tag title">Campeonato · carrera ${cup.done + 1} de ${cup.rounds}</p>` : '<p class="tag title">En la sala</p>'}<ol>${rows.join('')}</ol>${ended ? '' : table}${mark ? `<p class="tag title">${mark}</p>` : ''}
         ${problem ? `<p>${esc(problem)}</p>` : ''}
         <p class="tag title">Cómo manejás</p>
-        <div class="row"><button class="quiet ${useTilt ? '' : 'on'}" id="touch">Palanca</button><button class="quiet ${useTilt ? 'on' : ''}" id="tilt">Inclinación</button>${useTilt ? `<button class="quiet ${tilt.invert ? 'on' : ''}" id="invert">Invertir</button>` : ''}</div>
+        <div class="row"><button class="quiet ${useTilt ? '' : 'on'}" id="touch">Palanca</button><button class="quiet ${useTilt ? 'on' : ''}" id="tilt">Inclinación</button></div>
+        <div class="row"><button class="quiet" id="feel">Giro: ${FEEL[feel].name}</button>${useTilt ? `<button class="quiet ${tilt.invert ? 'on' : ''}" id="invert">Invertir</button>` : ''}</div>
         ${secure ? `<p>La inclinación solo anda en la página segura. <a href="${secure}" style="color:inherit">Abrirla</a>: el navegador va a avisar que el certificado es del proyector.</p>` : ''}
         ${lead && !done ? `<p class="tag title">La carrera</p><div class="stack">
           ${pick('prev', 'next', 'Pista', esc(state.track))}
+          ${pick('shorter', 'further', 'Vueltas', String(state.laps), '−+')}
           ${pick('less', 'more', 'Rivales automáticos', String(Math.min(state.bots, state.room)), '−+')}
           ${state.cup.done === 0 ? pick('fewer', 'longer', 'Campeonato', state.cup.rounds > 1 ? `${state.cup.rounds} carreras` : 'Carrera suelta', '−+') : '<button class="quiet" id="again">Empezar el campeonato de cero</button>'}</div>` : ''}
+        <p class="tag title">Tu lugar</p>
+        ${renaming
+          ? `<div class="row"><input id="rename" maxlength="16" autocomplete="off" autocapitalize="words" enterkeyhint="done" value="${esc(me!.name)}"><button class="quiet on" id="rename-ok">Guardar</button></div>`
+          : `<div class="row"><button class="quiet" id="rename-go">Cambiar nombre</button><button class="quiet" id="leave">Salir de la sala</button></div>`}
+        ${control ? `<a class="quiet link" href="${control}">Volver al control del proyector</a>` : ''}
+        ${lead ? '<button class="quiet" id="close">Cerrar la carrera en el proyector</button>' : ''}
       </div>
     </div>
     <div class="foot">${lead ? `<button class="go cinta" id="start">${!done ? 'Largar' : ended ? 'Campeonato nuevo' : cup ? 'Siguiente carrera' : 'Otra carrera'}</button>` : `<p>${done ? 'Esperando otra carrera.' : 'Larga quien entró primero.'}</p>`}</div>`;
   dock(app.querySelector('.hero'));
   const on = (id: string, act: () => void) => app.querySelector(`#${id}`)?.addEventListener('click', act);
+  app.querySelectorAll<HTMLElement>('[data-kick]').forEach((el) => el.addEventListener('click', () => command({ a: 'kick', id: Number(el.dataset.kick) })));
+  app.querySelectorAll<HTMLElement>('[data-lead]').forEach((el) => el.addEventListener('click', () => command({ a: 'lead', id: Number(el.dataset.lead) })));
+  on('rename-go', () => { renaming = true; render(); app.querySelector<HTMLInputElement>('#rename')?.focus(); });
+  on('rename-ok', () => {
+    const name = app.querySelector<HTMLInputElement>('#rename')!.value.trim();
+    renaming = false;
+    // Con su clave, la sala lo reconoce y solo le cambia el nombre.
+    if (name && name !== me!.name) join(name); else render();
+  });
+  on('leave', leave);
+  on('close', () => command({ a: 'close' }));
+  on('feel', () => { setFeel((feel + 1) % FEEL.length); render(); });
+  on('shorter', () => command({ a: 'laps', d: -1 }));
+  on('further', () => command({ a: 'laps', d: 1 }));
   on('touch', () => { store('control', 'stick'); void setTilt(false); });
   on('tilt', () => { store('control', 'inclinacion'); void setTilt(true); });
   on('invert', () => {
@@ -250,82 +316,118 @@ function lobby(state: Shared): void {
   });
 }
 
+/** Si este celular corre la carrera que está en pista. Quien entró tarde la mira hasta la siguiente. */
+const driving = () => !!(me && shared && shared.racing.includes(me.id));
+
 function buildDrive(): void {
-  if (drive.dataset.tilt === String(useTilt)) return paintDrive();
-  const fresh = drive.dataset.tilt === undefined;
-  drive.dataset.tilt = String(useTilt);
-  if (fresh) {
-    const pad = (id: string, label: string) => `<div class="pad ${id}" data-pad="${id}"><b>${label}</b><u></u></div>`;
+  if (drive.dataset.tilt === undefined) {
+    const pad = (id: string, label: string) => `<div class="pad ${id}" data-pad="${id}"><b>${label}</b></div>`;
     drive.innerHTML = `<canvas id="view"></canvas>
       <div class="hud">
         <div class="pos"><div class="place"></div><span class="tag lap"></span></div>
-        <div class="top"><img src="${logoUrl}" alt="galfredev"><b class="note"></b></div>
+        <div class="top"><b class="note"></b></div>
         <canvas class="map"></canvas>
         <div class="count"></div>
         <div class="speed"><b></b><span class="tag">km/h</span><div class="tank"><u></u></div></div>
+        <div class="lean"><i></i></div>
       </div>
-      <div class="zone"><div class="rail"><i></i></div><span class="tag hint"></span></div>
-      <div class="keys">${pad('nitro', 'Nitro')}${pad('drift', 'Derrape')}${pad('brake', 'Freno')}</div>`;
+      <div class="zone"><div class="stick"><i></i></div><span class="tag hint"></span></div>
+      <div class="keys">${pad('nitro', 'Nitro')}${pad('drift', 'Derrape')}${pad('brake', 'Freno')}</div>
+      <button class="menu-btn" aria-label="Menú">Menú</button>
+      <div class="menu"></div>`;
     drive.querySelectorAll<HTMLElement>('.pad').forEach((el) => {
       const set = (down: boolean) => (event: Event) => {
         event.preventDefault();
+        // El botón sigue apretado aunque el pulgar se corra un poco: se suelta recién al levantar el dedo.
+        if (down) el.setPointerCapture?.((event as PointerEvent).pointerId);
         held[el.dataset.pad as keyof typeof held] = down;
         el.classList.toggle('held', down);
       };
       el.addEventListener('pointerdown', set(true));
-      for (const type of ['pointerup', 'pointercancel', 'pointerleave']) el.addEventListener(type, set(false));
+      for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) el.addEventListener(type, set(false));
     });
-    // La palanca nace donde apoya el pulgar y se arrastra a los costados: cuanto más lejos, más dobla.
-    const zone = drive.querySelector<HTMLElement>('.zone')!, rail = zone.querySelector<HTMLElement>('.rail')!, knob = rail.querySelector<HTMLElement>('i')!;
-    let finger = -1, from = 0;
-    // Con el celular parado la pantalla entera está girada: «al costado» es el eje vertical del dedo.
-    const along = (event: PointerEvent) => (innerHeight > innerWidth ? event.clientY : event.clientX);
-    const reach = () => rail.offsetWidth / 2 - knob.offsetWidth / 2;
+    // La palanca nace donde apoya el pulgar. Se lee solo para los costados: cuanto más lejos, más dobla.
+    const zone = drive.querySelector<HTMLElement>('.zone')!, base = zone.querySelector<HTMLElement>('.stick')!, knob = base.querySelector<HTMLElement>('i')!;
+    let finger = -1, ox = 0, oy = 0, box = zone.getBoundingClientRect(), tall = false;
+    // Con el celular parado la pantalla entera está girada: lo ancho de la zona corre por lo alto de la pantalla.
+    const at = (event: PointerEvent): [number, number] => (tall ? [event.clientY - box.top, box.right - event.clientX] : [event.clientX - box.left, event.clientY - box.top]);
+    const settle = () => { base.style.left = `${ox}px`; base.style.top = `${oy}px`; };
     const move = (event: PointerEvent) => {
-      const pull = Math.max(-1, Math.min(1, (along(event) - from) / reach()));
-      stick = Math.abs(pull) < 0.08 ? 0 : -(pull - Math.sign(pull) * 0.08) / 0.92;
-      knob.style.transform = `translateX(${pull * reach()}px)`;
+      const [x, y] = at(event), reach = (base.offsetWidth / 2) * FEEL[feel].reach;
+      let dx = x - ox;
+      // Si el pulgar se pasa del borde, la base lo acompaña: para volver no hay que desandar lo que se fue de largo.
+      if (Math.abs(dx) > reach) {
+        ox += dx - Math.sign(dx) * reach;
+        dx = Math.sign(dx) * reach;
+        settle();
+      }
+      const pull = dx / reach, amount = Math.max(0, Math.abs(pull) - 0.1) / 0.9;
+      // Fina cerca del centro y a fondo en el borde: las correcciones chicas no zigzaguean.
+      stick = -Math.sign(pull) * Math.pow(amount, 1.3);
+      const room = Math.sqrt(Math.max(0, reach * reach - dx * dx));
+      knob.style.transform = `translate(${dx}px, ${Math.max(-room, Math.min(room, y - oy))}px)`;
     };
     zone.addEventListener('pointerdown', (event) => {
       event.preventDefault();
       if (drive.dataset.tilt === 'true') return tilt.center();
       if (finger !== -1) return;
       finger = event.pointerId;
-      from = along(event);
-      zone.setPointerCapture(finger);
-      const box = zone.getBoundingClientRect(), tall = innerHeight > innerWidth;
-      // Dentro de la zona, en sus propios ejes: girada, lo ancho de la zona corre por lo alto de la pantalla.
-      const x = tall ? event.clientY - box.top : event.clientX - box.left, y = tall ? box.right - event.clientX : event.clientY - box.top;
-      rail.style.left = `${Math.max(rail.offsetWidth / 2, Math.min(zone.offsetWidth - rail.offsetWidth / 2, x))}px`;
-      rail.style.top = `${Math.max(rail.offsetHeight / 2, Math.min(zone.offsetHeight - rail.offsetHeight / 2, y))}px`;
-      rail.classList.add('held');
+      zone.setPointerCapture?.(finger);
+      box = zone.getBoundingClientRect();
+      tall = innerHeight > innerWidth;
+      [ox, oy] = at(event);
+      settle();
+      base.classList.add('held');
     });
     zone.addEventListener('pointermove', (event) => { if (event.pointerId === finger) move(event); });
-    for (const type of ['pointerup', 'pointercancel']) zone.addEventListener(type, (event) => {
+    for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) zone.addEventListener(type, (event) => {
       if ((event as PointerEvent).pointerId !== finger) return;
       finger = -1;
       stick = 0;
       knob.style.transform = '';
-      rail.style.left = rail.style.top = '';
-      rail.classList.remove('held');
+      base.style.left = base.style.top = '';
+      base.classList.remove('held');
     });
+    drive.querySelector('.menu-btn')!.addEventListener('click', () => { menu = !menu; buildDrive(); });
   }
+  drive.dataset.tilt = String(useTilt);
   drive.classList.toggle('tilt', useTilt);
-  drive.querySelector('.hint')!.textContent = useTilt ? 'Tocá acá para centrar' : 'Arrastrá para doblar';
+  drive.classList.toggle('watching', !driving());
+  drive.querySelector('.hint')!.textContent = !driving() ? 'Mirando · entrás en la próxima carrera' : useTilt ? 'Tocá acá para centrar' : 'Arrastrá para doblar';
+  const lead = !!(shared && me && (shared.lead === me.id || shared.players.find((p) => p.id === me!.id)?.boss));
+  const panel = drive.querySelector<HTMLElement>('.menu')!;
+  panel.classList.toggle('on', menu);
+  panel.innerHTML = !menu ? '' : `<div class="stack">
+      <span class="tag">${lead ? 'Manejás la sala' : 'Carrera'}</span>
+      <button class="go" data-do="resume">Seguir</button>
+      ${lead ? '<button class="quiet" data-do="restart">Reiniciar la carrera</button><button class="quiet" data-do="lobby">Volver a la sala</button>' : ''}
+      ${driving() ? `<button class="quiet" data-do="mode">${useTilt ? 'Manejar con la palanca' : 'Manejar inclinando'}</button>` : ''}
+      <button class="quiet" data-do="leave">Salir de la sala</button>
+    </div>`;
+  panel.querySelectorAll<HTMLElement>('[data-do]').forEach((el) => el.addEventListener('click', () => {
+    const what = el.dataset.do;
+    menu = false;
+    if (what === 'restart') command({ a: 'restart' });
+    else if (what === 'lobby') command({ a: 'lobby' });
+    else if (what === 'leave') return leave();
+    else if (what === 'mode') { store('control', useTilt ? 'stick' : 'inclinacion'); return void setTilt(!useTilt); }
+    buildDrive();
+  }));
   paintDrive();
 }
 
 function paintDrive(): void {
   const place = drive.querySelector('.place'), lap = drive.querySelector('.lap'), note = drive.querySelector('.note');
   if (!place || !lap || !note) return;
-  place.innerHTML = mine ? `${mine.place}<sup>/${mine.of}</sup>` : '';
-  lap.textContent = mine && shared ? `Vuelta ${Math.min(shared.laps, mine.lap + 1)}/${shared.laps}` : 'Preparados';
+  const mineNow = driving() ? mine : null;
+  place.innerHTML = mineNow ? `${mineNow.place}<sup>/${mineNow.of}</sup>` : '';
+  lap.textContent = mineNow && shared ? `Vuelta ${Math.min(shared.laps, mineNow.lap + 1)}/${shared.laps}` : driving() ? 'Preparados' : '';
   // Un solo cartel: lo malo tapa a lo bueno.
-  const word = mine?.off ? 'Fuera de pista' : mine?.plus === 'rebufo' ? 'Rebufo' : mine?.plus === 'ritmo' ? 'Ritmo' : '';
+  const word = mineNow?.off ? 'Fuera de pista' : mineNow?.plus === 'rebufo' ? 'Rebufo' : mineNow?.plus === 'ritmo' ? 'Ritmo' : '';
   if (word) note.textContent = word;
   note.classList.toggle('on', word !== '');
-  note.classList.toggle('good', word !== '' && !mine?.off);
-  const tank = drive.querySelector<HTMLElement>('.tank u'), level = Math.round((mine?.nitro ?? 0) * 100);
+  note.classList.toggle('good', word !== '' && !mineNow?.off);
+  const tank = drive.querySelector<HTMLElement>('.tank u'), level = Math.round((mineNow?.nitro ?? 0) * 100);
   if (tank) tank.style.width = `${level}%`;
   drive.querySelector('.pad.nitro')?.classList.toggle('ready', level >= 15);
 }
@@ -339,23 +441,59 @@ setInterval(() => {
   const racing = shared && me && (shared.phase === 'countdown' || shared.phase === 'race');
   if (racing) {
     const steer = useTilt ? tilt.steer : stick;
-    link?.send({ t: 'in', s: Math.round(steer * 100) / 100, b: held.brake ? 1 : 0, n: held.nitro ? 1 : 0, k: held.drift ? 1 : 0 });
+    if (driving()) link?.send({ t: 'in', s: Math.round(steer * 100) / 100, b: held.brake ? 1 : 0, n: held.nitro ? 1 : 0, k: held.drift ? 1 : 0 });
     // La velocidad y la cuenta salen de lo que se está dibujando: van parejas con la imagen.
     const car = view?.self(), clock = view?.clock() ?? 0;
     const speed = String(Math.round((car?.v ?? (mine?.speed ?? 0) / 3.6) * 3.6));
     const count = !view?.now() ? 'Cargando' : clock < 0 ? String(Math.ceil(-clock)) : clock < 0.9 ? 'Ya' : '';
-    const text = `${speed}|${count}`;
+    const text = `${speed}|${count}|${Math.round(steer * 50)}`;
     if (text !== shown) {
       shown = text;
-      const dial = drive.querySelector('.speed b'), big = drive.querySelector<HTMLElement>('.count');
+      const dial = drive.querySelector('.speed b'), big = drive.querySelector<HTMLElement>('.count'), lean = drive.querySelector<HTMLElement>('.lean i');
       if (dial) dial.textContent = speed;
       if (big) { big.textContent = count; big.classList.toggle('go', count === 'Ya'); big.classList.toggle('small', count === 'Cargando'); }
+      // Inclinando no hay palanca que mirar: una aguja muestra cuánto está doblando.
+      if (lean) lean.style.left = `${50 - steer * 46}%`;
     }
-  } else if (performance.now() - lastBeat > 3000) {
+  }
+  // Sin correr no hay volante que mandar, pero la sala corta al que calla: el que mira también avisa que sigue.
+  if ((!racing || !driving()) && performance.now() - lastBeat > 3000) {
     lastBeat = performance.now();
     link?.send({ t: 'ping', n: ++beat });
   }
 }, 33);
+
+/**
+ * Safari no hace caso al pedido de no agrandar la página: el doble toque y el pellizco se frenan a mano.
+ * Corriendo, ningún toque hace nada más que lo que hace el juego. En la sala el segundo toque rápido sigue
+ * valiendo como toque (para pasar pinturas de a varias), pero no agranda.
+ */
+let lastTap = 0;
+document.addEventListener('touchstart', (event) => {
+  const target = event.target as Element | null;
+  if (document.body.classList.contains('driving') && !target?.closest?.('.menu, .menu-btn')) event.preventDefault();
+  else if (event.touches.length > 1) event.preventDefault();
+}, { passive: false });
+document.addEventListener('touchend', (event) => {
+  const target = event.target as HTMLElement | null, now = performance.now(), quick = now - lastTap < 400;
+  lastTap = now;
+  if (!quick || !target || target.closest('input, a')) return;
+  event.preventDefault();
+  if (!document.body.classList.contains('driving') || target.closest('.menu, .menu-btn')) target.click();
+}, { passive: false });
+for (const type of ['gesturestart', 'gesturechange', 'dblclick']) document.addEventListener(type, (event) => event.preventDefault(), { passive: false });
+document.addEventListener('contextmenu', (event) => event.preventDefault());
+
+// Recargada la página, el iPhone pide de nuevo permiso para el sensor, y solo lo da desde un toque: se pide en el primero.
+if (isSecureContext && store('control') === 'inclinacion') {
+  const again = () => {
+    removeEventListener('touchend', again, true);
+    removeEventListener('click', again, true);
+    if (!useTilt && me) void setTilt(true);
+  };
+  addEventListener('touchend', again, true);
+  addEventListener('click', again, true);
+}
 
 // La pantalla no se apaga en plena carrera, donde el navegador lo permita.
 document.addEventListener('visibilitychange', () => {
