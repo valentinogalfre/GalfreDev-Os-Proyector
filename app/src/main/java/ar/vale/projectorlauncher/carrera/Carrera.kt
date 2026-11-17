@@ -154,8 +154,9 @@ class Carrera(private val random: SecureRandom = SecureRandom(), private val now
                     "cmd" -> message.optJSONObject("d")?.let { tellHost(JSONObject().put("t", "cmd").put("id", player.id).put("d", it).toString()) }
                     "ping" -> channel.send(JSONObject().put("t", "pong").put("n", message.optLong("n")).toString())
                     // Se va por su cuenta: deja el lugar y su clave ya no vale.
+                    // Si otra conexión ya tomó su lugar, la que se despide es la vieja y no se lleva a nadie.
                     "leave" -> {
-                        drop(player.id, told = false)
+                        if (synchronized(this) { player.channel === channel }) drop(player.id, told = false)
                         return
                     }
                 }
