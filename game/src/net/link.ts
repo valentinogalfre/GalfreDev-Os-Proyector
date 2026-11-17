@@ -9,7 +9,7 @@ export interface Link {
  * La conexión con la sala. Si se corta, vuelve a intentar sola y se presenta de nuevo con [hello]:
  * así un celular que perdió el Wi-Fi un segundo vuelve a su mismo auto.
  */
-export function connect(hello: () => object, onMessage: (message: FromRoom) => void, onLine: (up: boolean) => void): Link {
+export function connect<M = FromRoom>(hello: () => object, onMessage: (message: M) => void, onLine: (up: boolean) => void): Link {
   const host = (window as unknown as { CarreraHost?: Bridge }).CarreraHost;
   return host ? overBridge(host, hello, onMessage, onLine) : overSocket(hello, onMessage, onLine);
 }
@@ -24,7 +24,7 @@ interface Bridge {
   exit?(): void;
 }
 
-function overBridge(host: Bridge, hello: () => object, onMessage: (message: FromRoom) => void, onLine: (up: boolean) => void): Link {
+function overBridge<M>(host: Bridge, hello: () => object, onMessage: (message: M) => void, onLine: (up: boolean) => void): Link {
   let up = false;
   const open = () => {
     host.open();
@@ -42,9 +42,10 @@ function overBridge(host: Bridge, hello: () => object, onMessage: (message: From
       return;
     }
     if (waiting === '[]') return;
-    for (const message of JSON.parse(waiting) as FromRoom[]) onMessage(message);
+    for (const message of JSON.parse(waiting) as M[]) onMessage(message);
   }, 12);
-  open();
+  // Diferido: quien llama recibe el enlace antes del primer onLine, como con el WebSocket.
+  setTimeout(open, 0);
   return {
     send(message) {
       if (up) host.send(JSON.stringify(message));
@@ -59,7 +60,7 @@ function overBridge(host: Bridge, hello: () => object, onMessage: (message: From
 /** El código con que la sala cierra la conexión que otra reemplazó. */
 const REPLACED = 4001;
 
-function overSocket(hello: () => object, onMessage: (message: FromRoom) => void, onLine: (up: boolean) => void): Link {
+function overSocket<M>(hello: () => object, onMessage: (message: M) => void, onLine: (up: boolean) => void): Link {
   let socket: WebSocket | null = null;
   let closed = false;
   let wait = 300;
@@ -74,7 +75,7 @@ function overSocket(hello: () => object, onMessage: (message: FromRoom) => void,
     };
     ws.onmessage = (event) => {
       try {
-        onMessage(JSON.parse(String(event.data)) as FromRoom);
+        onMessage(JSON.parse(String(event.data)) as M);
       } catch {
         // Un mensaje que no se entiende no tira la conexión.
       }
@@ -84,7 +85,7 @@ function overSocket(hello: () => object, onMessage: (message: FromRoom) => void,
       socket = null;
       onLine(false);
       // El mismo volante se abrió en otro lado: volver a entrar solo sería pelearle el auto.
-      if (event.code === REPLACED) return onMessage({ t: 'error', code: 'moved' });
+      if (event.code === REPLACED) return onMessage({ t: 'error', code: 'moved' } as M);
       setTimeout(open, wait);
       wait = Math.min(wait * 2, 3000);
     };

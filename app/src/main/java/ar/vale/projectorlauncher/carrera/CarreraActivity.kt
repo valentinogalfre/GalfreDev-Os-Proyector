@@ -36,13 +36,20 @@ import java.io.ByteArrayInputStream
  * le pasa el control remoto. La página no toca la red: sus archivos salen del APK y con la sala
  * habla por [Host], así que no depende del certificado ni de permitir tráfico sin cifrar.
  */
-class CarreraActivity : Activity() {
+open class CarreraActivity : Activity() {
+
+    /** La página de la pared y la que abre cada celular, dentro de `assets/carrera`. */
+    protected open val wallPage = "index.html?q=bajo"
+    protected open val phonePage = "volante.html"
+    protected open val offText = R.string.carrera_off
+    protected open val failedText = R.string.carrera_failed
+    protected open val noWebViewText = R.string.carrera_no_webview
 
     private val handler = Handler(Looper.getMainLooper())
     private lateinit var frame: FrameLayout
     private var web: WebView? = null
     private var waiting = false
-    private val host = Host { runOnUiThread { finish() } }
+    private val host = Host { runOnUiThread { if (!isFinishing) finish() } }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -52,7 +59,7 @@ class CarreraActivity : Activity() {
             View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
         frame = FrameLayout(this).apply { setBackgroundColor(getColor(R.color.carbon)) }
         setContentView(frame)
-        if (RemoteState.running) load() else say(getString(R.string.carrera_off))
+        if (RemoteState.running) load() else say(getString(offText))
     }
 
     /** La carrera necesita el servidor del celular. Si está apagado, se pregunta antes de prenderlo. */
@@ -84,7 +91,7 @@ class CarreraActivity : Activity() {
             RemoteState.running -> load()
             left == 0 -> {
                 waiting = false
-                say(getString(R.string.carrera_failed))
+                say(getString(failedText))
             }
             else -> handler.postDelayed({ awaitServer(left - 1) }, 250)
         }
@@ -96,7 +103,7 @@ class CarreraActivity : Activity() {
             WebView(this)
         } catch (e: RuntimeException) {
             // Hay firmwares sin el componente del sistema que muestra páginas.
-            say(getString(R.string.carrera_no_webview))
+            say(getString(noWebViewText))
             return
         }
         val files = CarreraFiles(this)
@@ -142,16 +149,16 @@ class CarreraActivity : Activity() {
         }
         view.addJavascriptInterface(host, "CarreraHost")
         val room = CarreraHub.carrera.open()
-        val join = RemoteState.address(this)?.let { "http://$it:${RemoteState.port}/carrera/volante.html#r=${room.code}" + (if (RemoteState.publicPort > 0) "&p=${RemoteState.publicPort}" else "") }
+        val join = RemoteState.address(this)?.let { "http://$it:${RemoteState.port}/carrera/$phonePage#r=${room.code}" + (if (RemoteState.publicPort > 0) "&p=${RemoteState.publicPort}" else "") }
         frame.removeAllViews()
         frame.addView(view)
         web = view
-        view.loadUrl("${ORIGIN}index.html?q=bajo#s=${room.hostSecret}&tls=${RemoteState.securePort}&qr=${join?.let(::qr).orEmpty()}")
+        view.loadUrl("${ORIGIN}$wallPage#s=${room.hostSecret}&tls=${RemoteState.securePort}&qr=${join?.let(::qr).orEmpty()}")
     }
 
     /**
      * Lo único del launcher que la página puede tocar: su canal con la sala y cerrar esta pantalla. La página es
-     * la del APK y no navega a otro lado, pero igual esto no da más que mandar y recibir mensajes de la carrera.
+     * la del APK y no navega a otro lado, pero igual esto no da más que mandar y recibir mensajes del juego.
      */
     private class Host(private val leave: () -> Unit) {
         @Volatile private var pipe: Pipe? = null

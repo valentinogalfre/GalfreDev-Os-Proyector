@@ -22,6 +22,7 @@ import ar.vale.projectorlauncher.claude.ClaudeSettings
 import ar.vale.projectorlauncher.claude.KeyVault
 import ar.vale.projectorlauncher.device.CalibrationActivity
 import ar.vale.projectorlauncher.carrera.CarreraActivity
+import ar.vale.projectorlauncher.carrera.FutbolActivity
 import ar.vale.projectorlauncher.juntada.JuntadaActivity
 import ar.vale.projectorlauncher.device.SystemScreens
 import ar.vale.projectorlauncher.apps.Streaming
@@ -418,6 +419,9 @@ class LauncherActivity : GdActivity() {
                 panelRow(extra, getString(R.string.home_party_open), null, R.drawable.ic_star) { open(Section.JUNTADA) }
                 panelRow(extra, getString(R.string.home_race_open), null, R.drawable.ic_play) {
                     openScreen(Intent(this, CarreraActivity::class.java), getString(R.string.home_race_open))
+                }
+                panelRow(extra, getString(R.string.home_futbol_open), null, R.drawable.ic_target) {
+                    openScreen(Intent(this, FutbolActivity::class.java), getString(R.string.home_futbol_open))
                 }
             }
             Section.PARED -> {

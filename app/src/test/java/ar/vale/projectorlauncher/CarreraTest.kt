@@ -187,6 +187,22 @@ class CarreraTest {
     }
 
     @Test
+    fun `sala - la palanca del futbol le llega a la pared acotada, y sin numeros de mas`() {
+        val room = carrera.open()
+        val wall = host(room)
+        val phone = join(room, "Vale")
+        phone.next("joined")
+        phone.say(JSONObject().put("t", "in").put("x", -3.0).put("y", 0.25).put("k", 1))
+        val input = wall.next("in")
+        assertEquals(-1.0, input.getDouble("x"), 0.0)
+        assertEquals(0.25, input.getDouble("y"), 1e-9)
+        assertEquals(0.0, input.getDouble("s"), 0.0)
+        assertTrue(input.getBoolean("k"))
+        phone.say(JSONObject().put("t", "in").put("x", "nada"))
+        assertEquals(0.0, wall.next("in").getDouble("x"), 0.0)
+    }
+
+    @Test
     fun `sala - lo que dice la pared llega a todos, y a uno solo cuando es para el`() {
         val room = carrera.open()
         val wall = host(room)

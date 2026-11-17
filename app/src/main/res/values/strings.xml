@@ -66,9 +66,12 @@
     <string name="home_claude_body">Responde grande y usa las apps por vos: abre, busca y le da reproducir.</string>
     <string name="home_claude_no_key">Responde grande y usa las apps por vos. Hace falta tu clave de la API.</string>
     <string name="home_party_title">Todos juegan desde su celular.</string>
-    <string name="home_party_body">Trivia, votaciones y las cuentas de la casa. Escanean un código y listo.</string>
+    <string name="home_party_body">Trivia, votaciones, carrera, fútbol y las cuentas de la casa. Escanean un código y listo.</string>
     <string name="home_party_open">Abrir la juntada</string>
     <string name="home_race_open">Correr una carrera</string>
+    <string name="home_futbol_open">Jugar un picadito</string>
+    <string name="futbol_off">El fútbol usa la conexión con el celular, que está apagada.\n\nApretá OK para encenderla.</string>
+    <string name="futbol_no_webview">Este equipo no tiene el componente del sistema que muestra páginas (WebView), y el fútbol lo necesita.</string>
     <string name="carrera_off">La carrera usa la conexión con el celular, que está apagada.\n\nApretá OK para encenderla.</string>
     <string name="carrera_failed">No se pudo encender la conexión con el celular.\n\nApretá OK para probar de nuevo.</string>
     <string name="carrera_no_webview">Este equipo no tiene el componente del sistema que muestra páginas (WebView), y la carrera lo necesita.</string>
