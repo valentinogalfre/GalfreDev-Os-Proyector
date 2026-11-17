@@ -55,6 +55,7 @@ class AndroidRemote(private val context: Context) : RemoteDevice {
             .put("resolution", "${size.x} × ${size.y}")
             .put("full_control", RemoteAccessibility.instance != null)
             .put("claude_key", KeyVault.has(context))
+            .put("port", RemoteState.port)
             .put("secure_port", RemoteState.securePort)
     }
 

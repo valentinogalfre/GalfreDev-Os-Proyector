@@ -92,6 +92,11 @@ details>div{display:flex;flex-direction:column;gap:10px;padding-top:6px}
 .msg.bad{border-left-color:var(--error)}
 .send{display:grid;grid-template-columns:1fr auto;gap:8px}
 #mic-help{border-left:2px solid var(--error);padding:10px 14px;background:var(--carbon2);font-size:15px;display:flex;flex-direction:column;gap:8px}
+#mic-help.tip{border-left-color:var(--cinta)}
+#mic-help .code{user-select:all;-webkit-user-select:all;word-break:break-all}
+#mic-else{display:flex;flex-direction:column;gap:8px;font-size:14px;color:var(--gris)}
+#mic-else[hidden]{display:none}
+#mic-open{padding:9px 12px;font-size:15px;color:var(--carbon);background:var(--cinta);text-decoration:none}
 .code{font:500 11.5px Geist,monospace;color:var(--control);overflow-wrap:anywhere}
 .card{border:1px solid var(--linea);padding:14px;display:flex;flex-direction:column;gap:10px}
 .group{display:flex;flex-direction:column;gap:10px}
@@ -194,7 +199,8 @@ nav button.on{background:var(--cinta);color:var(--carbon)}
     <div id="said" hidden><b></b><span></span></div>
     <button id="mic" class="main" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg><span>Hablar</span></button>
     <p id="mic-why" hidden>Falta un paso, una sola vez. El navegador solo presta el micrófono a una página segura, y va a avisar que no conoce el certificado: es el del proyector. <span id="mic-how"></span> Después queda a un toque.</p>
-    <div id="mic-help" hidden><span></span><div class="code"></div><button id="mic-copy" hidden>Copiar el enlace</button></div>
+    <div id="mic-help" hidden><span></span><div class="code"></div></div>
+    <div id="mic-else" hidden><span></span><div class="checks"><a id="mic-open" hidden>Abrir en Safari</a><button id="mic-copy">Copiar el enlace</button></div></div>
     <div class="send"><input id="question" maxlength="4000" autocomplete="off" enterkeyhint="send" placeholder="O escribilo" aria-label="Tu pedido"><button id="ask">Enviar</button></div>
     <div class="checks">
       <button id="stop" hidden>Detener</button>
@@ -411,9 +417,19 @@ async function copyText(text) {
   // Sin página segura no hay portapapeles moderno: queda el de siempre.
   const area = el('textarea');
   area.value = text;
-  area.style.cssText = 'position:fixed;opacity:0';
+  // El iPhone no selecciona con select() y abre el teclado si el campo se puede escribir.
+  area.readOnly = true;
+  area.style.cssText = 'position:fixed;top:0;left:0;opacity:0;font-size:16px';
   document.body.append(area);
   area.select();
+  try {
+    const range = document.createRange();
+    range.selectNodeContents(area);
+    const picked = getSelection();
+    picked.removeAllRanges();
+    picked.addRange(range);
+    area.setSelectionRange(0, text.length);
+  } catch (e) {}
   let done = false;
   try { done = document.execCommand('copy'); } catch (e) {}
   area.remove();
@@ -540,6 +556,7 @@ function denied() {
 }
 
 let securePort = 0;
+let plainPort = 0;
 let hasKey = true;
 async function loadState() {
   if (!hasControl()) return;
@@ -550,6 +567,7 @@ async function loadState() {
   const state = await response.json();
   $('#device').textContent = state.name || '';
   securePort = state.secure_port || 0;
+  plainPort = state.port || 0;
   hasKey = state.claude_key !== false;
 }
 
@@ -569,13 +587,20 @@ function secureUrl(name) {
   if (load('gd.track')) hash.set('k', '1');
   return 'https://' + location.hostname + ':' + securePort + '/#' + hash;
 }
+// Esta página, ya en Claude, para abrirla en otro navegador. Va a la común: abre sin avisos, y
+// de ahí el botón del micrófono lleva a la segura explicando el paso que falta.
+function elsewhereUrl() {
+  const hash = '/#' + new URLSearchParams({ t: token, tab: 'claude' });
+  if (SECURE && plainPort) return 'http://' + location.hostname + ':' + plainPort + hash;
+  return location.origin + hash;
+}
 function goSecure() {
   // No se corta nada que esté en camino.
   if (sendingFiles || uploading) return;
   location.replace(secureUrl('claude'));
 }
 async function probeSecure() {
-  if (SECURE || !isOwner || !securePort || !Recognition) return;
+  if (SECURE || !isOwner || !securePort || byKeyboard()) return;
   try {
     // Solo llega si el navegador ya confía en el certificado: si no, el pedido falla y no pasa nada.
     await fetch('https://' + location.hostname + ':' + securePort + '/logo.svg', { mode: 'no-cors', cache: 'no-store' });
@@ -851,6 +876,8 @@ async function watchClaude() {
 }
 
 async function ask(text, spoken) {
+  // Si se estaba dictando, el dictado termina acá: no manda lo mismo otra vez.
+  if (hearing && hearing.drop) hearing.drop();
   text = (text === undefined ? $('#question').value : text).trim();
   if (!text) return;
   if (!hasKey) { needKey(); return; }
@@ -934,6 +961,12 @@ $('#talk').onclick = () => {
 const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 const IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const APPLE = IOS || /Apple/.test(navigator.vendor || '');
+// En iPhone, Apple le presta el reconocimiento de voz solo a Safari. Los demás navegadores lo
+// muestran igual, pero al usarlo falla siempre: ahí se dicta con el micrófono del teclado, que
+// anda en cualquiera y no pide página segura. Lo mismo donde no hay reconocimiento.
+const BORROWED = IOS && /CriOS|FxiOS|EdgiOS|OPiOS|OPT\/|GSA\/|DuckDuckGo/.test(navigator.userAgent);
+let dictates = !Recognition || BORROWED;
+const byKeyboard = () => dictates || (!SECURE && !securePort);
 const LANGS = APPLE ? ['es-MX', 'es-419', 'es-US', 'es-ES'] : ['es-AR', 'es-419', 'es-MX', 'es-ES'];
 let langAt = Math.max(0, LANGS.indexOf(load('gd.lang')));
 // Algunos navegadores no avisan nunca que terminaron de escuchar, o no devuelven nada: por eso
@@ -941,6 +974,9 @@ let langAt = Math.max(0, LANGS.indexOf(load('gd.lang')));
 const HEAR_START_MS = 8000;
 const HEAR_PAUSE_MS = 1800;
 const HEAR_CLOSE_MS = 900;
+// El teclado entrega lo dictado de a tandas: la pausa que cierra el pedido es más larga.
+const DICTATE_PAUSE_MS = 2200;
+const DICTATE_LEAVE_MS = 400;
 // Un rechazo que llega antes de esto, sin una palabra, es del idioma y no de la persona.
 const LANG_FAIL_MS = 2500;
 let hearing = null;
@@ -950,7 +986,7 @@ const PROBLEMS = {
     ? 'Safari no nos dejó usar el micrófono. Tocá «aA» en la barra de direcciones, entrá a Configuración del sitio web y permití el micrófono.'
     : 'El navegador no nos dejó usar el micrófono. Tocá el candado de la barra de direcciones y permití el micrófono para esta página.',
   'service-not-allowed': IOS
-    ? 'El dictado del iPhone está apagado. Activalo en Ajustes › General › Teclado › Activar Dictado y probá de nuevo.'
+    ? 'Este navegador no puede reconocer la voz. Tocá Hablar de nuevo y dictá con el micrófono del teclado. Si el teclado no lo muestra, activalo en Ajustes › General › Teclado › Activar Dictado.'
     : 'Este navegador no tiene reconocimiento de voz en castellano. Probá con Chrome.',
   'audio-capture': 'No pudimos usar el micrófono: puede estar ocupado por una llamada o por otra app.',
   network: 'El reconocimiento de voz necesita internet en el celular.',
@@ -965,8 +1001,9 @@ function said(label, text) {
   $('#said span').textContent = text || '';
 }
 // La ayuda dice qué hacer y, en letra chica, qué pasó exactamente: sirve para avisar si sigue fallando.
-function micHelp(text, detail) {
+function micHelp(text, detail, tip) {
   $('#mic-help').hidden = !text;
+  $('#mic-help').classList.toggle('tip', !!tip);
   $('#mic-help span').textContent = text || '';
   $('#mic-help .code').textContent = detail || '';
   // Queda debajo del botón: con la charla larga, sin esto el aviso aparecería fuera de la vista.
@@ -976,7 +1013,7 @@ const canHear = () => !!Recognition && window.isSecureContext;
 function micIdle() {
   $('#mic').classList.remove('live');
   $('#mic').setAttribute('aria-pressed', 'false');
-  $('#mic span').textContent = canHear() ? 'Hablar' : 'Activar el micrófono';
+  $('#mic span').textContent = byKeyboard() || canHear() ? 'Hablar' : 'Activar el micrófono';
 }
 function micLive(label) {
   $('#mic').classList.add('live');
@@ -987,29 +1024,67 @@ function micLive(label) {
 function micSetup() {
   drawTalk();
   if (!isOwner) return;
-  if (!Recognition) {
-    $('#mic').hidden = true;
-    micHelp(IOS
-      ? 'En iPhone, el micrófono de esta página solo anda en Safari. Abrila ahí, o escribí acá abajo.'
-      : 'Este navegador no reconoce la voz. Abrí esta página en Chrome, o escribí acá abajo.', 'sin reconocimiento de voz');
-    $('#mic-copy').hidden = false;
-    return;
-  }
-  if (!SECURE && !securePort) {
-    $('#mic').hidden = true;
-    micHelp('El proyector no pudo abrir la conexión segura que pide el micrófono. Escribí acá abajo, o dictá con el micrófono del teclado.', 'sin https');
-    return;
-  }
   $('#mic-how').textContent = IOS
     ? 'Cuando aparezca el aviso, tocá Mostrar detalles y después «visitar este sitio web».'
     : 'Cuando aparezca el aviso, tocá Configuración avanzada y después el enlace para continuar.';
-  $('#mic-why').hidden = SECURE;
+  $('#mic-why').hidden = SECURE || byKeyboard();
+  // Donde se dicta con el teclado, el navegador que sí escucha queda a un toque.
+  const elsewhere = IOS ? BORROWED : !Recognition;
+  $('#mic-else').hidden = !elsewhere;
+  if (elsewhere) {
+    $('#mic-else span').textContent = 'Para hablar con un solo toque, sin el teclado, abrí esta página en ' + (IOS ? 'Safari.' : 'Chrome.');
+    $('#mic-open').hidden = !IOS;
+    // Desde iOS 17, este prefijo abre la dirección en Safari.
+    $('#mic-open').href = 'x-safari-' + elsewhereUrl();
+  }
   micIdle();
 }
 $('#mic-copy').onclick = async () => {
-  const done = await copyText('http://' + location.host + '/#t=' + token + '&tab=claude');
+  const url = elsewhereUrl();
+  const done = await copyText(url);
   note(done ? 'Enlace copiado. Pegalo en ' + (IOS ? 'Safari.' : 'Chrome.') : 'No se pudo copiar el enlace.', !done);
+  if (!done) micHelp('Mantené apretado el enlace y copialo.', url, true);
 };
+
+// El dictado del teclado: la página no puede prenderlo, así que abre el teclado y espera. Lo
+// dictado cae en el campo de siempre; una pausa después de las últimas palabras lo manda.
+function dictate() {
+  const field = $('#question');
+  const session = { done: false, timer: 0, leave: 0 };
+  const finish = send => {
+    if (session.done) return;
+    session.done = true;
+    clearTimeout(session.timer);
+    clearTimeout(session.leave);
+    field.removeEventListener('input', heard);
+    field.removeEventListener('blur', left);
+    field.removeEventListener('focus', back);
+    hearing = null;
+    micIdle();
+    micHelp();
+    if (send) ask(undefined, true);
+  };
+  const heard = () => {
+    clearTimeout(session.timer);
+    if (field.value.trim()) session.timer = setTimeout(() => finish(true), DICTATE_PAUSE_MS);
+  };
+  // Cerrar el teclado corta el dictado y deja lo escrito en el campo. Se espera un instante:
+  // en Android tocar el botón le saca el foco al campo antes de que llegue el toque.
+  const left = () => { session.leave = setTimeout(() => finish(false), DICTATE_LEAVE_MS); };
+  const back = () => clearTimeout(session.leave);
+  session.close = () => finish(true);
+  session.drop = () => finish(false);
+  field.addEventListener('input', heard);
+  field.addEventListener('blur', left);
+  field.addEventListener('focus', back);
+  hearing = session;
+  micLive('Tocá el micrófono del teclado y hablá');
+  micHelp('Se manda solo cuando hacés una pausa, o tocando acá arriba. ' + (IOS
+    ? 'Si el teclado no muestra el micrófono, activalo en Ajustes › General › Teclado › Activar Dictado.'
+    : 'Si el teclado no muestra el micrófono, activá el dictado por voz en los ajustes del teclado.'), '', true);
+  field.focus();
+  heard();
+}
 
 function listen(attempt) {
   const lang = LANGS[langAt];
@@ -1083,12 +1158,21 @@ function unheard(session, lang, attempt) {
   // por eso: con tocar de nuevo alcanza, y se sigue desde el idioma que tocaba.
   const retried = attempt > 0 && quick && (error === 'not-allowed' || error === 'start');
   if (language) langAt = 0;
+  // Se probaron todos los idiomas y el servicio se negó a cada uno: la próxima vez se dicta con el teclado.
+  if (language && IOS) dictates = true;
   const text = retried ? PROBLEMS.again : PROBLEMS[error] || PROBLEMS.silent;
   micHelp(text, (error || 'sin voz') + ' · ' + lang + ' · ' + (SECURE ? 'https' : 'http'));
 }
 
 $('#mic').onclick = () => {
   if (hearing) { hearing.close(); return; }
+  if (byKeyboard()) {
+    if (!hasKey) { needKey(); return; }
+    readyToTalk();
+    if (synth) synth.cancel();
+    dictate();
+    return;
+  }
   if (!canHear()) {
     // Misma pestaña: al aceptar el certificado se vuelve acá, ya con el micrófono.
     if (Recognition && securePort) location.href = secureUrl('claude');

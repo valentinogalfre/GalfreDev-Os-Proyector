@@ -268,8 +268,15 @@ En la pestaña Claude hay un botón grande. Se le habla ahí mismo, sin abrir ot
    salir en la pared. Se apaga con «Respuesta en voz alta».
 
 El iPhone pide permiso para el micrófono y para el reconocimiento de voz, y necesita tener el
-dictado activado (Ajustes, General, Teclado). En iPhone anda en Safari; en Android, en Chrome.
-El reconocimiento lo hace el celular y necesita internet.
+dictado activado (Ajustes, General, Teclado). El reconocimiento lo hace el celular y necesita
+internet.
+
+**En Chrome de iPhone, o en cualquier navegador que no reconoce la voz,** el botón no pide la
+página segura: abre el teclado para dictar con su micrófono. Apple le presta el reconocimiento
+de voz solo a Safari, y el dictado del teclado anda en todos. Tocás Hablar, después el
+micrófono del teclado, decís el pedido, y se manda solo cuando hacés una pausa. La respuesta
+se escucha igual. Debajo queda **Abrir en Safari**, para hablar con un solo toque: abre esta
+misma página ahí, ya en Claude (desde iOS 17; en los anteriores, Copiar el enlace y pegarlo).
 
 Si algo falla, la página dice qué pasó y qué tocar, con una línea en letra chica que sirve
 para avisarnos. Escribir el pedido sigue andando siempre.
