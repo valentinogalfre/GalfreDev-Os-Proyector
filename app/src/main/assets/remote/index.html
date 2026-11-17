@@ -1295,6 +1295,7 @@ async function watchPass() {
     const before = level;
     level = data.level;
     setMode();
+    watchRace();
     if (level === 'pending') {
       partyPane('wait');
     } else {
