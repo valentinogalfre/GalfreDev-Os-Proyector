@@ -141,7 +141,7 @@ Hace falta JDK 17 y el Android SDK con la plataforma 35.
 
 ```sh
 ./gradlew assembleDebug        # el APK queda en app/build/outputs/apk/debug/
-./gradlew testDebugUnitTest    # 468 tests de contrato
+./gradlew testDebugUnitTest    # 470 tests de contrato
 ./gradlew lintDebug            # los errores frenan la compilación
 ```
 
