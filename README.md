@@ -19,7 +19,7 @@ está en [`ROADMAP.md`](ROADMAP.md).
 | Cine | Netflix y compañía, servicios gratis, la pantalla del celular, y video, música, fotos y PDF desde la memoria, un pendrive o el celular. Retoma donde dejaste, con subtítulos |
 | Tienda | 21 apps elegidas para proyector, bajadas de su fuente oficial y comprobadas antes de instalar |
 | Claude | Hablale desde el celular y usa las apps por vos: abre, busca, escribe y le da reproducir. La respuesta sale en la pared |
-| Juntada | Todos se suman desde su celular con un código: una fila de presentaciones, trivia que escribe Claude, votaciones y las cuentas de la casa |
+| Juntada | Todos se suman desde su celular con un código: una fila de presentaciones, trivia que escribe Claude, votaciones, un picadito estilo HaxBall y las cuentas de la casa |
 | Pared | La hora en palabras, la hora grande o una retícula. Arranca sola si dejás de usarlo |
 | Celular | Tu celular como control, trackpad y teclado de cualquier app, sin instalar nada |
 | Ajustes | Lo del sistema que este equipo de verdad tiene, más tema, animaciones y temporizador |
@@ -124,6 +124,14 @@ respuesta correcta no viaja a los celulares hasta que la pregunta cierra. La gen
 cuentas se guardan en el equipo; «Empezar de cero» borra todo, saca a los invitados y cambia
 el código.
 
+**El picadito** es fútbol de arriba, al estilo HaxBall: la cancha en la pared y cada celular un
+jugador, con un trackpad que nace donde se apoya el dedo y el botón de patear. Se entra con el
+QR, sin pedir permiso. Cada uno elige equipo (o mirar desde afuera) y las letras que lleva
+encima. El primero en entrar lidera la sala: elige la cancha (chica, clásica o grande), el tiempo,
+los goles para ganar y las camisetas, mezcla los equipos, pausa y sale. Un empate al final del
+tiempo se define con gol de oro. Con el control del proyector, los lados cambian la cancha, OK
+arranca o pausa y Atrás vuelve al launcher.
+
 Las votaciones pueden ser con voto secreto y cerrarse solas a un tiempo; un empate se define
 al azar. La trivia tiene dificultad, tiempo por pregunta, rachas y una última pregunta que vale
 doble.
@@ -141,7 +149,7 @@ Hace falta JDK 17 y el Android SDK con la plataforma 35.
 
 ```sh
 ./gradlew assembleDebug        # el APK queda en app/build/outputs/apk/debug/
-./gradlew testDebugUnitTest    # 465 tests de contrato
+./gradlew testDebugUnitTest    # 466 tests de contrato
 ./gradlew lintDebug            # los errores frenan la compilación
 ```
 

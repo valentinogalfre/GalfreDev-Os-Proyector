@@ -9,7 +9,7 @@ import ar.vale.projectorlauncher.remote.Router
 import java.io.File
 
 /**
- * El servidor del launcher corriendo en una computadora, para probar la carrera entera en un
+ * El servidor del launcher corriendo en una computadora, para probar la carrera y el fútbol enteros en un
  * navegador sin un proyector: el mismo WebSocket y la misma sala, con los archivos de `game/dist`.
  * Uso: `CarreraDevServer <carpeta dist> [dirección para el QR]`.
  */
@@ -27,5 +27,8 @@ fun main(args: Array<String>) {
     val join = "http://${args.getOrElse(1) { "127.0.0.1" }}:$port/carrera/volante.html#r=${room.code}"
     println("PARED http://127.0.0.1:$port/carrera/index.html#s=${room.hostSecret}&tls=0&qr=${CarreraActivity.qr(join)}")
     println("VOLANTE $join")
+    val play = "http://${args.getOrElse(1) { "127.0.0.1" }}:$port/carrera/jugador.html#r=${room.code}"
+    println("FUTBOL http://127.0.0.1:$port/carrera/futbol.html#s=${room.hostSecret}&tls=0&qr=${CarreraActivity.qr(play)}")
+    println("JUGADOR $play")
     Thread.currentThread().join()
 }

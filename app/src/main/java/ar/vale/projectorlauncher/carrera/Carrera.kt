@@ -9,7 +9,7 @@ import java.security.MessageDigest
 import java.security.SecureRandom
 
 /**
- * La sala de la carrera. No sabe nada del juego: lleva quién está, le pasa a la pared lo que
+ * La sala de los juegos de la pared (la carrera y el fútbol). No sabe nada del juego: lleva quién está, le pasa a la pared lo que
  * manda cada volante y a los volantes lo que dice la pared. La carrera en sí corre en la pared.
  *
  * Hay dos maneras de entrar y ninguna abre nada más que esto:
@@ -138,10 +138,10 @@ class Carrera(private val random: SecureRandom = SecureRandom(), private val now
                 val message = parse(channel.read() ?: break) ?: continue
                 if (!allow(player)) continue
                 when (message.optString("t")) {
-                    // El giro llega acotado: la pared no tiene que desconfiar de cada número.
+                    // El giro y la palanca del fútbol llegan acotados: la pared no tiene que desconfiar de cada número.
                     "in" -> tellHost(
                         JSONObject().put("t", "in").put("id", player.id)
-                            .put("s", message.optDouble("s", 0.0).let { if (it.isNaN()) 0.0 else it.coerceIn(-1.0, 1.0) })
+                            .put("s", unit(message, "s")).put("x", unit(message, "x")).put("y", unit(message, "y"))
                             .put("b", message.optInt("b") != 0).put("n", message.optInt("n") != 0)
                             .put("k", message.optInt("k") != 0).toString()
                     )
@@ -201,6 +201,9 @@ class Carrera(private val random: SecureRandom = SecureRandom(), private val now
     private fun tellPhones(text: String) {
         synchronized(this) { players.mapNotNull { it.channel } }.forEach { it.send(text) }
     }
+
+    private fun unit(message: JSONObject, name: String): Double =
+        message.optDouble(name, 0.0).let { if (it.isNaN()) 0.0 else it.coerceIn(-1.0, 1.0) }
 
     private fun parse(text: String?): JSONObject? = text?.let {
         try {
