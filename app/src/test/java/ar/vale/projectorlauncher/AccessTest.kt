@@ -61,7 +61,7 @@ class AccessTest {
     private var door: Carrera.Room? = null
     private val router = Router(
         pairing, device, JuntadaRoutes(house, TriviaSource { _, _ -> error("sin trivia") }), access,
-        raceDoor = { owner -> door?.let { JSONObject().put("code", it.code).apply { if (owner) put("lead", it.leadTicket) } } }
+        raceDoor = { owner -> door?.door(owner) }
     ) { null }
 
     private fun call(path: String, body: String = "{}", token: String?, method: String = "POST", extra: String = ""): HttpResponse {
@@ -393,13 +393,21 @@ class AccessTest {
     fun `la carrera abierta - el codigo lo ve quien paso, el pase de mando solo el dueño`() {
         val guest = approved(Access.Level.PARTY)
         assertFalse(call("/api/carrera", token = guest, method = "GET").json().getBoolean("open"))
-        door = Carrera.Room("c0de", "secreto", "pase")
+        door = Carrera.Room("c0de", "secreto", "pase", Carrera.RACE_PAGE)
         val seen = call("/api/carrera", token = guest, method = "GET").json()
         assertEquals("c0de", seen.getString("code"))
+        assertEquals("volante.html", seen.getString("page"))
         assertFalse(seen.has("lead"))
         assertEquals("pase", call("/api/carrera", token = pairing.token, method = "GET").json().getString("lead"))
         // Sin que lo hayan dejado pasar no se ve nada, y abrirla en la pared es del que tiene el control.
         assertEquals(401, call("/api/carrera", token = ask("Otro"), method = "GET").status)
         assertEquals(403, call("/api/carrera/open", token = guest).status)
+    }
+
+    @Test
+    fun `la sala abierta - si en la pared hay futbol, el control entra con el del futbol y no con el volante`() {
+        door = Carrera().open("jugador.html")
+        assertEquals("jugador.html", call("/api/carrera", token = approved(Access.Level.PARTY), method = "GET").json().getString("page"))
+        assertEquals("volante.html", Carrera().open().page)
     }
 }

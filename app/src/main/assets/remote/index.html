@@ -1419,6 +1419,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) { wa
 // --- Carrera ---
 // Quien ya está conectado al proyector entra a la carrera desde acá, sin escanear el código de la pared.
 // El dueño lleva además el pase de mando: maneja la sala aunque no haya entrado primero.
+const SOCCER_PAGE = 'jugador.html';
 let raceDoor = null;
 let raceTimer = 0;
 async function watchRace() {
@@ -1430,10 +1431,17 @@ async function watchRace() {
   const open = raceDoor && raceDoor.open;
   // Abrirla en la pared es manejar el proyector: lo hace quien tiene el control. Entrar, cualquiera de la juntada.
   button.hidden = !open && !hasControl();
-  button.textContent = open ? 'Entrar a la carrera' : 'Correr una carrera';
+  button.textContent = !open ? 'Correr una carrera' : raceDoor.page === SOCCER_PAGE ? 'Entrar al fútbol' : 'Entrar a la carrera';
   if (!document.hidden) raceTimer = setTimeout(watchRace, open ? 6000 : 3000);
 }
 function enterRace() {
+  // La sala es una sola y la abre el juego que esté en la pared: al fútbol se entra con su control, no con el volante.
+  if (raceDoor.page === SOCCER_PAGE) {
+    const where = new URLSearchParams({ r: raceDoor.code });
+    if (raceDoor.port) where.set('p', raceDoor.port);
+    location.href = '/carrera/' + SOCCER_PAGE + '#' + where.toString();
+    return;
+  }
   const hash = new URLSearchParams({ r: raceDoor.code, c: '1' });
   if (raceDoor.port) hash.set('p', raceDoor.port);
   if (raceDoor.lead) hash.set('l', raceDoor.lead);

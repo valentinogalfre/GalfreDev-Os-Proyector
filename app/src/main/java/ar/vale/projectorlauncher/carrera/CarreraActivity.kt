@@ -40,7 +40,7 @@ open class CarreraActivity : Activity() {
 
     /** La página de la pared y la que abre cada celular, dentro de `assets/carrera`. */
     protected open val wallPage = "index.html?q=bajo"
-    protected open val phonePage = "volante.html"
+    protected open val phonePage = Carrera.RACE_PAGE
     protected open val offText = R.string.carrera_off
     protected open val failedText = R.string.carrera_failed
     protected open val noWebViewText = R.string.carrera_no_webview
@@ -148,7 +148,7 @@ open class CarreraActivity : Activity() {
             }
         }
         view.addJavascriptInterface(host, "CarreraHost")
-        val room = CarreraHub.carrera.open()
+        val room = CarreraHub.carrera.open(phonePage)
         val join = RemoteState.address(this)?.let { "http://$it:${RemoteState.port}/carrera/$phonePage#r=${room.code}" + (if (RemoteState.publicPort > 0) "&p=${RemoteState.publicPort}" else "") }
         frame.removeAllViews()
         frame.addView(view)

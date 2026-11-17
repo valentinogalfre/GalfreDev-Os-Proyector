@@ -16,7 +16,6 @@ import ar.vale.projectorlauncher.carrera.CarreraHub
 import ar.vale.projectorlauncher.juntada.JuntadaHub
 import android.util.Log
 import java.io.File
-import org.json.JSONObject
 import java.io.IOException
 import java.net.Inet4Address
 
@@ -72,9 +71,7 @@ class RemoteService : Service() {
             pairing, AndroidRemote(applicationContext), party, AccessHub.get(this),
             race = CarreraHub.carrera::serve,
             raceDoor = { owner ->
-                CarreraHub.carrera.room?.let { room ->
-                    JSONObject().put("code", room.code).put("port", RemoteState.publicPort).apply { if (owner) put("lead", room.leadTicket) }
-                }
+                CarreraHub.carrera.room?.door(owner)?.put("port", RemoteState.publicPort)
             },
             securePort = { RemoteState.securePort }, files = RemotePage(applicationContext)
         )

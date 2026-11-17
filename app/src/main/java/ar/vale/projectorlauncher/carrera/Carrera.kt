@@ -21,7 +21,12 @@ import java.security.SecureRandom
  */
 class Carrera(private val random: SecureRandom = SecureRandom(), private val now: () -> Long = System::currentTimeMillis) {
 
-    class Room(val code: String, val hostSecret: String, val leadTicket: String)
+    /** [page] es la página con la que entra cada celular: la del juego que abrió la sala. */
+    class Room(val code: String, val hostSecret: String, val leadTicket: String, val page: String) {
+        /** Lo que el control necesita para entrar sin escanear. El pase de mando va solo al dueño. */
+        fun door(owner: Boolean): JSONObject =
+            JSONObject().put("code", code).put("page", page).apply { if (owner) put("lead", leadTicket) }
+    }
 
     private class Player(val id: Int, var name: String, val key: String, val from: String) {
         var channel: Channel? = null
@@ -42,9 +47,9 @@ class Carrera(private val random: SecureRandom = SecureRandom(), private val now
     private var lastForAll: String? = null
 
     /** Abre una sala nueva. La anterior, si había, se cierra con todos adentro. */
-    fun open(): Room {
+    fun open(page: String = RACE_PAGE): Room {
         close()
-        return Room(secret(CODE_BYTES), secret(SECRET_BYTES), secret(SECRET_BYTES)).also { room = it }
+        return Room(secret(CODE_BYTES), secret(SECRET_BYTES), secret(SECRET_BYTES), page).also { room = it }
     }
 
     fun close() {
@@ -235,6 +240,7 @@ class Carrera(private val random: SecureRandom = SecureRandom(), private val now
     private fun secret(bytes: Int): String = ByteArray(bytes).also(random::nextBytes).joinToString("") { "%02x".format(it) }
 
     companion object {
+        const val RACE_PAGE = "volante.html"
         const val MAX_PLAYERS = 8
         /** Dos volantes por dirección: alcanza para un celular y su reconexión, no para llenar la sala. */
         const val MAX_PER_ADDRESS = 2
