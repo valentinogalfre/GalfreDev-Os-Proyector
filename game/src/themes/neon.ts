@@ -34,6 +34,8 @@ export const neon: Theme = {
   half: 8,
   wall: 7.5,
   start: 60,
+  // La recta larga: un empuje y enseguida la rampa. Los otros dos, a la salida de las curvas.
+  pads: [{ kind: 'boost', at: 0.035, lane: 0 }, { kind: 'ramp', at: 0.1, lane: 0 }, { kind: 'boost', at: 0.3, lane: -0.6 }, { kind: 'boost', at: 0.655, lane: 0.6 }],
   grade: { bloom: [1.0, 0.72, 0.85], vignette: 0.6, speed: 0.11 },
   night: true,
   spray: { color: 0xa9c6ff, opacity: 0.13, size: 2.6, additive: true },

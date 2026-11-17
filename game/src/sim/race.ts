@@ -295,7 +295,7 @@ export class Race {
         car.surge = T.padTime;
       } else if (car.v > 22) {
         // Cuanto más rápido se llega, más alto y más lejos.
-        car.rise = clamp(car.v * 0.115, 3.5, 8);
+        car.rise = clamp(car.v * 0.16, 4.5, 10.5);
         car.air = 0.01;
         events.push({ type: 'jump', car: index });
       }

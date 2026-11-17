@@ -22,6 +22,8 @@ export const cinta: Theme = {
   half: 7,
   wall: 7.1,
   start: 900,
+  // Rampa apenas pasada la largada, y un empuje en cada recta.
+  pads: [{ kind: 'ramp', at: 0.03, lane: 0 }, { kind: 'boost', at: 0.09, lane: -0.6 }, { kind: 'boost', at: 0.79, lane: 0.6 }],
   grade: { bloom: [0.2, 0.6, 1.1], vignette: 0.55, speed: 0.11 },
   trail: CINTA,
   cars: [

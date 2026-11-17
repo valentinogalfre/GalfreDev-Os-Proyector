@@ -46,6 +46,8 @@ export const puna: Theme = {
   half: 6.5,
   wall: 12,
   start: 820,
+  // Un empuje en la única recta, y la rampa con su empuje en el tramo abierto de la bajada.
+  pads: [{ kind: 'boost', at: 0.025, lane: 0.5 }, { kind: 'ramp', at: 0.55, lane: 0 }, { kind: 'boost', at: 0.6, lane: -0.5 }],
   grade: { bloom: [0.35, 0.6, 1.25], vignette: 0.5, speed: 0.11 },
   spray: { color: 0xc9a27e, opacity: 0.2, size: 2.6, additive: false },
   cars: [
