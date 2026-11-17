@@ -145,6 +145,17 @@ export class Sound {
     this.shot(force < 0.35 ? CLIPS.golpe0 : force < 0.75 ? CLIPS.golpe1 : CLIPS.golpe2, 0.3 + force * 0.6, 0.9 + Math.random() * 0.2);
   }
 
+  /** Pisar una plataforma de empuje: dos notas que suben. */
+  pad(): void {
+    this.note(520, 0, 0.1, 0.16);
+    this.note(1040, 0.07, 0.22, 0.16);
+  }
+
+  /** Volver a tocar el asfalto después de un salto. */
+  land(force: number): void {
+    this.shot(CLIPS.golpe0, 0.22 + force * 0.3, 0.62);
+  }
+
   lap(): void {
     this.note(660, 0, 0.14, 0.2);
     this.note(990, 0.1, 0.26, 0.2);

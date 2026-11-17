@@ -1,3 +1,4 @@
+import type { Pad } from './sim/race';
 import * as THREE from 'three';
 import { place, type Track } from './world/track';
 
@@ -8,7 +9,7 @@ export interface Dot { s: number; d: number; color: string; me?: boolean }
  * La pista vista de arriba, con cada auto en su lugar. El trazado se dibuja una vez en un lienzo aparte;
  * en cada cuadro solo se copian ese dibujo y los puntos.
  */
-export function mountMap(canvas: HTMLCanvasElement, track: Track, line = '#f1ede6'): (dots: Dot[]) => void {
+export function mountMap(canvas: HTMLCanvasElement, track: Track, line = '#f1ede6', pads: Pad[] = []): (dots: Dot[]) => void {
   const probe = new THREE.Object3D();
   const steps = Math.max(48, Math.round(track.length / 8));
   const path: [number, number][] = [];
@@ -50,6 +51,18 @@ export function mountMap(canvas: HTMLCanvasElement, track: Track, line = '#f1ede
     g.lineTo(ax + ((by - ay) / n) * w, ay - ((bx - ax) / n) * w);
     g.strokeStyle = '#e4a32b';
     g.stroke();
+    // Las plataformas en ámbar y las rampas en carbón, como marcas cortas sobre el trazado.
+    for (const pad of pads) {
+      g.beginPath();
+      for (let k = 0; k <= 3; k++) {
+        place(track, pad.s + (k / 3) * (pad.kind === 'boost' ? 34 : 22), 0, probe);
+        const [x, y] = to(probe.position.x, probe.position.z);
+        if (k === 0) g.moveTo(x, y); else g.lineTo(x, y);
+      }
+      g.lineWidth = Math.max(3, canvas.width * 0.04);
+      g.strokeStyle = pad.kind === 'boost' ? '#e4a32b' : '#111111';
+      g.stroke();
+    }
   }
 
   return (dots) => {

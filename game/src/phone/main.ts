@@ -423,7 +423,7 @@ function paintDrive(): void {
   place.innerHTML = mineNow ? `${mineNow.place}<sup>/${mineNow.of}</sup>` : '';
   lap.textContent = mineNow && shared ? `Vuelta ${Math.min(shared.laps, mineNow.lap + 1)}/${shared.laps}` : driving() ? 'Preparados' : '';
   // Un solo cartel: lo malo tapa a lo bueno.
-  const word = mineNow?.off ? 'Fuera de pista' : mineNow?.plus === 'rebufo' ? 'Rebufo' : mineNow?.plus === 'ritmo' ? 'Ritmo' : '';
+  const word = mineNow?.off ? 'Fuera de pista' : mineNow?.plus === 'aire' ? 'Salto' : mineNow?.plus === 'boost' ? 'Boost' : mineNow?.plus === 'rebufo' ? 'Rebufo' : mineNow?.plus === 'ritmo' ? 'Ritmo' : '';
   if (word) note.textContent = word;
   note.classList.toggle('on', word !== '');
   note.classList.toggle('good', word !== '' && !mineNow?.off);

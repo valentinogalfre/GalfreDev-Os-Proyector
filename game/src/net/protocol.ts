@@ -41,7 +41,7 @@ export interface Mine {
   speed: number;
   off: boolean;
   /** Qué le está dando velocidad de más: el rebufo de otro auto, el ritmo de no cometer errores, o nada. */
-  plus: '' | 'rebufo' | 'ritmo';
+  plus: '' | 'rebufo' | 'ritmo' | 'boost' | 'aire';
   /** Fuerza de un golpe recién sufrido, de 0 a 1: el celular vibra. */
   buzz: number;
 }

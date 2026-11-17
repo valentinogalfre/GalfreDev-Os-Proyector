@@ -210,9 +210,9 @@ export class Race {
     car.offTrack = Math.abs(car.d) > course.half + 0.3;
     if (car.offTrack || car.spin > 0) car.clean = 0;
     car.braking = !done && input.brake;
-    car.boosting = !done && input.nitro && car.nitro > 0 && car.spin <= 0 && !car.offTrack;
+    car.boosting = !done && input.nitro && car.nitro > 0 && car.spin <= 0 && !car.offTrack && car.air <= 0;
     // El derrape arranca doblando y se sostiene mientras se mantenga el botón y quede velocidad.
-    car.drifting = !done && input.drift && car.spin <= 0 && !car.offTrack && car.v > T.driftFrom && (car.drifting || Math.abs(car.steer) > 0.3);
+    car.drifting = !done && input.drift && car.spin <= 0 && !car.offTrack && car.air <= 0 && car.v > T.driftFrom && (car.drifting || Math.abs(car.steer) > 0.3);
     car.slip += ((car.drifting ? clamp(car.steer * 2, -1, 1) * T.driftSlip : 0) - car.slip) * Math.min(1, STEP * 5);
     car.nitro = clamp(car.nitro + (car.boosting ? -T.nitroBurn : car.drifting ? T.driftFill : T.nitroFill) * STEP, 0, 1);
 
@@ -366,6 +366,12 @@ export class Race {
     // La cuerda: por adentro de la curva que viene, cada bot con su manía de carril.
     const habit = (((index * 37) % 11) / 10 - 0.5) * course.half * 0.9;
     let target = clamp(Math.sign(kAhead) * Math.min(1, Math.abs(kAhead) * 60) * course.half * 0.6 + habit * (1 - Math.min(1, Math.abs(kAhead) * 60)), -course.half + 1.4, course.half - 1.4);
+    // Si viene una plataforma de empuje a mano y la pista va derecha, se corre a pisarla.
+    const L = course.length, here = ((car.s % L) + L) % L;
+    for (const pad of course.pads ?? []) {
+      const ahead = (((pad.s - here) % L) + L) % L;
+      if (pad.kind === 'boost' && ahead < look * 2.5 && Math.abs(pad.d - car.d) < 5 && Math.abs(kAhead) < 0.006) target = pad.d;
+    }
     for (let o = 0; o < this.cars.length; o++) {
       if (o === index) continue;
       const other = this.cars[o];
