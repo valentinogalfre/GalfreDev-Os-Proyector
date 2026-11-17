@@ -1,3 +1,4 @@
+import { buildPads, padsOf } from './world/pads';
 import * as THREE from 'three';
 import './style.css';
 import { mountSound } from './audio';
@@ -130,7 +131,9 @@ async function start(): Promise<void> {
   // Para inspeccionar la escena desde las herramientas del navegador mientras se mide.
   if (query.has('dbg')) (window as unknown as { dbg: unknown }).dbg = { scene, renderer, sound };
 
-  const course = { length: track.length, half: track.half, wall: theme.wall, curvature: (s: number) => curvature(track, s) };
+  const course = { length: track.length, half: track.half, wall: theme.wall, curvature: (s: number) => curvature(track, s), pads: padsOf(theme, track) };
+  const padArt = buildPads(track, course.pads);
+  scene.add(padArt.group);
   /** Los autos para elegir: los seis de la pista y dos más con otra pintura. */
   const liveries = liveriesOf(theme);
   /** Qué auto lleva cada lugar de la grilla. */
@@ -272,7 +275,7 @@ async function start(): Promise<void> {
     const leadName = session.seats.find((seat) => seat.id === session!.lead)?.name ?? null;
     session.share({
       phase: stage, track: theme.name, laps: LAPS, bots, room: MAX_CARS - Math.min(MAX_CARS, session.seats.filter((seat) => seat.on).length), lead: session.lead, results, cup, record: { ...records, ...fresh }, secure: Number(hash.get('tls')) || 0,
-      players: session.seats.map((seat) => ({ id: seat.id, name: seat.name, paint: paintOf(seat.id), model: shapeOf(seat.id), on: seat.on })),
+      players: session.seats.map((seat) => ({ id: seat.id, name: seat.name, paint: paintOf(seat.id), model: shapeOf(seat.id), on: seat.on, boss: seat.boss === true })),
       cars: grid.map((id, i) => ({ id, name: names[i], look: livery[i], model: cars[i].userData.model as number })),
       racing: stage === 'lobby' ? [] : grid.filter((id): id is number => id !== null),
     });
@@ -339,9 +342,11 @@ async function start(): Promise<void> {
   }
 
   /** Otra pista es otra página: el mundo anterior se suelta entero, que en un equipo con poca memoria importa. */
-  function otherTrack(step: number): void {
+  function otherTrack(step: number, laps = LAPS): void {
     if (stage !== 'lobby' && stage !== 'results') return;
     const all = Object.keys(THEMES);
+    query.set('vueltas', String(Math.max(1, Math.min(9, laps))));
+    if (session?.handed != null) query.set('mando', String(session.handed)); else query.delete('mando');
     query.set('bots', String(bots));
     query.set('autos', [...picks].map(([id, look]) => `${id}.${look}`).join('-'));
     query.set('modelos', [...shapes].map(([id, shape]) => `${id}.${shape}`).join('-'));
@@ -349,8 +354,21 @@ async function start(): Promise<void> {
     location.replace(`?${query.toString()}${location.hash}`);
   }
 
-  function obey(command: Command): void {
+  function obey(command: Command, from: number | null = null): void {
     if (command.a === 'track') otherTrack(command.d);
+    // Las vueltas cambian la carrera entera (y sus récords): se arma de nuevo, como al cambiar de pista.
+    else if (command.a === 'laps') { if (LAPS + command.d >= 1 && LAPS + command.d <= 9) otherTrack(0, LAPS + (command.d === -1 ? -1 : 1)); }
+    else if (command.a === 'restart') {
+      if (stage !== 'lobby') toLobby();
+      launch();
+    }
+    else if (command.a === 'close') (window as unknown as { CarreraHost?: { exit?(): void } }).CarreraHost?.exit?.();
+    else if (command.a === 'kick') { if (typeof command.id === 'number' && command.id !== from) session?.drop(command.id); }
+    else if (command.a === 'lead') {
+      if (!session || !session.seats.some((s) => s.id === command.id && s.on)) return;
+      session.handed = command.id;
+      share();
+    }
     else if (command.a === 'bots') {
       if (stage !== 'lobby') return;
       const room = MAX_CARS - Math.min(MAX_CARS, session!.seats.filter((s) => s.on).length);
@@ -372,7 +390,8 @@ async function start(): Promise<void> {
       share();
     }
     else if (command.a === 'start') launch();
-    else if (stage === 'results') toLobby();
+    // Volver a la sala se puede en cualquier momento: la carrera que se estaba corriendo no cuenta.
+    else if (stage !== 'lobby') toLobby();
   }
 
   const session = hosting ? new Session(secret, {
@@ -391,15 +410,18 @@ async function start(): Promise<void> {
         seat();
         share();
       }
-      else if (from === session!.lead) obey(command);
+      else if (session!.rules(from)) obey(command, from);
     },
   }) : null;
+  if (session && query.has('mando')) session.handed = Number(query.get('mando'));
   if (hosting) {
     // El control remoto del proyector también maneja la sala.
     const remote = (key: string) => {
       sound?.wake();
       if (key === 'left' || key === 'right') otherTrack(key === 'left' ? -1 : 1);
-      else if (key === 'ok') obey(stage === 'lobby' ? { a: 'start' } : { a: 'lobby' });
+      // En plena carrera OK no hace nada: un toque de más en el control no la corta.
+      else if (key === 'ok' && stage === 'lobby') obey({ a: 'start' });
+      else if (key === 'ok' && stage === 'results') obey({ a: 'lobby' });
     };
     // En el proyector las teclas las manda el launcher; en una notebook, el teclado.
     (window as unknown as { carreraKey: typeof remote }).carreraKey = remote;
@@ -412,6 +434,9 @@ async function start(): Promise<void> {
     for (const event of events) {
       if (event.type === 'finish' && firstFinish === 0) firstFinish = race.clock;
       if (event.type === 'wall' || event.type === 'hit') buzz[event.car] = Math.max(buzz[event.car] ?? 0, Math.min(1, event.force));
+      // La plataforma y la caída de un salto también se sienten en la mano.
+      if (event.type === 'pad') buzz[event.car] = Math.max(buzz[event.car] ?? 0, 0.3);
+      if (event.type === 'land') buzz[event.car] = Math.max(buzz[event.car] ?? 0, 0.25 + event.force * 0.4);
     }
     if (stage === 'countdown' && race.phase !== 'countdown') stage = 'race';
     if (stage === 'race') {
@@ -435,7 +460,7 @@ async function start(): Promise<void> {
     sinceFrame += dt;
     if (sinceFrame >= (stage === 'lobby' ? 0.5 : 0.033)) {
       sinceFrame = 0;
-      session!.stream(encodeFrame({ clock: race.clock, cars: race.cars.map((car) => ({ s: car.s, d: car.d, heading: car.yaw + car.slip, steer: car.steer - car.slip * 1.5, v: car.v, boosting: car.boosting, braking: car.braking, drifting: car.drifting, offTrack: car.offTrack })) }));
+      session!.stream(encodeFrame({ clock: race.clock, cars: race.cars.map((car) => ({ s: car.s, d: car.d, heading: car.yaw + car.slip, steer: car.steer - car.slip * 1.5, v: car.v, boosting: car.boosting, braking: car.braking, drifting: car.drifting, offTrack: car.offTrack, air: car.air, surge: car.surge > 0 })) }));
     }
     sinceTold += dt;
     if (sinceTold < 0.1 || stage === 'lobby') return;
@@ -443,7 +468,7 @@ async function start(): Promise<void> {
     grid.forEach((id, i) => {
       if (id === null || race.cars[i].bot) return;
       const car = race.cars[i];
-      session!.tell(id, { place: order.indexOf(i) + 1, of: grid.length, lap: car.lap, nitro: Math.round(car.nitro * 100) / 100, speed: Math.round(car.v * 3.6), off: car.offTrack, plus: car.draft > 0.5 ? 'rebufo' : car.flow >= 1 ? 'ritmo' : '', buzz: buzz[i] ?? 0 });
+      session!.tell(id, { place: order.indexOf(i) + 1, of: grid.length, lap: car.lap, nitro: Math.round(car.nitro * 100) / 100, speed: Math.round(car.v * 3.6), off: car.offTrack, plus: car.air > 0 ? 'aire' : car.surge > 0 ? 'boost' : car.draft > 0.5 ? 'rebufo' : car.flow >= 1 ? 'ritmo' : '', buzz: buzz[i] ?? 0 });
       buzz[i] = 0;
     });
   }
@@ -492,7 +517,7 @@ async function start(): Promise<void> {
     const canvas = document.createElement('canvas');
     canvas.id = 'map';
     document.body.appendChild(canvas);
-    const paint = mountMap(canvas, track);
+    const paint = mountMap(canvas, track, undefined, course.pads);
     return (on: boolean) => {
       canvas.style.display = on ? 'block' : 'none';
       if (on) paint(race.cars.map((car, i) => ({ s: car.s, d: car.d, color: `#${styleOf(i).paint.toString(16).padStart(6, '0')}`, me: grid[i] !== null })));
@@ -530,6 +555,8 @@ async function start(): Promise<void> {
         if (event.type === 'wall' && heard.includes(event.car)) sound.crash(event.force);
         else if (event.type === 'hit' && (heard.includes(event.car) || heard.includes(event.other))) sound.crash(event.force);
         else if (event.type === 'lap' && heard.includes(event.car)) sound.lap();
+        else if (event.type === 'pad' && heard.includes(event.car)) sound.pad();
+        else if (event.type === 'land' && heard.includes(event.car)) sound.land(event.force);
         else if (event.type === 'finish' && watched.includes(event.car)) sound.finish();
       }
       // Un tono por cada segundo de la cuenta regresiva y otro, más agudo, al largar.
@@ -541,10 +568,16 @@ async function start(): Promise<void> {
       sound.update(heard.map((i) => race.cars[i]), dt, race.phase === 'countdown' || race.phase === 'race');
     }
     clock += dt;
+    padArt.tick(dt);
 
     cars.forEach((mesh, i) => {
       const car = race.cars[i];
       place(track, car.s, car.d, mesh);
+      // En un salto el auto sube, levanta la trompa al despegar y la baja al caer.
+      if (car.air > 0) {
+        mesh.position.y += car.air;
+        mesh.rotateX(Math.max(-0.22, Math.min(0.22, -car.rise * 0.03)));
+      }
       // Derrapando, la cola se cruza y las ruedas de adelante apuntan para el otro lado.
       mesh.rotateY(car.yaw + car.slip);
       animate(mesh, { metres: car.s, steer: car.steer - car.slip * 1.5, speed: car.v, boosting: car.boosting, braking: car.braking, time: clock, rough: car.offTrack });

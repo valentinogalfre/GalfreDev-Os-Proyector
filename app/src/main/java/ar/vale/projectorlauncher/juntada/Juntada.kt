@@ -554,7 +554,7 @@ class Juntada(
         val out: JSONObject
         val ownScreen: Boolean
         synchronized(this) {
-            moved = advance()
+            moved = advance() or demos.settle()
             late = demos.timeUp()
             val me = personOf(key)
             ownScreen = demos.live?.let { it.kind == Demos.Kind.SCREEN && demos.mine(it, me, owner) } == true

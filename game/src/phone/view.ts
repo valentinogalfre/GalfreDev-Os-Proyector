@@ -1,3 +1,4 @@
+import { buildPads, padsOf } from '../world/pads';
 import * as THREE from 'three';
 import { mountMap } from '../map';
 import { blend, type CarFrame, type Frame } from '../net/frame';
@@ -70,7 +71,9 @@ export async function mountView(canvas: HTMLCanvasElement, mapCanvas: HTMLCanvas
   if (dust) scene.add(dust.points);
 
   const cars: THREE.Group[] = [];
-  const map = mountMap(mapCanvas, track);
+  const pads = padsOf(theme, track), padArt = buildPads(track, pads);
+  scene.add(padArt.group);
+  const map = mountMap(mapCanvas, track, undefined, pads);
   const hex = (color: number) => `#${color.toString(16).padStart(6, '0')}`;
   let colors: string[] = [];
   let seated = '', mine = -1, drawing = 0;
@@ -147,10 +150,12 @@ export async function mountView(canvas: HTMLCanvasElement, mapCanvas: HTMLCanvas
     // El auto quieto en la sala no pide sesenta cuadros: con la mitad alcanza y el celular no calienta.
     if (showing && (skip = !skip)) return;
     pose = sample();
+    padArt.tick(1 / 60);
     if (!pose || pose.length !== cars.length) return;
     pose.forEach((car, i) => {
       const mesh = cars[i];
       place(track, car.s, car.d, mesh);
+      mesh.position.y += car.air;
       mesh.rotateY(car.heading);
       animate(mesh, { metres: car.s, steer: car.steer, speed: car.v, boosting: car.boosting, braking: car.braking, time: clock, rough: car.offTrack });
       if (car.drifting) for (const side of [-0.85, 0.85]) {
@@ -186,6 +191,8 @@ export async function mountView(canvas: HTMLCanvasElement, mapCanvas: HTMLCanvas
     camera.lookAt(ahead.position.x, ahead.position.y + 0.7, ahead.position.z);
     camera.fov = fov;
     }
+    // El rival que quedó pegado a la cámara taparía la pantalla entera: no se dibuja hasta que se aleja.
+    cars.forEach((car, i) => { car.visible = showing || i === mine || car.position.distanceToSquared(camera.position) > 12; });
     camera.updateProjectionMatrix();
     for (const sky of skies) sky.position.copy(camera.position);
     camera.updateMatrixWorld();

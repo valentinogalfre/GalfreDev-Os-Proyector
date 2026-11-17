@@ -40,7 +40,7 @@ open class CarreraActivity : Activity() {
 
     /** La página de la pared y la que abre cada celular, dentro de `assets/carrera`. */
     protected open val wallPage = "index.html?q=bajo"
-    protected open val phonePage = "volante.html"
+    protected open val phonePage = Carrera.RACE_PAGE
     protected open val offText = R.string.carrera_off
     protected open val failedText = R.string.carrera_failed
     protected open val noWebViewText = R.string.carrera_no_webview
@@ -148,7 +148,7 @@ open class CarreraActivity : Activity() {
             }
         }
         view.addJavascriptInterface(host, "CarreraHost")
-        val room = CarreraHub.carrera.open()
+        val room = CarreraHub.carrera.open(phonePage)
         val join = RemoteState.address(this)?.let { "http://$it:${RemoteState.port}/carrera/$phonePage#r=${room.code}" + (if (RemoteState.publicPort > 0) "&p=${RemoteState.publicPort}" else "") }
         frame.removeAllViews()
         frame.addView(view)
@@ -157,12 +157,15 @@ open class CarreraActivity : Activity() {
     }
 
     /**
-     * Lo único del launcher que la página puede tocar: su canal con la sala. La página es la del
-     * APK y no navega a otro lado, pero igual esto no da más que mandar y recibir mensajes del juego,
-     * y cerrar su propia pantalla para volver al launcher.
+     * Lo único del launcher que la página puede tocar: su canal con la sala y cerrar esta pantalla. La página es
+     * la del APK y no navega a otro lado, pero igual esto no da más que mandar y recibir mensajes del juego.
      */
     private class Host(private val leave: () -> Unit) {
         @Volatile private var pipe: Pipe? = null
+
+        /** El que maneja la sala cerró la carrera desde su celular: se vuelve al inicio, como con Atrás. */
+        @JavascriptInterface
+        fun exit() = leave()
 
         @JavascriptInterface
         fun open() {
@@ -179,11 +182,6 @@ open class CarreraActivity : Activity() {
 
         @JavascriptInterface
         fun poll(): String? = pipe?.drain()
-
-        @JavascriptInterface
-        fun exit() {
-            leave()
-        }
 
         fun close() {
             pipe?.close()

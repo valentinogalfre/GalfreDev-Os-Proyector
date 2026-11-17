@@ -16,6 +16,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import java.util.TimeZone
 import kotlin.math.abs
 import kotlin.random.Random
 
@@ -105,6 +106,7 @@ class WallView(context: Context) : View(context) {
     private fun margin() = 56 * dp
 
     private fun drawFooter(canvas: Canvas) {
+        date.timeZone = TimeZone.getDefault()
         val text = date.format(Date()).replaceFirstChar { it.titlecase(locale) }
         canvas.drawText(text, margin(), height - 40 * dp, data)
     }
@@ -175,6 +177,7 @@ class WallView(context: Context) : View(context) {
     }
 
     private fun drawClock(canvas: Canvas) {
+        hour.timeZone = TimeZone.getDefault()
         val text = hour.format(Date())
         digits.color = ink
         val base = height / 2f + digits.textSize * 0.34f

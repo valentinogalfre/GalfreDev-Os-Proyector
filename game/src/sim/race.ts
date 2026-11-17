@@ -12,7 +12,12 @@ export interface Course {
   wall: number;
   /** Curvatura en [s], en 1/metros: positiva si dobla a la izquierda. */
   curvature(s: number): number;
+  /** Lo que hay pintado en el asfalto: plataformas que empujan y rampas que hacen saltar. */
+  pads?: Pad[];
 }
+
+/** Una franja del asfalto: dónde empieza (metros desde la largada), su carril, su largo y su medio ancho. */
+export interface Pad { kind: 'boost' | 'ramp'; s: number; d: number; length: number; half: number }
 
 /** Lo que manda cada celular. */
 export interface Input {
@@ -53,6 +58,11 @@ export interface Car {
   flow: number;
   /** Segundos desde el último error. */
   clean: number;
+  /** Segundos que le quedan del empujón de una plataforma. */
+  surge: number;
+  /** En el aire: altura sobre el asfalto, en metros, y velocidad con que sube o baja. */
+  air: number;
+  rise: number;
   /** Mejor vuelta, en segundos, y cuándo empezó la que está dando. */
   best: number | null;
   lapStart: number;
@@ -61,6 +71,8 @@ export interface Car {
 export type RaceEvent =
   | { type: 'wall'; car: number; force: number }
   | { type: 'hit'; car: number; other: number; force: number }
+  /** Pisó una plataforma de empuje, despegó de una rampa, o volvió a tocar el asfalto. */
+  | { type: 'pad'; car: number } | { type: 'jump'; car: number } | { type: 'land'; car: number; force: number }
   | { type: 'lap'; car: number; lap: number }
   /** Quedó demasiado atrás y el elástico lo trajo a la cola del grupo. */
   | { type: 'finish'; car: number; place: number };
@@ -70,9 +82,9 @@ export type Phase = 'grid' | 'countdown' | 'race' | 'done';
 export const TUNING = {
   topSpeed: 62,
   accel: 15,
-  brake: 34,
+  brake: 40,
   /** Aceleración lateral que aguanta el auto antes de irse de trompa. */
-  grip: 24,
+  grip: 26.5,
   turnRate: 1.5,
   /** Cuánto de la curva toma el auto solo. Con 1 no haría falta doblar. */
   assist: 0.38,
@@ -87,7 +99,11 @@ export const TUNING = {
   driftSlip: 0.5,
   offTrackSpeed: 0.45,
   offTrackGrip: 0.55,
-  /** Cuánta velocidad de más recibe el que quedó lejos del primero: todos comparten una sola pantalla. */
+  /** Las plataformas: cuánta velocidad de más dan, por cuántos segundos, y con qué fuerza se cae en un salto. */
+  padGain: 0.24,
+  padTime: 1.7,
+  gravity: 19,
+  /** Cuánta velocidad de más recibe el que quedó lejos del primero. */
   catchUp: 0.1,
   catchUpFrom: 30,
   catchUpFull: 200,
@@ -129,7 +145,7 @@ export class Race {
     bots.forEach((bot, i) => {
       this.cars.push({
         s: -6 - Math.floor(i / 2) * 9 - (i % 2) * 3, d: (i % 2 ? -1 : 1) * course.half * 0.42,
-        v: 0, yaw: 0, steer: 0, nitro: 0.35, boosting: false, braking: false, drifting: false, slip: 0, offTrack: false, spin: 0, lap: 0, finished: null, bot, draft: 0, flow: 0, clean: 0, best: null, lapStart: 0,
+        v: 0, yaw: 0, steer: 0, nitro: 0.35, boosting: false, braking: false, drifting: false, slip: 0, offTrack: false, spin: 0, lap: 0, finished: null, bot, draft: 0, flow: 0, clean: 0, surge: 0, air: 0, rise: 0, best: null, lapStart: 0,
       });
       this.inputs.push({ steer: 0, brake: false, nitro: false, drift: false });
     });
@@ -190,18 +206,22 @@ export class Race {
     const { course } = this, T = TUNING;
     const done = car.finished !== null;
     const steerIn = done ? clamp(-car.d * 0.1 - car.yaw * 2, -1, 1) : clamp(input.steer, -1, 1);
-    car.steer += (steerIn - car.steer) * Math.min(1, STEP * 9);
+    // El volante responde en menos de una décima: en una horquilla no hay tiempo para más.
+    car.steer += (steerIn - car.steer) * Math.min(1, STEP * 13);
     car.offTrack = Math.abs(car.d) > course.half + 0.3;
     if (car.offTrack || car.spin > 0) car.clean = 0;
     car.braking = !done && input.brake;
-    car.boosting = !done && input.nitro && car.nitro > 0 && car.spin <= 0 && !car.offTrack;
+    car.boosting = !done && input.nitro && car.nitro > 0 && car.spin <= 0 && !car.offTrack && car.air <= 0;
     // El derrape arranca doblando y se sostiene mientras se mantenga el botón y quede velocidad.
-    car.drifting = !done && input.drift && car.spin <= 0 && !car.offTrack && car.v > T.driftFrom && (car.drifting || Math.abs(car.steer) > 0.3);
+    car.drifting = !done && input.drift && car.spin <= 0 && !car.offTrack && car.air <= 0 && car.v > T.driftFrom && (car.drifting || Math.abs(car.steer) > 0.3);
     car.slip += ((car.drifting ? clamp(car.steer * 2, -1, 1) * T.driftSlip : 0) - car.slip) * Math.min(1, STEP * 5);
     car.nitro = clamp(car.nitro + (car.boosting ? -T.nitroBurn : car.drifting ? T.driftFill : T.nitroFill) * STEP, 0, 1);
 
     let top = T.topSpeed * (car.boosting ? T.nitroGain : 1) * (car.drifting ? T.driftSpeed : 1) * (car.offTrack ? T.offTrackSpeed : 1);
     top *= (1 + T.draftGain * car.draft) * (1 + T.flowGain * car.flow);
+    this.pads(car, index, events);
+    if (car.surge > 0) top *= 1 + T.padGain;
+    const flying = car.air > 0;
     top *= 1 + T.catchUp * clamp((this.front - car.s - T.catchUpFrom) / (T.catchUpFull - T.catchUpFrom), 0, 1);
     if (done) top *= 0.4;
     if (car.spin > 0) {
@@ -210,10 +230,12 @@ export class Race {
       car.yaw += STEP * 9 * Math.sign(car.yaw || 1);
       car.v *= 1 - STEP * 1.6;
       if (car.spin <= 0) car.yaw = 0;
+    } else if (flying) {
+      // En el aire no hay freno ni acelerador: el auto sigue con lo que traía.
     } else if (car.braking) {
       car.v = Math.max(0, car.v - T.brake * STEP);
     } else if (car.v < top) {
-      car.v += T.accel * (car.boosting ? 1.7 : 1) * (1 - car.v / top) * STEP + 0.6 * STEP;
+      car.v += T.accel * (car.boosting ? 1.7 : car.surge > 0 ? 2.4 : 1) * (1 - car.v / top) * STEP + 0.6 * STEP;
     } else {
       car.v -= (car.v - top) * (car.offTrack ? 2.2 : 0.8) * STEP;
     }
@@ -223,7 +245,8 @@ export class Race {
       // Lo que el auto puede doblar baja con la velocidad: pasado el agarre, se va de trompa.
       const grip = T.grip * (car.offTrack ? T.offTrackGrip : 1) * (car.drifting ? T.driftGrip : 1);
       const limit = grip / Math.max(car.v, 9);
-      const turn = clamp(car.steer * T.turnRate, -limit, limit) + k * car.v * T.assist;
+      // Volando las ruedas no doblan: el auto sigue la pista como venía.
+      const turn = flying ? k * car.v : clamp(car.steer * T.turnRate, -limit, limit) + k * car.v * T.assist;
       car.yaw += (turn - k * car.v) * STEP;
       car.yaw = clamp(car.yaw, -1.1, 1.1);
       // Sin volante el auto se endereza solo, despacio.
@@ -246,6 +269,38 @@ export class Race {
         car.nitro *= 0.6;
       }
       if (into > 13) car.spin = 0.9;
+    }
+  }
+
+  /** Lo pintado en el asfalto: la plataforma empuja mientras dure su efecto y la rampa tira el auto al aire. */
+  private pads(car: Car, index: number, events: RaceEvent[]): void {
+    const T = TUNING;
+    car.surge = Math.max(0, car.surge - STEP);
+    if (car.air > 0) {
+      car.rise -= T.gravity * STEP;
+      car.air += car.rise * STEP;
+      if (car.air > 0) return;
+      // Caer bien parado da nitro; caer fuera del asfalto no.
+      events.push({ type: 'land', car: index, force: clamp(-car.rise / 12, 0, 1) });
+      car.air = car.rise = 0;
+      if (!car.offTrack) car.nitro = Math.min(1, car.nitro + 0.18);
+      car.v *= 0.97;
+      return;
+    }
+    if (car.finished !== null || car.spin > 0) return;
+    const at = ((car.s % this.course.length) + this.course.length) % this.course.length;
+    for (const pad of this.course.pads ?? []) {
+      if (at < pad.s || at > pad.s + pad.length || Math.abs(car.d - pad.d) > pad.half) continue;
+      if (pad.kind === 'boost') {
+        if (car.surge < T.padTime - 0.5) events.push({ type: 'pad', car: index });
+        car.surge = T.padTime;
+      } else if (car.v > 22) {
+        // Cuanto más rápido se llega, más alto y más lejos.
+        car.rise = clamp(car.v * 0.16, 4.5, 10.5);
+        car.air = 0.01;
+        events.push({ type: 'jump', car: index });
+      }
+      return;
     }
   }
 
@@ -274,6 +329,8 @@ export class Race {
       const dd = B.d - A.d;
       const overS = carLength - Math.abs(ds), overD = carWidth - Math.abs(dd);
       if (overS <= 0 || overD <= 0) continue;
+      // El que va por el aire pasa por arriba del otro.
+      if (Math.abs(A.air - B.air) > 1.1) continue;
       const closing = Math.abs(A.v - B.v);
       if (overD < overS) {
         // De costado: se separan y cada uno sale empujado hacia su lado.
@@ -310,6 +367,12 @@ export class Race {
     // La cuerda: por adentro de la curva que viene, cada bot con su manía de carril.
     const habit = (((index * 37) % 11) / 10 - 0.5) * course.half * 0.9;
     let target = clamp(Math.sign(kAhead) * Math.min(1, Math.abs(kAhead) * 60) * course.half * 0.6 + habit * (1 - Math.min(1, Math.abs(kAhead) * 60)), -course.half + 1.4, course.half - 1.4);
+    // Si viene una plataforma de empuje a mano y la pista va derecha, se corre a pisarla.
+    const L = course.length, here = ((car.s % L) + L) % L;
+    for (const pad of course.pads ?? []) {
+      const ahead = (((pad.s - here) % L) + L) % L;
+      if (pad.kind === 'boost' && ahead < look * 2.5 && Math.abs(pad.d - car.d) < 5 && Math.abs(kAhead) < 0.006) target = pad.d;
+    }
     for (let o = 0; o < this.cars.length; o++) {
       if (o === index) continue;
       const other = this.cars[o];
@@ -319,11 +382,22 @@ export class Race {
       }
     }
     const aim = Math.atan2(target - car.d, look);
-    input.steer = clamp((aim - car.yaw) * 2.6 + (kAhead - kNow) * 9, -1, 1);
-    // Velocidad que aguanta la curva más cerrada de las que vienen.
-    const tight = Math.max(Math.abs(kAhead), Math.abs(kFar));
-    const safe = tight > 1e-4 ? Math.sqrt((T.grip * 0.93) / (tight * (1 - T.assist * 0.3))) : Infinity;
-    input.brake = car.v > safe * 1.06;
+    // Lo que la curva pide de volante ahora mismo, más la corrección hacia su línea y un anticipo de la que viene.
+    const hold = (kNow * car.v * (1 - T.assist)) / T.turnRate;
+    input.steer = clamp(hold + (aim - car.yaw) * 2.6 + (kAhead - kNow) * 9, -1, 1);
+    // Mira la pista de acá a lo que ve y frena lo justo para llegar a cada curva a la velocidad que aguanta:
+    // una horquilla pide frenar desde lejos, una curva abierta casi nada.
+    let tight = Math.abs(kFar);
+    // Cada automático se anima a una parte distinta del agarre: hay rivales bravos y rivales tranquilos, y ninguno perfecto.
+    const nerve = 0.64 + ((index * 7) % 5) * 0.04;
+    input.brake = false;
+    for (let n = 0; n <= 6; n++) {
+      const dist = look * 0.4 * n, bend = Math.abs(course.curvature(car.s + dist));
+      tight = Math.max(tight, bend);
+      if (bend < 1e-4) continue;
+      const safe = Math.sqrt((T.grip * nerve) / (bend * (1 - T.assist * 0.3)));
+      if (car.v > Math.sqrt(safe * safe + 2 * T.brake * 0.7 * Math.max(0, dist - 6)) * 1.04) input.brake = true;
+    }
     // En la curva cerrada el bot cruza el auto en vez de pasarla derecho.
     input.drift = Math.abs(kNow) > 0.011 && car.v > T.driftFrom + 4;
     input.nitro = !input.brake && tight < 0.004 && Math.abs(car.yaw) < 0.08 && car.nitro > (car.boosting ? 0.02 : 0.6);

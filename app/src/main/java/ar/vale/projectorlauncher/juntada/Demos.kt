@@ -82,6 +82,7 @@ class Demos(private val now: () -> Long) {
         var startedAt = 0L
         var endedAt = 0L
         var warned = false
+        var settled = false
 
         /** Aplausos de cada persona. Tienen tope: un celular no decide el podio a fuerza de toques. */
         val claps = HashMap<String, Int>()
@@ -263,6 +264,13 @@ class Demos(private val now: () -> Long) {
         if (!clapping(entry)) throw JuntadaError("closed")
         val added = count.coerceIn(1, CLAP_BATCH)
         entry.claps[person.id] = minOf(CLAP_CAP, (entry.claps[person.id] ?: 0) + added)
+    }
+
+    /** True una sola vez por demo, cuando se le cierra el rato de aplausos: el número quedó quieto y hay que guardarlo. */
+    fun settle(): Boolean {
+        val closed = entries.filter { it.state == State.DONE && !it.settled && !clapping(it) }
+        closed.forEach { it.settled = true }
+        return closed.isNotEmpty()
     }
 
     private fun clapping(entry: Entry): Boolean =

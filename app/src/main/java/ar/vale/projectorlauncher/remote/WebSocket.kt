@@ -92,18 +92,24 @@ class WebSocket(private val input: InputStream, private val output: OutputStream
     private fun queue(frame: ByteArray): Boolean = open && outbox.offer(frame)
 
     private fun fail(code: Int): String? {
-        if (open) {
-            outbox.clear()
-            outbox.offer(frame(CLOSE, byteArrayOf((code shr 8).toByte(), code.toByte())))
-        }
+        // Lo que ya estaba encolado sale antes del cierre: ahí va el aviso de por qué se lo rechaza.
+        if (open) last(frame(CLOSE, byteArrayOf((code shr 8).toByte(), code.toByte())))
         return end()
     }
 
     private fun end(): String? {
         open = false
         // Un marco vacío despierta al que escribe para que termine.
-        outbox.offer(ByteArray(0))
+        last(ByteArray(0))
         return null
+    }
+
+    /** Encola sí o sí. Si no hay lugar es que el otro lado no lee, y lo pendiente se tira. */
+    private fun last(frame: ByteArray) {
+        if (!outbox.offer(frame)) {
+            outbox.clear()
+            outbox.offer(frame)
+        }
     }
 
     private fun drain() {

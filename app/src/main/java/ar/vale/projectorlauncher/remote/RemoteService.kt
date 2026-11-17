@@ -69,7 +69,11 @@ class RemoteService : Service() {
         val party = JuntadaRoutes(JuntadaHub.get(this), JuntadaHub.source(this), JuntadaHub.files(this))
         val router = Router(
             pairing, AndroidRemote(applicationContext), party, AccessHub.get(this),
-            race = CarreraHub.carrera::serve, securePort = { RemoteState.securePort }, files = RemotePage(applicationContext)
+            race = CarreraHub.carrera::serve,
+            raceDoor = { owner ->
+                CarreraHub.carrera.room?.door(owner)?.put("port", RemoteState.publicPort)
+            },
+            securePort = { RemoteState.securePort }, files = RemotePage(applicationContext)
         )
         val created = RemoteServer(router)
         try {

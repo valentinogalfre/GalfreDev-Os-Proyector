@@ -9,6 +9,8 @@ export class Tilt {
   /** Si llegó alguna medición: en una página sin HTTPS no llega ninguna. */
   alive = false;
   invert = false;
+  /** Con cuántos grados de giro del celular el volante está a fondo. */
+  lock = 30;
   private neutral: [number, number] | null = null;
   private last: [number, number] = [0, 0];
   private readonly listener = (event: DeviceMotionEvent) => this.read(event);
@@ -45,17 +47,17 @@ export class Tilt {
     if (!g || g.x === null || g.y === null) return;
     // Apoyado sobre la mesa la gravedad casi no cae en el plano de la pantalla: no hay giro que leer.
     if (Math.hypot(g.x, g.y) < 2.5) return;
+    // El sensor tiembla con el pulso y con cada toque en la pantalla: se promedia un poco antes de leerlo.
+    const [lx, ly] = this.alive ? this.last : [g.x, g.y];
+    const x = lx + (g.x - lx) * 0.35, y = ly + (g.y - ly) * 0.35;
     this.alive = true;
-    this.last = [g.x, g.y];
-    if (!this.neutral) this.neutral = [g.x, g.y];
+    this.last = [x, y];
+    if (!this.neutral) this.neutral = [x, y];
     const [nx, ny] = this.neutral;
-    const angle = Math.atan2(nx * g.y - ny * g.x, nx * g.x + ny * g.y);
-    const steer = Math.max(-1, Math.min(1, -angle / FULL_LOCK));
+    const angle = Math.atan2(nx * y - ny * x, nx * x + ny * y);
+    const steer = Math.max(-1, Math.min(1, -angle / ((this.lock * Math.PI) / 180)));
     // Una zona muerta chica en el centro: el pulso de la mano no hace zigzaguear el auto.
     const shaped = Math.abs(steer) < 0.06 ? 0 : (steer - Math.sign(steer) * 0.06) / 0.94;
     this.steer = this.invert ? -shaped : shaped;
   }
 }
-
-/** Con 32 grados de giro del celular, el volante está a fondo. */
-const FULL_LOCK = (32 * Math.PI) / 180;

@@ -2,6 +2,7 @@ package ar.vale.projectorlauncher
 
 import ar.vale.projectorlauncher.juntada.Juntada
 import ar.vale.projectorlauncher.juntada.TriviaSource
+import ar.vale.projectorlauncher.carrera.Carrera
 import ar.vale.projectorlauncher.remote.Access
 import ar.vale.projectorlauncher.remote.HttpParser
 import ar.vale.projectorlauncher.remote.HttpResponse
@@ -48,6 +49,7 @@ class AccessTest {
         var receives = true
         override fun fits(length: Long) = true
         override fun privateScreen() = private
+        override fun zone(id: String) = (id == "America/Argentina/Salta").also { calls.add("zone:$id") }
     }
 
     private var clock = 1_000_000L
@@ -55,7 +57,12 @@ class AccessTest {
     private val device = Device()
     private val access = Access(now = { clock })
     private val house = Juntada(null, { clock })
-    private val router = Router(pairing, device, JuntadaRoutes(house, TriviaSource { _, _ -> error("sin trivia") }), access) { null }
+    /** La carrera abierta que ve el control, o ninguna. */
+    private var door: Carrera.Room? = null
+    private val router = Router(
+        pairing, device, JuntadaRoutes(house, TriviaSource { _, _ -> error("sin trivia") }), access,
+        raceDoor = { owner -> door?.door(owner) }
+    ) { null }
 
     private fun call(path: String, body: String = "{}", token: String?, method: String = "POST", extra: String = ""): HttpResponse {
         val head = StringBuilder("$method $path HTTP/1.1\r\nHost: 10.0.0.2:8686\r\nContent-Type: application/json\r\n")
@@ -96,6 +103,18 @@ class AccessTest {
         assertEquals(401, call("/api/access/me", token = access.code).status)
         assertTrue(device.calls.isEmpty())
         assertEquals(200, call("/api/access/ask", """{"name":"Ana"}""", access.code).status)
+    }
+
+    @Test
+    fun `contrato - la zona horaria la pone solo el celular del dueño, y tiene que existir`() {
+        val owner = "t".repeat(48)
+        assertEquals(200, call("/api/zone", """{"zone":"America/Argentina/Salta"}""", owner).status)
+        assertEquals(400, call("/api/zone", """{"zone":"Marte/Olimpo"}""", owner).status)
+        assertEquals(400, call("/api/zone", """{"zone":"America/Salta; reboot"}""", owner).status)
+        assertEquals(listOf("zone:America/Argentina/Salta", "zone:Marte/Olimpo"), device.calls)
+        assertEquals(403, call("/api/zone", """{"zone":"America/Argentina/Salta"}""", approved(Access.Level.CONTROL)).status)
+        assertEquals(401, call("/api/zone", """{"zone":"America/Argentina/Salta"}""", access.code).status)
+        assertEquals(2, device.calls.size)
     }
 
     @Test
@@ -368,5 +387,27 @@ class AccessTest {
         access.forgetAll()
         assertFalse(access.claimed)
         assertEquals(401, call("/api/juntada/state", token = pass).status)
+    }
+
+    @Test
+    fun `la carrera abierta - el codigo lo ve quien paso, el pase de mando solo el dueño`() {
+        val guest = approved(Access.Level.PARTY)
+        assertFalse(call("/api/carrera", token = guest, method = "GET").json().getBoolean("open"))
+        door = Carrera.Room("c0de", "secreto", "pase", Carrera.RACE_PAGE)
+        val seen = call("/api/carrera", token = guest, method = "GET").json()
+        assertEquals("c0de", seen.getString("code"))
+        assertEquals("volante.html", seen.getString("page"))
+        assertFalse(seen.has("lead"))
+        assertEquals("pase", call("/api/carrera", token = pairing.token, method = "GET").json().getString("lead"))
+        // Sin que lo hayan dejado pasar no se ve nada, y abrirla en la pared es del que tiene el control.
+        assertEquals(401, call("/api/carrera", token = ask("Otro"), method = "GET").status)
+        assertEquals(403, call("/api/carrera/open", token = guest).status)
+    }
+
+    @Test
+    fun `la sala abierta - si en la pared hay futbol, el control entra con el del futbol y no con el volante`() {
+        door = Carrera().open("jugador.html")
+        assertEquals("jugador.html", call("/api/carrera", token = approved(Access.Level.PARTY), method = "GET").json().getString("page"))
+        assertEquals("volante.html", Carrera().open().page)
     }
 }

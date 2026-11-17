@@ -15,13 +15,23 @@ import java.security.SecureRandom
  * Hay dos maneras de entrar y ninguna abre nada más que esto:
  * - la pared, con un secreto que solo conoce la pantalla Carrera y solo desde el mismo equipo;
  * - un celular, con el código del QR, que vale mientras la pantalla Carrera está abierta.
+ *
+ * El celular del dueño del proyector entra además con un pase de mando, que solo sirve acá: lo deja manejar
+ * la sala aunque no haya sido el primero en entrar. No es su clave del control remoto ni se parece a ella.
  */
 class Carrera(private val random: SecureRandom = SecureRandom(), private val now: () -> Long = System::currentTimeMillis) {
 
-    class Room(val code: String, val hostSecret: String)
+    /** [page] es la página con la que entra cada celular: la del juego que abrió la sala. */
+    class Room(val code: String, val hostSecret: String, val leadTicket: String, val page: String) {
+        /** Lo que el control necesita para entrar sin escanear. El pase de mando va solo al dueño. */
+        fun door(owner: Boolean): JSONObject =
+            JSONObject().put("code", code).put("page", page).apply { if (owner) put("lead", leadTicket) }
+    }
 
     private class Player(val id: Int, var name: String, val key: String, val from: String) {
         var channel: Channel? = null
+        /** Entró con el pase de mando: es el celular del dueño del proyector. */
+        var boss = false
         var leftAt = 0L
         /** Para no dejar pasar más mensajes por segundo de los que un volante necesita. */
         var windowStart = 0L
@@ -37,9 +47,9 @@ class Carrera(private val random: SecureRandom = SecureRandom(), private val now
     private var lastForAll: String? = null
 
     /** Abre una sala nueva. La anterior, si había, se cierra con todos adentro. */
-    fun open(): Room {
+    fun open(page: String = RACE_PAGE): Room {
         close()
-        return Room(secret(CODE_BYTES), secret(SECRET_BYTES)).also { room = it }
+        return Room(secret(CODE_BYTES), secret(SECRET_BYTES), secret(SECRET_BYTES), page).also { room = it }
     }
 
     fun close() {
@@ -125,6 +135,7 @@ class Carrera(private val random: SecureRandom = SecureRandom(), private val now
             }
             player = known ?: Player(nextId++, name, secret(SECRET_BYTES), remote).also(players::add)
             player.name = name
+            if (same(hello.optString("lead"), current.leadTicket)) player.boss = true
             old = player.channel
             player.channel = channel
             catchUp = lastForAll
@@ -147,6 +158,12 @@ class Carrera(private val random: SecureRandom = SecureRandom(), private val now
                     )
                     "cmd" -> message.optJSONObject("d")?.let { tellHost(JSONObject().put("t", "cmd").put("id", player.id).put("d", it).toString()) }
                     "ping" -> channel.send(JSONObject().put("t", "pong").put("n", message.optLong("n")).toString())
+                    // Se va por su cuenta: deja el lugar y su clave ya no vale.
+                    // Si otra conexión ya tomó su lugar, la que se despide es la vieja y no se lleva a nadie.
+                    "leave" -> {
+                        if (synchronized(this) { player.channel === channel }) drop(player.id, told = false)
+                        return
+                    }
                 }
             }
         } finally {
@@ -170,12 +187,14 @@ class Carrera(private val random: SecureRandom = SecureRandom(), private val now
         return players.remove(gone)
     }
 
-    private fun drop(id: Int) {
+    /** Saca a uno de la sala. Si lo sacó otro se le avisa antes de cortar, para que su celular no vuelva a entrar solo. */
+    private fun drop(id: Int, told: Boolean = true) {
         val channel = synchronized(this) {
             val player = players.firstOrNull { it.id == id } ?: return
             players.remove(player)
             player.channel
         }
+        if (told) channel?.send(error("out"))
         channel?.close()
         tellHost(roster().toString())
     }
@@ -191,7 +210,7 @@ class Carrera(private val random: SecureRandom = SecureRandom(), private val now
 
     @Synchronized
     private fun roster(): JSONObject = JSONObject().put("t", "roster").put(
-        "players", JSONArray(players.map { JSONObject().put("id", it.id).put("name", it.name).put("on", it.channel != null) })
+        "players", JSONArray(players.map { JSONObject().put("id", it.id).put("name", it.name).put("on", it.channel != null).put("boss", it.boss) })
     )
 
     private fun tellHost(text: String) {
@@ -221,6 +240,7 @@ class Carrera(private val random: SecureRandom = SecureRandom(), private val now
     private fun secret(bytes: Int): String = ByteArray(bytes).also(random::nextBytes).joinToString("") { "%02x".format(it) }
 
     companion object {
+        const val RACE_PAGE = "volante.html"
         const val MAX_PLAYERS = 8
         /** Dos volantes por dirección: alcanza para un celular y su reconexión, no para llenar la sala. */
         const val MAX_PER_ADDRESS = 2

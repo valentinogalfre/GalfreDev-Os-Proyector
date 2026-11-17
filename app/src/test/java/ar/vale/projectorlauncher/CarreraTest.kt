@@ -22,6 +22,7 @@ import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.DataInputStream
 import java.net.Socket
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
@@ -112,6 +113,27 @@ class CarreraTest {
         assertNull(socket.read())
         Thread.sleep(100)
         assertEquals(listOf(0x8A.toByte(), 1.toByte(), 'x'.code.toByte()), out.toByteArray().take(3))
+    }
+
+    @Test
+    fun `websocket - lo que se mando justo antes de cerrar sale antes del cierre`() {
+        // El que escribe queda trabado en el primer mensaje: el aviso de rechazo sigue en la cola cuando llega el cierre.
+        val gate = CountDownLatch(1)
+        val out = object : ByteArrayOutputStream() {
+            override fun write(bytes: ByteArray) {
+                gate.await()
+                super.write(bytes)
+            }
+        }
+        val socket = WebSocket(ByteArrayInputStream(ByteArray(0)), out)
+        socket.send("a")
+        Thread.sleep(50)
+        socket.send("no entra")
+        socket.close()
+        gate.countDown()
+        Thread.sleep(100)
+        val text = { t: String -> listOf(0x81.toByte(), t.length.toByte()) + t.toByteArray().toList() }
+        assertEquals(text("a") + text("no entra") + listOf(0x88.toByte(), 2.toByte(), 0x03.toByte(), 0xe8.toByte()), out.toByteArray().toList())
     }
 
     @Test
@@ -218,6 +240,79 @@ class CarreraTest {
         assertEquals("race", late.next("all").getJSONObject("d").getString("phase"))
         val rest = generateSequence { late.heard.poll(300, TimeUnit.MILLISECONDS) }.toList()
         assertEquals(emptyList<String>(), rest.filter { JSONObject(it).getString("t") == "st" })
+    }
+
+    @Test
+    fun `sala - el que se va deja el lugar, y al que sacan se le avisa para que no vuelva solo`() {
+        val room = carrera.open()
+        val wall = host(room)
+        val a = join(room, "Ana", "192.168.0.21")
+        val b = join(room, "Beto", "192.168.0.22")
+        val idA = a.next("joined").getInt("id")
+        val keyB = b.next("joined").getString("key")
+        // La pared recibe más de una lista por cada cambio: se espera a la que muestra el cambio hecho.
+        val settles = { want: List<String> ->
+            var names: List<String>? = null
+            repeat(8) {
+                if (names != want) {
+                    names = wall.next("roster").getJSONArray("players")
+                        .let { list -> (0 until list.length()).map { list.getJSONObject(it).getString("name") } }
+                }
+            }
+            assertEquals(want, names)
+        }
+        b.say(JSONObject().put("t", "leave"))
+        // Recién cuando la pared lo vio irse vuelve: si no, la vuelta podría llegar antes que la despedida.
+        settles(listOf("Ana"))
+        // La clave del que se fue ya no vale: si vuelve, entra de cero.
+        val back = join(room, "Beto", "192.168.0.22", keyB)
+        val idBack = back.next("joined").getInt("id")
+        assertFalse(idBack == idA)
+        wall.say(JSONObject().put("t", "drop").put("id", idA))
+        assertEquals("out", a.next("error").getString("code"))
+        settles(listOf("Beto"))
+    }
+
+    @Test
+    fun `sala - una despedida que llega tarde no se lleva al que ya volvio a entrar`() {
+        val room = carrera.open()
+        val gate = CountDownLatch(1)
+        val heard = LinkedBlockingQueue<String>()
+        // La conexión vieja: entra, y su despedida recién se lee cuando el test abre la compuerta.
+        val old = object : Channel {
+            private var step = 0
+            override fun read(): String? = when (step++) {
+                0 -> JSONObject().put("t", "join").put("room", room.code).put("name", "Beto").put("key", "").toString()
+                1 -> JSONObject().put("t", "leave").toString().also { gate.await(3, TimeUnit.SECONDS) }
+                else -> null
+            }
+            override fun send(text: String) = heard.offer(text)
+            override fun close() = Unit
+            override fun replace() = Unit
+        }
+        val leaving = thread(isDaemon = true) { carrera.serve(old, "192.168.0.22") }
+        val joined = generateSequence { heard.poll(3, TimeUnit.SECONDS) }.map(::JSONObject).first { it.getString("t") == "joined" }
+        val back = join(room, "Beto", "192.168.0.22", joined.getString("key"))
+        assertEquals(joined.getInt("id"), back.next("joined").getInt("id"))
+        gate.countDown()
+        leaving.join(3000)
+        assertFalse(leaving.isAlive)
+        assertFalse(back.closed)
+        val names = host(room).next("roster").getJSONArray("players").let { list -> (0 until list.length()).map { list.getJSONObject(it).getString("name") } }
+        assertEquals(listOf("Beto"), names)
+    }
+
+    @Test
+    fun `sala - con el pase de mando entra el celular del dueño, y sin el no`() {
+        val room = carrera.open()
+        val wall = host(room)
+        fun bosses(): List<Boolean> = wall.next("roster").getJSONArray("players").let { list -> (0 until list.length()).map { list.getJSONObject(it).getBoolean("boss") } }
+        wall.next("roster")
+        connect(JSONObject().put("t", "join").put("room", room.code).put("name", "Ana").put("lead", "no es"), "192.168.0.21").next("joined")
+        assertEquals(listOf(false), bosses())
+        connect(JSONObject().put("t", "join").put("room", room.code).put("name", "Vale").put("lead", room.leadTicket), "192.168.0.22").next("joined")
+        assertEquals(listOf(false, true), bosses())
+        assertFalse(room.leadTicket == room.code || room.leadTicket == room.hostSecret)
     }
 
     @Test

@@ -17,7 +17,7 @@ export interface Shared {
   room: number;
   /** Quién elige pista y larga: el primero que entró y sigue conectado. */
   lead: number | null;
-  players: { id: number; name: string; paint: number; /** Qué modelo de MODELS maneja. */ model: number; on: boolean }[];
+  players: { id: number; name: string; paint: number; /** Qué modelo de MODELS maneja. */ model: number; on: boolean; /** Maneja la sala aunque no tenga el mando. */ boss: boolean }[];
   /** Los autos en pista, en el orden en que llegan en cada cuadro: de quién es, cómo se llama y cómo se ve. */
   cars: { id: number | null; name: string; look: number; model: number }[];
   /** Quiénes corren esta carrera. El que entra con la carrera empezada espera a la siguiente. */
@@ -41,7 +41,7 @@ export interface Mine {
   speed: number;
   off: boolean;
   /** Qué le está dando velocidad de más: el rebufo de otro auto, el ritmo de no cometer errores, o nada. */
-  plus: '' | 'rebufo' | 'ritmo';
+  plus: '' | 'rebufo' | 'ritmo' | 'boost' | 'aire';
   /** Fuerza de un golpe recién sufrido, de 0 a 1: el celular vibra. */
   buzz: number;
 }
@@ -50,16 +50,22 @@ export interface Mine {
 export type Command =
   | { a: 'track'; d: 1 | -1 } | { a: 'bots'; d: 1 | -1 } | { a: 'start' } | { a: 'lobby' }
   /** De cuántas carreras es el campeonato (solo antes de la primera), y empezarlo de cero. */
-  | { a: 'rounds'; d: 1 | -1 } | { a: 'cup' };
+  | { a: 'rounds'; d: 1 | -1 } | { a: 'cup' }
+  /** Cuántas vueltas tiene cada carrera. */
+  | { a: 'laps'; d: 1 | -1 }
+  /** Largar de nuevo la carrera que se está corriendo, y cerrar la carrera en el proyector. */
+  | { a: 'restart' } | { a: 'close' }
+  /** Sacar a alguien de la sala, y pasarle el mando a otro. */
+  | { a: 'kick'; id: number } | { a: 'lead'; id: number };
 
 /** Lo que pide cualquiera en la sala: la pintura de al lado, o el modelo de al lado. */
 export type Wish = { a: 'car'; d: 1 | -1 } | { a: 'model'; d: 1 | -1 };
 
-export interface RosterEntry { id: number; name: string; on: boolean }
+export interface RosterEntry { id: number; name: string; on: boolean; /** Es el celular del dueño del proyector: maneja la sala siempre. */ boss?: boolean }
 
 export type FromRoom =
   | { t: 'joined'; id: number; key: string; name: string }
-  | { t: 'error'; code: 'room' | 'name' | 'full' | 'moved' }
+  | { t: 'error'; code: 'room' | 'name' | 'full' | 'moved' | 'out' }
   | { t: 'all'; d: Shared }
   | { t: 'you'; d: Mine }
   /** Un cuadro de la carrera, armado por encodeFrame. */

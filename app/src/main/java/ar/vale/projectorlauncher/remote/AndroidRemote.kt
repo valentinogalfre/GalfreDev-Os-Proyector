@@ -8,7 +8,9 @@ import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.view.KeyEvent
+import ar.vale.projectorlauncher.carrera.CarreraActivity
 import ar.vale.projectorlauncher.carrera.CarreraFiles
+import ar.vale.projectorlauncher.carrera.CarreraHub
 import ar.vale.projectorlauncher.ApkInstaller
 import ar.vale.projectorlauncher.AppRepository
 import ar.vale.projectorlauncher.FileKind
@@ -16,6 +18,7 @@ import ar.vale.projectorlauncher.LauncherActivity
 import ar.vale.projectorlauncher.MediaTypes
 import ar.vale.projectorlauncher.Prefs
 import ar.vale.projectorlauncher.R
+import ar.vale.projectorlauncher.Zone
 import ar.vale.projectorlauncher.apps.Streaming
 import ar.vale.projectorlauncher.apps.StreamingLauncher
 import ar.vale.projectorlauncher.claude.ClaudeActivity
@@ -38,6 +41,7 @@ import java.io.File
 import java.io.IOException
 import java.io.InputStream
 import java.util.Locale
+import java.util.TimeZone
 
 /** Conecta los pedidos del celular con el equipo. */
 class AndroidRemote(private val context: Context) : RemoteDevice {
@@ -53,8 +57,12 @@ class AndroidRemote(private val context: Context) : RemoteDevice {
             .put("resolution", "${size.x} × ${size.y}")
             .put("full_control", RemoteAccessibility.instance != null)
             .put("claude_key", KeyVault.has(context))
+            .put("zone", TimeZone.getDefault().id)
+            .put("port", RemoteState.port)
             .put("secure_port", RemoteState.securePort)
     }
+
+    override fun zone(id: String): Boolean = Zone.set(context, id)
 
     override fun privateScreen(): Boolean {
         GdActivity.current?.let { return it.ownerOnly }
@@ -242,6 +250,10 @@ class AndroidRemote(private val context: Context) : RemoteDevice {
             .put("apps", others)
             .put("cast", receiver?.let { JSONObject().put("name", it.name) } ?: JSONObject.NULL)
     }
+
+    /** Si la carrera ya está en la pared no se abre otra: eso cerraría la sala con todos adentro. */
+    override fun race(): RemoteDevice.Result =
+        if (CarreraHub.carrera.room != null) RemoteDevice.Result.OK else start(Intent(context, CarreraActivity::class.java))
 
     override fun cast(): RemoteDevice.Result {
         val receiver = Casting.best(context) ?: return RemoteDevice.Result.NOT_INSTALLED

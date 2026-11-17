@@ -108,7 +108,9 @@ navegador solo presta el micrófono a una página segura, y para eso el proyecto
 por HTTPS, en el puerto 8696, con un certificado que firma él mismo. La primera vez el botón
 lleva a esa versión en la misma pestaña: el navegador avisa una vez y hay que aceptarlo. Después
 la página pasa sola. La transcripción la hace el celular, que prueba varias variantes del
-castellano hasta dar con la que su navegador reconoce, y lee la respuesta en voz alta.
+castellano hasta dar con la que su navegador reconoce, y lee la respuesta en voz alta. Donde el
+navegador no reconoce la voz, como Chrome en iPhone, el botón abre el teclado para dictar con su
+micrófono: no hace falta cambiar de navegador ni pasar a la versión segura.
 
 ### La juntada
 
@@ -149,7 +151,7 @@ Hace falta JDK 17 y el Android SDK con la plataforma 35.
 
 ```sh
 ./gradlew assembleDebug        # el APK queda en app/build/outputs/apk/debug/
-./gradlew testDebugUnitTest    # 466 tests de contrato
+./gradlew testDebugUnitTest    # 474 tests de contrato
 ./gradlew lintDebug            # los errores frenan la compilación
 ```
 

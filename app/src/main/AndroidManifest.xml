@@ -51,6 +51,7 @@
          ruta directa (explorador / modo APK). Android 11+ lo ignora y usa
          MANAGE_EXTERNAL_STORAGE. -->
     <application
+        android:name=".GdApp"
         android:allowBackup="false"
         android:networkSecurityConfig="@xml/network_security_config"
         android:requestLegacyExternalStorage="true"
