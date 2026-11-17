@@ -42,7 +42,8 @@ function overBridge<M>(host: Bridge, hello: () => object, onMessage: (message: M
     if (waiting === '[]') return;
     for (const message of JSON.parse(waiting) as M[]) onMessage(message);
   }, 12);
-  open();
+  // Diferido: quien llama recibe el enlace antes del primer onLine, como con el WebSocket.
+  setTimeout(open, 0);
   return {
     send(message) {
       if (up) host.send(JSON.stringify(message));
