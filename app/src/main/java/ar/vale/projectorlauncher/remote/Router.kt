@@ -11,6 +11,9 @@ interface RemoteDevice {
     enum class Result { OK, NEEDS_ACCESSIBILITY, NEEDS_PERSON, NO_FIELD, NOT_INSTALLED, UNKNOWN, BUSY }
 
     fun state(): JSONObject
+
+    /** La zona horaria del celular del dueño, para que el reloj de la pared dé la hora de la casa. False si no existe. */
+    fun zone(id: String): Boolean = false
     fun key(name: String): Result
     fun text(value: String, submit: Boolean): Result
     fun link(url: String): Result
@@ -186,6 +189,10 @@ class Router(
                 HttpResponse.ok()
             }
             "/api/report" -> HttpResponse.ok(device.report())
+            "/api/zone" -> json(r).getString("zone").let {
+                if (!ZONE.matches(it) || !device.zone(it)) throw HttpError(400, "zone")
+                HttpResponse.ok()
+            }
             "/api/pointer" -> json(r).let {
                 device.pointer(it.unit("x"), it.unit("y"), it.optBoolean("visible", true))
                 HttpResponse.ok()
@@ -320,5 +327,6 @@ class Router(
         val LEAVING = setOf("back", "home")
         val PACKAGE = Regex("[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+")
         val HOST = Regex("[A-Za-z0-9.-]{1,253}")
+        val ZONE = Regex("[A-Za-z0-9_+/-]{1,64}")
     }
 }

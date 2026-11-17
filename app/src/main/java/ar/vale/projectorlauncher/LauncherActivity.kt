@@ -50,6 +50,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import java.util.TimeZone
 
 /**
  * Pantalla de inicio: un índice editorial a la izquierda y, a la derecha, el contenido de la
@@ -575,6 +576,8 @@ class LauncherActivity : GdActivity() {
     }
 
     private fun updateStatus() {
+        // La zona puede cambiar con el launcher abierto, cuando la manda el celular del dueño.
+        dateFormat.timeZone = TimeZone.getDefault()
         val date = dateFormat.format(Date()).replace(".", "")
         status.text = "$date · ${Device.networkLabel(this)}"
     }

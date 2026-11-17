@@ -49,6 +49,7 @@ class AccessTest {
         var receives = true
         override fun fits(length: Long) = true
         override fun privateScreen() = private
+        override fun zone(id: String) = (id == "America/Argentina/Salta").also { calls.add("zone:$id") }
     }
 
     private var clock = 1_000_000L
@@ -102,6 +103,18 @@ class AccessTest {
         assertEquals(401, call("/api/access/me", token = access.code).status)
         assertTrue(device.calls.isEmpty())
         assertEquals(200, call("/api/access/ask", """{"name":"Ana"}""", access.code).status)
+    }
+
+    @Test
+    fun `contrato - la zona horaria la pone solo el celular del dueño, y tiene que existir`() {
+        val owner = "t".repeat(48)
+        assertEquals(200, call("/api/zone", """{"zone":"America/Argentina/Salta"}""", owner).status)
+        assertEquals(400, call("/api/zone", """{"zone":"Marte/Olimpo"}""", owner).status)
+        assertEquals(400, call("/api/zone", """{"zone":"America/Salta; reboot"}""", owner).status)
+        assertEquals(listOf("zone:America/Argentina/Salta", "zone:Marte/Olimpo"), device.calls)
+        assertEquals(403, call("/api/zone", """{"zone":"America/Argentina/Salta"}""", approved(Access.Level.CONTROL)).status)
+        assertEquals(401, call("/api/zone", """{"zone":"America/Argentina/Salta"}""", access.code).status)
+        assertEquals(2, device.calls.size)
     }
 
     @Test

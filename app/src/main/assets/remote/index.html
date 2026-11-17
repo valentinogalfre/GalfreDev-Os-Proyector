@@ -568,6 +568,7 @@ async function loadState() {
   $('#device').textContent = state.name || '';
   securePort = state.secure_port || 0;
   plainPort = state.port || 0;
+  tellZone(state.zone);
   hasKey = state.claude_key !== false;
 }
 
@@ -586,6 +587,13 @@ function secureUrl(name) {
   if (who) hash.set('n', who);
   if (load('gd.track')) hash.set('k', '1');
   return 'https://' + location.hostname + ':' + securePort + '/#' + hash;
+}
+// El proyector viene con la zona horaria de fábrica y marca cualquier hora: usa la de este celular.
+function tellZone(theirs) {
+  if (!isOwner || theirs === undefined) return;
+  let mine = '';
+  try { mine = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) {}
+  if (mine && mine !== theirs) post('zone', { zone: mine }, true);
 }
 // Esta página, ya en Claude, para abrirla en otro navegador. Va a la común: abre sin avisos, y
 // de ahí el botón del micrófono lleva a la segura explicando el paso que falta.
