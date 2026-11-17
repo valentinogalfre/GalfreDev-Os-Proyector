@@ -476,6 +476,25 @@ class DemosTest {
     }
 
     @Test
+    fun `contrato - al cerrarse el rato de aplausos se guarda una vez, sin esperar a que pase otra cosa`() {
+        val j = juntada()
+        val ana = j.join("Ana")
+        val beto = j.join("Beto")
+        val id = j.ready(ana)
+        j.startDemo(id)
+        j.finishDemo(ana.key, false)
+        j.clapDemo(beto.key, id, 5)
+        var saves = 0
+        j.onChange = { saves++ }
+        j.state(beto.key, false)
+        assertEquals(0, saves)
+        clock += Demos.CLAP_MS + 1
+        j.state(beto.key, false)
+        j.state(beto.key, false)
+        assertEquals(1, saves)
+    }
+
+    @Test
     fun `contrato - empezar de cero vacía la fila, cierra el escenario y pide borrar los archivos`() {
         val j = juntada()
         val ana = j.ready(j.join("Ana"))
