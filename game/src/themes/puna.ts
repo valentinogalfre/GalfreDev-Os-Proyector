@@ -39,15 +39,20 @@ function cardon(fine: boolean): THREE.BufferGeometry {
 export const puna: Theme = {
   name: 'Puna',
   exposure: 0.78,
+  // La cuesta sube en zigzag hasta los 58 metros, cruza el abra y baja de corrido.
   layout: [
-    [0, 0, 0], [140, 2, -20], [260, 8, 30], [300, 16, 140], [230, 24, 220], [130, 28, 200], [90, 30, 260], [170, 34, 330],
-    [110, 38, 400], [0, 36, 380], [-90, 30, 300], [-60, 24, 200], [-150, 16, 150], [-230, 8, 60], [-180, 2, -30], [-90, 0, -20],
+    [0, 0, 0], [140, 3, -20], [260, 10, 20], [330, 18, 70], [310, 25, 140], [215, 30, 135], [150, 34, 175], [165, 40, 225],
+    [275, 44, 215], [335, 50, 265], [305, 56, 340], [180, 58, 385], [70, 54, 400], [-20, 46, 370], [-90, 36, 300], [-70, 28, 210],
+    [-150, 18, 150], [-230, 8, 60], [-180, 2, -30], [-90, 0, -20],
   ],
   half: 6.5,
   wall: 12,
   start: 820,
-  // Un empuje en la única recta, y la rampa con su empuje en el tramo abierto de la bajada.
-  pads: [{ kind: 'boost', at: 0.025, lane: 0.5 }, { kind: 'ramp', at: 0.55, lane: 0 }, { kind: 'boost', at: 0.6, lane: -0.5 }],
+  // Un empuje al largar, la rampa en lo más alto con su empuje para la bajada, y otro antes de la última curva.
+  pads: [
+    { kind: 'boost', at: 0.022, lane: 0.5 }, { kind: 'ramp', at: 0.51, lane: 0 }, { kind: 'boost', at: 0.545, lane: -0.5 },
+    { kind: 'boost', at: 0.79, lane: 0.5 },
+  ],
   grade: { bloom: [0.35, 0.6, 1.25], vignette: 0.5, speed: 0.11 },
   spray: { color: 0xc9a27e, opacity: 0.2, size: 2.6, additive: false },
   cars: [

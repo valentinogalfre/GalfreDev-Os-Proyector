@@ -15,15 +15,20 @@ const MONO = '500 "Geist Mono"';
 export const cinta: Theme = {
   name: 'Cinta',
   exposure: 1.0,
+  // Una ese larga que entra dos veces al medio de la lámina, y la recta de abajo para llegar lanzado.
   layout: [
-    [0, 0, 0], [180, 0, 0], [250, 0, 40], [250, 0, 120], [180, 0, 160], [100, 0, 160], [60, 0, 200], [60, 0, 270], [0, 0, 310],
-    [-70, 0, 290], [-110, 0, 220], [-110, 0, 80], [-70, 0, 10],
+    [0, 0, 0], [180, 0, 0], [250, 0, 35], [258, 0, 110], [205, 0, 150], [135, 0, 118], [78, 0, 150], [75, 0, 215], [140, 0, 245],
+    [215, 0, 232], [262, 0, 265], [240, 0, 318], [150, 0, 325], [40, 0, 312], [-60, 0, 300], [-112, 0, 235], [-88, 0, 165],
+    [-122, 0, 95], [-75, 0, 12],
   ],
   half: 7,
   wall: 7.1,
   start: 900,
-  // Rampa apenas pasada la largada, y un empuje en cada recta.
-  pads: [{ kind: 'ramp', at: 0.03, lane: 0 }, { kind: 'boost', at: 0.09, lane: -0.6 }, { kind: 'boost', at: 0.79, lane: 0.6 }],
+  // Una rampa en cada recta, con su empuje, y un empuje más en el medio de la ese.
+  pads: [
+    { kind: 'ramp', at: 0.025, lane: 0 }, { kind: 'boost', at: 0.065, lane: -0.6 }, { kind: 'boost', at: 0.33, lane: 0 },
+    { kind: 'boost', at: 0.59, lane: 0.6 }, { kind: 'ramp', at: 0.63, lane: 0 },
+  ],
   grade: { bloom: [0.2, 0.6, 1.1], vignette: 0.55, speed: 0.11 },
   trail: CINTA,
   cars: [

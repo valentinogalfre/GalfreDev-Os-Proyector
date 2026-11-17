@@ -82,9 +82,9 @@ export type Phase = 'grid' | 'countdown' | 'race' | 'done';
 export const TUNING = {
   topSpeed: 62,
   accel: 15,
-  brake: 34,
+  brake: 40,
   /** Aceleración lateral que aguanta el auto antes de irse de trompa. */
-  grip: 24,
+  grip: 26.5,
   turnRate: 1.5,
   /** Cuánto de la curva toma el auto solo. Con 1 no haría falta doblar. */
   assist: 0.38,
@@ -99,11 +99,11 @@ export const TUNING = {
   driftSlip: 0.5,
   offTrackSpeed: 0.45,
   offTrackGrip: 0.55,
-  /** Cuánta velocidad de más recibe el que quedó lejos del primero: todos comparten una sola pantalla. */
   /** Las plataformas: cuánta velocidad de más dan, por cuántos segundos, y con qué fuerza se cae en un salto. */
   padGain: 0.24,
   padTime: 1.7,
   gravity: 19,
+  /** Cuánta velocidad de más recibe el que quedó lejos del primero. */
   catchUp: 0.1,
   catchUpFrom: 30,
   catchUpFull: 200,
@@ -206,7 +206,8 @@ export class Race {
     const { course } = this, T = TUNING;
     const done = car.finished !== null;
     const steerIn = done ? clamp(-car.d * 0.1 - car.yaw * 2, -1, 1) : clamp(input.steer, -1, 1);
-    car.steer += (steerIn - car.steer) * Math.min(1, STEP * 9);
+    // El volante responde en menos de una décima: en una horquilla no hay tiempo para más.
+    car.steer += (steerIn - car.steer) * Math.min(1, STEP * 13);
     car.offTrack = Math.abs(car.d) > course.half + 0.3;
     if (car.offTrack || car.spin > 0) car.clean = 0;
     car.braking = !done && input.brake;
@@ -381,11 +382,22 @@ export class Race {
       }
     }
     const aim = Math.atan2(target - car.d, look);
-    input.steer = clamp((aim - car.yaw) * 2.6 + (kAhead - kNow) * 9, -1, 1);
-    // Velocidad que aguanta la curva más cerrada de las que vienen.
-    const tight = Math.max(Math.abs(kAhead), Math.abs(kFar));
-    const safe = tight > 1e-4 ? Math.sqrt((T.grip * 0.93) / (tight * (1 - T.assist * 0.3))) : Infinity;
-    input.brake = car.v > safe * 1.06;
+    // Lo que la curva pide de volante ahora mismo, más la corrección hacia su línea y un anticipo de la que viene.
+    const hold = (kNow * car.v * (1 - T.assist)) / T.turnRate;
+    input.steer = clamp(hold + (aim - car.yaw) * 2.6 + (kAhead - kNow) * 9, -1, 1);
+    // Mira la pista de acá a lo que ve y frena lo justo para llegar a cada curva a la velocidad que aguanta:
+    // una horquilla pide frenar desde lejos, una curva abierta casi nada.
+    let tight = Math.abs(kFar);
+    // Cada automático se anima a una parte distinta del agarre: hay rivales bravos y rivales tranquilos, y ninguno perfecto.
+    const nerve = 0.64 + ((index * 7) % 5) * 0.04;
+    input.brake = false;
+    for (let n = 0; n <= 6; n++) {
+      const dist = look * 0.4 * n, bend = Math.abs(course.curvature(car.s + dist));
+      tight = Math.max(tight, bend);
+      if (bend < 1e-4) continue;
+      const safe = Math.sqrt((T.grip * nerve) / (bend * (1 - T.assist * 0.3)));
+      if (car.v > Math.sqrt(safe * safe + 2 * T.brake * 0.7 * Math.max(0, dist - 6)) * 1.04) input.brake = true;
+    }
     // En la curva cerrada el bot cruza el auto en vez de pasarla derecho.
     input.drift = Math.abs(kNow) > 0.011 && car.v > T.driftFrom + 4;
     input.nitro = !input.brake && tight < 0.004 && Math.abs(car.yaw) < 0.08 && car.nitro > (car.boosting ? 0.02 : 0.6);

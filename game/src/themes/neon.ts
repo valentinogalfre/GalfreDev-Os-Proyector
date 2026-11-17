@@ -27,15 +27,20 @@ function lit(color: number, gain: number, extra: THREE.MeshBasicMaterialParamete
 export const neon: Theme = {
   name: 'Neón',
   exposure: 1.1,
+  // La recta larga, una horquilla que se mete al medio de la ciudad y una chicana antes de volver.
   layout: [
-    [0, 0, 0], [160, 0, 0], [300, 0, 0], [340, 0, 30], [350, 0, 120], [340, 0, 200], [280, 0, 230], [200, 0, 225], [150, 0, 250],
-    [100, 0, 235], [40, 0, 255], [-40, 0, 250], [-110, 0, 235], [-150, 0, 180], [-155, 0, 90], [-140, 0, 25], [-90, 0, 0],
+    [0, 0, 0], [160, 0, 0], [300, 0, 0], [345, 0, 30], [352, 0, 110], [335, 0, 190], [285, 0, 238], [220, 0, 235], [180, 0, 190],
+    [185, 0, 120], [150, 0, 72], [108, 0, 95], [100, 0, 170], [70, 0, 232], [5, 0, 250], [-45, 0, 222], [-95, 0, 246], [-148, 0, 195],
+    [-128, 0, 125], [-162, 0, 65], [-135, 0, 18], [-90, 0, 0],
   ],
   half: 8,
   wall: 7.5,
   start: 60,
-  // La recta larga: un empuje y enseguida la rampa. Los otros dos, a la salida de las curvas.
-  pads: [{ kind: 'boost', at: 0.035, lane: 0 }, { kind: 'ramp', at: 0.1, lane: 0 }, { kind: 'boost', at: 0.3, lane: -0.6 }, { kind: 'boost', at: 0.655, lane: 0.6 }],
+  // En la recta larga, un empuje y enseguida la rampa; otra rampa al entrar a la recta, y un empuje a la salida de dos curvas.
+  pads: [
+    { kind: 'boost', at: 0.03, lane: 0 }, { kind: 'ramp', at: 0.085, lane: 0 }, { kind: 'boost', at: 0.252, lane: -0.6 },
+    { kind: 'boost', at: 0.6, lane: 0.5 }, { kind: 'ramp', at: 0.968, lane: 0 },
+  ],
   grade: { bloom: [1.0, 0.72, 0.85], vignette: 0.6, speed: 0.11 },
   night: true,
   spray: { color: 0xa9c6ff, opacity: 0.13, size: 2.6, additive: true },

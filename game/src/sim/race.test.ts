@@ -168,6 +168,17 @@ describe('la carrera', () => {
     assert.ok(over.top > beside.top + 3, `${over.top} contra ${beside.top}`);
   });
 
+  it('el automático frena para la horquilla, la dobla sin tocar el muro y va a pisar el empuje que le queda a mano', () => {
+    // Una vuelta de 600 m: recta, una horquilla que se cierra hasta 20 m de radio, recta y otra horquilla.
+    const bend = (s: number) => { const at = ((s % 300) + 300) % 300; return at > 190 ? 0.05 * Math.sin((Math.PI * (at - 190)) / 110) ** 2 : 0; };
+    const race = new Race({ length: 600, half: 7, wall: 7.5, curvature: bend, pads: [{ kind: 'boost', s: 60, d: 2, length: 14, half: 2.4 }] }, 4, [true]);
+    race.start();
+    const events = run(race, TUNING.countdown + 90);
+    assert.notEqual(race.cars[0].finished, null, 'no llegó');
+    assert.equal(events.filter((e) => e.type === 'wall').length, 0);
+    assert.ok(events.filter((e) => e.type === 'pad').length >= 3, 'no fue a buscar el empuje');
+  });
+
   it('la rampa tira el auto al aire, vuelve a caer y caer en el asfalto da nitro', () => {
     const race = new Race({ length: 100000, half: 7, wall: 8.6, curvature: () => 0, pads: [{ kind: 'ramp', s: 600, d: 0, length: 6, half: 3 }] }, 1, [false]);
     race.start();

@@ -8,9 +8,10 @@ export function padsOf(theme: Theme, track: Track): Pad[] {
   return (theme.pads ?? []).map((pad) => ({
     kind: pad.kind,
     s: pad.at * track.length,
-    d: pad.lane * (track.half - 2.8),
+    d: pad.kind === 'boost' ? pad.lane * (track.half - 2.8) : 0,
     length: pad.kind === 'boost' ? 14 : 6,
-    half: pad.kind === 'boost' ? 2 : 2.8,
+    // La rampa cruza la pista entera: salta todo el que llega con velocidad. El empuje es de un carril y hay que ir a buscarlo.
+    half: pad.kind === 'boost' ? 2.4 : track.half - 0.8,
   }));
 }
 
