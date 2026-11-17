@@ -24,9 +24,9 @@ export const cinta: Theme = {
   half: 7,
   wall: 7.1,
   start: 900,
-  // Una rampa en cada recta, con su empuje, y un empuje más en el medio de la ese.
+  // En cada recta un empuje y enseguida la rampa, para llegar lanzado; y un empuje más en el medio de la ese.
   pads: [
-    { kind: 'ramp', at: 0.025, lane: 0 }, { kind: 'boost', at: 0.065, lane: -0.6 }, { kind: 'boost', at: 0.33, lane: 0 },
+    { kind: 'boost', at: 0.012, lane: -0.5 }, { kind: 'ramp', at: 0.05, lane: 0 }, { kind: 'boost', at: 0.33, lane: 0 },
     { kind: 'boost', at: 0.59, lane: 0.6 }, { kind: 'ramp', at: 0.63, lane: 0 },
   ],
   grade: { bloom: [0.2, 0.6, 1.1], vignette: 0.55, speed: 0.11 },

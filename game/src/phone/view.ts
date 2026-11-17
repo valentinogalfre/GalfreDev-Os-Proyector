@@ -191,6 +191,8 @@ export async function mountView(canvas: HTMLCanvasElement, mapCanvas: HTMLCanvas
     camera.lookAt(ahead.position.x, ahead.position.y + 0.7, ahead.position.z);
     camera.fov = fov;
     }
+    // El rival que quedó pegado a la cámara taparía la pantalla entera: no se dibuja hasta que se aleja.
+    cars.forEach((car, i) => { car.visible = showing || i === mine || car.position.distanceToSquared(camera.position) > 12; });
     camera.updateProjectionMatrix();
     for (const sky of skies) sky.position.copy(camera.position);
     camera.updateMatrixWorld();

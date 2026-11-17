@@ -40,9 +40,9 @@ export function buildPads(track: Track, pads: Pad[]): { group: THREE.Group; tick
     return [probe.position.x, probe.position.y + lift, probe.position.z];
   };
   const boost: number[] = [], boostUv: number[] = [], ramp: number[] = [], rampUv: number[] = [];
-  const quad = (into: number[], uvs: number[], a: number[], b: number[], c: number[], d: number[], v0: number, v1: number) => {
+  const quad = (into: number[], uvs: number[], a: number[], b: number[], c: number[], d: number[], v0: number, v1: number, u = 1) => {
     into.push(...a, ...b, ...c, ...b, ...d, ...c);
-    uvs.push(0, v0, 1, v0, 0, v1, 1, v0, 1, v1, 0, v1);
+    uvs.push(0, v0, u, v0, 0, v1, u, v0, u, v1, 0, v1);
   };
   for (const pad of pads) {
     const rows = pad.kind === 'boost' ? 7 : 3;
@@ -54,7 +54,8 @@ export function buildPads(track: Track, pads: Pad[]): { group: THREE.Group; tick
       }
       const h0 = (k / rows) * LIP + 0.03, h1 = ((k + 1) / rows) * LIP + 0.03;
       const l0 = at(s0, pad.d + pad.half, h0), r0 = at(s0, pad.d - pad.half, h0), l1 = at(s1, pad.d + pad.half, h1), r1 = at(s1, pad.d - pad.half, h1);
-      quad(ramp, rampUv, l0, r0, l1, r1, k, k + 1);
+      // Las franjas se repiten cada dos metros, sea cual sea el ancho de la pista.
+      quad(ramp, rampUv, l0, r0, l1, r1, k, k + 1, pad.half);
       // Los costados bajan hasta el asfalto, y atrás se cierra con una pared.
       quad(ramp, rampUv, at(s0, pad.d + pad.half, 0), l0, at(s1, pad.d + pad.half, 0), l1, 0.4, 0.5);
       quad(ramp, rampUv, r0, at(s0, pad.d - pad.half, 0), r1, at(s1, pad.d - pad.half, 0), 0.4, 0.5);
@@ -81,13 +82,13 @@ export function buildPads(track: Track, pads: Pad[]): { group: THREE.Group; tick
     g.stroke();
   });
   if (boost.length) mesh(boost, boostUv, new THREE.MeshBasicMaterial({ map: arrows, transparent: true, depthWrite: false, toneMapped: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
-  // La rampa lleva las franjas de obra: hueso y carbón.
+  // La rampa lleva las franjas de obra, ámbar y carbón: se distingue del asfalto en las tres pistas.
   const hazard = paint((g) => {
-    g.fillStyle = '#f1ede6';
+    g.fillStyle = '#e4a32b';
     g.fillRect(0, 0, 64, 64);
     g.fillStyle = '#161616';
     for (const x of [-64, -32, 0, 32, 64]) { g.beginPath(); g.moveTo(x, 64); g.lineTo(x + 16, 64); g.lineTo(x + 80, 0); g.lineTo(x + 64, 0); g.fill(); }
   });
-  if (ramp.length) mesh(ramp, rampUv, new THREE.MeshBasicMaterial({ map: hazard, side: THREE.DoubleSide }));
+  if (ramp.length) mesh(ramp, rampUv, new THREE.MeshBasicMaterial({ map: hazard, side: THREE.DoubleSide, toneMapped: false }));
   return { group, tick: (dt) => { arrows.offset.y = (arrows.offset.y - dt * 1.8) % 1; } };
 }
