@@ -153,4 +153,33 @@ describe('la carrera', () => {
     assert.ok(sideways.speed > 45 && sideways.speed < TUNING.topSpeed);
     assert.ok(sideways.nitro > 0.6);
   });
+
+  it('la plataforma de empuje da velocidad de más por un rato, y solo al que la pisa', () => {
+    const lane = (d: number) => {
+      const race = new Race({ length: 100000, half: 7, wall: 8.6, curvature: () => 0, pads: [{ kind: 'boost', s: 600, d: 0, length: 12, half: 2 }] }, 1, [false]);
+      race.cars[0].d = d;
+      race.start();
+      const events = run(race, TUNING.countdown + 14);
+      return { top: race.cars[0].v, pads: events.filter((e) => e.type === 'pad').length };
+    };
+    const over = lane(0), beside = lane(5);
+    assert.equal(over.pads, 1);
+    assert.equal(beside.pads, 0);
+    assert.ok(over.top > beside.top + 3, `${over.top} contra ${beside.top}`);
+  });
+
+  it('la rampa tira el auto al aire, vuelve a caer y caer en el asfalto da nitro', () => {
+    const race = new Race({ length: 100000, half: 7, wall: 8.6, curvature: () => 0, pads: [{ kind: 'ramp', s: 600, d: 0, length: 6, half: 3 }] }, 1, [false]);
+    race.start();
+    let high = 0;
+    const events = [];
+    for (let t = 0; t < TUNING.countdown + 20; t += 1 / 60) {
+      events.push(...race.advance(1 / 60));
+      high = Math.max(high, race.cars[0].air);
+    }
+    assert.equal(events.filter((e) => e.type === 'jump').length, 1);
+    assert.equal(events.filter((e) => e.type === 'land').length, 1);
+    assert.ok(high > 1 && high < 4, `subió ${high} m`);
+    assert.equal(race.cars[0].air, 0);
+  });
 });
