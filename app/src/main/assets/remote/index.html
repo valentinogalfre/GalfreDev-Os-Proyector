@@ -1090,8 +1090,8 @@ function dictate() {
   micHelp('Se manda solo cuando hacés una pausa, o tocando acá arriba. ' + (IOS
     ? 'Si el teclado no muestra el micrófono, activalo en Ajustes › General › Teclado › Activar Dictado.'
     : 'Si el teclado no muestra el micrófono, activá el dictado por voz en los ajustes del teclado.'), '', true);
+  // Lo que ya estaba escrito no cuenta como dictado: el reloj arranca con lo primero que se oye.
   field.focus();
-  heard();
 }
 
 function listen(attempt) {
