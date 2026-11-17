@@ -44,6 +44,8 @@ export interface Theme {
   /** De noche los autos alumbran el asfalto. */
   night?: boolean;
   spray?: Spray;
+  /** Plataformas de empuje y rampas, en fracciones de la vuelta: dónde empiezan (0 a 1) y en qué carril (-1 a 1). */
+  pads?: { kind: 'boost' | 'ramp'; at: number; lane: number }[];
   /** Color de la estela que deja el que va primero. Es la cinta: si está, el tablero no la repite. */
   trail?: number;
   build(stage: Stage): World;
