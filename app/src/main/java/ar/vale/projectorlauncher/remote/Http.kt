@@ -9,6 +9,16 @@ import java.net.URLDecoder
 
 class HttpError(val status: Int, message: String) : Exception(message)
 
+/**
+ * Una coordenada del puntero, de cero a uno: lo que cae afuera se trae al borde. «NaN» pasa por
+ * número y no lo es, y a quien dibuja el puntero le rompe la cuenta: se rechaza.
+ */
+internal fun JSONObject.unit(name: String): Float {
+    val value = getDouble(name)
+    if (value.isNaN()) throw HttpError(400, "invalid")
+    return value.toFloat().coerceIn(0f, 1f)
+}
+
 class HttpRequest(
     val method: String,
     val path: String,
@@ -116,8 +126,20 @@ class HttpResponse(
     private val bytes: ByteArray? = null,
     private val stream: InputStream? = null,
     private val length: Long = bytes?.size?.toLong() ?: -1L,
-    private val cacheSeconds: Int = 0
+    private val cacheSeconds: Int = 0,
+    /** Qué puede cargar la página. La del juego trae sus propios archivos de código; la otra no. */
+    private val policy: String = PAGE_POLICY,
+    /** El único otro origen al que la página puede hablarle, si hay alguno. */
+    private val reach: String? = null
 ) {
+    /** La misma respuesta, pero dejando que la página consulte también ese origen. */
+    fun reaching(origin: String) = HttpResponse(status, type, bytes, stream, length, cacheSeconds, policy, origin)
+
+    /** La política con ese origen sumado a los que la página ya podía consultar, sin repetir la directiva. */
+    private fun allowing(origin: String): String =
+        if ("connect-src " in policy) policy.replaceFirst("connect-src ", "connect-src $origin ")
+        else policy.replaceFirst("default-src 'self';", "default-src 'self'; connect-src 'self' $origin;")
+
     fun write(out: OutputStream) {
         val head = StringBuilder("HTTP/1.1 $status ${reason(status)}\r\n")
         head.append("Content-Type: $type\r\n")
@@ -127,7 +149,7 @@ class HttpResponse(
         head.append("X-Content-Type-Options: nosniff\r\n")
         head.append("X-Frame-Options: DENY\r\n")
         head.append("Referrer-Policy: no-referrer\r\n")
-        head.append("Content-Security-Policy: default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'\r\n")
+        head.append("Content-Security-Policy: ").append(reach?.let(::allowing) ?: policy).append("\r\n")
         head.append("\r\n")
         out.write(head.toString().toByteArray(Charsets.ISO_8859_1))
         if (bytes != null) out.write(bytes)
@@ -136,6 +158,19 @@ class HttpResponse(
     }
 
     companion object {
+        const val PAGE_POLICY =
+            "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+
+        /**
+         * La carrera: código solo de este mismo servidor, y la conexión del volante. `ws:` va
+         * explícito porque no todos los navegadores lo cuentan dentro de 'self'. Los modelos y sus
+         * texturas se arman en memoria, de ahí `blob:`.
+         */
+        /** El volante prueba si le responde su dirección segura sin advertencias ([PublicTls]): por eso ese dominio. */
+        const val GAME_POLICY =
+            "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; " +
+                "connect-src 'self' ws: wss: data: blob: https://*.local-ip.sh:*; worker-src 'self' blob:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+
         fun json(status: Int, value: JSONObject) =
             HttpResponse(status, "application/json; charset=utf-8", value.toString().toByteArray(Charsets.UTF_8))
 
@@ -157,6 +192,7 @@ class HttpResponse(
             423 -> "Locked"
             429 -> "Too Many Requests"
             431 -> "Request Header Fields Too Large"
+            503 -> "Service Unavailable"
             507 -> "Insufficient Storage"
             else -> "Error"
         }

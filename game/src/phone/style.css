@@ -1,0 +1,117 @@
+@font-face { font-family: 'Archivo'; font-weight: 800; src: url('../../../app/src/main/res/font/archivo_extrabold.ttf'); }
+@font-face { font-family: 'Instrument Sans'; font-weight: 500; src: url('../../../app/src/main/res/font/instrument_sans_medium.ttf'); }
+@font-face { font-family: 'Geist Mono'; font-weight: 500; src: url('../../../app/src/main/res/font/geist_mono_medium.ttf'); }
+
+:root { --carbon: #111111; --hueso: #f1ede6; --cinta: #e4a32b; --linea: rgba(241, 237, 230, .16); --tenue: rgba(241, 237, 230, .6); }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; margin: 0; background: var(--carbon); color: var(--hueso); overflow: hidden; overscroll-behavior: none; }
+body { font: 500 16px/1.4 'Instrument Sans', system-ui, sans-serif; -webkit-user-select: none; user-select: none; touch-action: none; }
+#app { height: 100%; display: flex; flex-direction: column; padding: max(18px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left)); }
+
+.tag { font: 500 11px/1 'Geist Mono', ui-monospace, monospace; letter-spacing: .14em; text-transform: uppercase; color: var(--tenue); }
+h1 { font: 800 34px/1.05 'Archivo', system-ui, sans-serif; letter-spacing: -.01em; margin: 10px 0 0; }
+p { margin: 8px 0 0; color: var(--tenue); }
+header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-bottom: 14px; border-bottom: 1px solid var(--linea); }
+header img { height: 18px; display: block; }
+header .tag i { display: inline-block; width: 7px; height: 7px; margin-right: 7px; border-radius: 50%; background: var(--tenue); }
+header .tag.up i { background: var(--hueso); }
+
+button, input { font: inherit; color: inherit; border: 0; border-radius: 0; outline: 0; }
+input { width: 100%; height: 56px; padding: 0 16px; background: transparent; border: 1px solid var(--linea); font-size: 20px; -webkit-user-select: text; user-select: text; }
+input:focus { border-color: var(--hueso); }
+.go { width: 100%; height: 60px; background: var(--hueso); color: var(--carbon); font: 800 18px/1 'Archivo', system-ui, sans-serif; }
+/* La cinta: una sola por pantalla, para la acción que importa. */
+.go.cinta { background: var(--cinta); }
+.go:disabled { opacity: .35; }
+.quiet { height: 48px; padding: 0 16px; background: transparent; border: 1px solid var(--linea); font-size: 15px; }
+.quiet.on { background: var(--hueso); color: var(--carbon); border-color: var(--hueso); }
+.row { display: flex; gap: 10px; }
+.row > * { flex: 1; }
+.fill { flex: 1; min-height: 0; }
+.stack { display: flex; flex-direction: column; gap: 14px; }
+.scroll { overflow-y: auto; touch-action: pan-y; scrollbar-width: none; }
+.scroll::-webkit-scrollbar { display: none; }
+
+/* La sala: arriba el auto propio dando vueltas, con su pintura y su modelo; abajo la lista y lo que se elige. */
+.hall { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.hero { position: relative; flex: none; height: 34vh; min-height: 190px; margin: 0 calc(-1 * max(20px, env(safe-area-inset-left))); background: #0b0b0b; overflow: hidden; }
+.hero::after { content: ''; position: absolute; top: 0; right: 0; bottom: 0; left: 0; pointer-events: none; background: linear-gradient(rgba(17, 17, 17, .7), rgba(17, 17, 17, 0) 34%, rgba(17, 17, 17, 0) 52%, rgba(17, 17, 17, .88)); }
+.hero .wait { position: absolute; top: 50%; left: 0; right: 0; text-align: center; }
+.hero #view { z-index: 1; }
+.hero::after { z-index: 1; }
+.who { position: absolute; z-index: 2; top: 14px; left: 20px; right: 20px; }
+.who b { display: block; margin-top: 6px; font: 800 30px/1 'Archivo', system-ui, sans-serif; }
+.garage { position: absolute; z-index: 2; left: 12px; right: 12px; bottom: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.garage .pick { gap: 4px; }
+.garage .pick button { width: 44px; height: 44px; background: rgba(17, 17, 17, .5); }
+.garage .pick b { font-size: 17px; margin-top: 4px; }
+.garage .pick i { display: block; width: 44px; height: 14px; margin: 6px auto 0; border: 1px solid var(--hueso); }
+.side { flex: 1; min-height: 0; padding-bottom: 10px; }
+.foot { flex: none; padding-top: 12px; border-top: 1px solid var(--linea); }
+.foot p { margin: 0; text-align: center; }
+@media (orientation: landscape) {
+  .hall { flex-direction: row; gap: 20px; }
+  .hero { width: 48%; height: auto; margin: 0 0 0 calc(-1 * max(20px, env(safe-area-inset-left))); }
+}
+ol { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--linea); }
+ol li { display: flex; align-items: center; gap: 12px; height: 44px; border-bottom: 1px solid var(--linea); }
+ol li i { width: 12px; height: 12px; flex: none; }
+ol li span:last-child { margin-left: auto; }
+ol li.off { opacity: .4; }
+.title { margin: 0; padding: 14px 0 8px; }
+.pick { display: flex; align-items: center; gap: 10px; }
+.pick button { width: 56px; flex: none; font-size: 22px; }
+.pick div { flex: 1; text-align: center; }
+.pick b { display: block; font: 800 22px/1.2 'Archivo', system-ui, sans-serif; }
+
+/* La carrera. Siempre acostada: si el celular está parado, se gira la pantalla entera. */
+#drive { position: fixed; top: 0; right: 0; bottom: 0; left: 0; display: none; background: var(--carbon); --sl: max(14px, env(safe-area-inset-left)); --sr: max(14px, env(safe-area-inset-right)); --sb: max(12px, env(safe-area-inset-bottom)); --st: max(10px, env(safe-area-inset-top)); }
+body.driving #drive { display: block; }
+body.driving #app { display: none; }
+@media (orientation: portrait) {
+  body.driving #drive { width: 100vh; height: 100vw; right: auto; bottom: auto; top: 0; left: 100vw; transform-origin: top left; transform: rotate(90deg); }
+}
+#view { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: block; }
+.hud { position: absolute; top: 0; right: 0; bottom: 0; left: 0; pointer-events: none; }
+/* Un velo arriba y abajo: los números se leen sobre cualquier pista. */
+.hud::before { content: ''; position: absolute; top: 0; right: 0; bottom: 0; left: 0; background: linear-gradient(rgba(17, 17, 17, .55), rgba(17, 17, 17, 0) 26%, rgba(17, 17, 17, 0) 62%, rgba(17, 17, 17, .6)); }
+.pos { position: absolute; top: var(--st); left: var(--sl); display: flex; align-items: flex-end; gap: 12px; }
+.place { font: 800 58px/0.86 'Archivo', system-ui, sans-serif; }
+.place sup { font-size: 19px; vertical-align: top; margin-left: 3px; color: var(--tenue); }
+.pos .lap { padding-bottom: 5px; color: var(--hueso); }
+.top { position: absolute; top: var(--st); left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.top img { height: 12px; opacity: .85; }
+.note { visibility: hidden; padding: 7px 12px; background: var(--cinta); color: var(--carbon); font: 800 14px/1 'Archivo', system-ui, sans-serif; text-transform: uppercase; letter-spacing: .04em; }
+.note.on { visibility: visible; }
+.note.good { background: var(--hueso); }
+.map { position: absolute; top: var(--st); right: var(--sr); width: 24vh; height: 24vh; }
+@media (orientation: portrait) { .map { width: 24vw; height: 24vw; } }
+.count { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -92%); font: 800 120px/1 'Archivo', system-ui, sans-serif; text-shadow: 0 4px 30px rgba(17, 17, 17, .7); }
+.count.go { color: var(--cinta); }
+.count.small { font-size: 22px; letter-spacing: .08em; text-transform: uppercase; }
+.speed { position: absolute; bottom: var(--sb); left: 50%; transform: translateX(-50%); display: grid; grid-template-columns: auto auto; align-items: baseline; justify-content: center; column-gap: 6px; }
+.speed b { font: 800 40px/1 'Archivo', system-ui, sans-serif; font-variant-numeric: tabular-nums; min-width: 2.2ch; text-align: right; }
+.tank { grid-column: 1 / 3; width: 150px; height: 6px; margin-top: 6px; background: rgba(241, 237, 230, .22); }
+.tank u { display: block; width: 0; height: 100%; background: var(--cinta); }
+
+/* La mitad izquierda es de la palanca; en inclinación, un toque ahí centra el volante. */
+.zone { position: absolute; top: 22%; bottom: 0; left: 0; width: 46%; touch-action: none; }
+.rail { position: absolute; left: calc(var(--sl) + 92px); top: calc(100% - var(--sb) - 44px); width: 168px; height: 64px; margin: -32px 0 0 -84px; border: 1px solid rgba(241, 237, 230, .45); border-radius: 32px; background: rgba(17, 17, 17, .38); opacity: .8; }
+.rail i { position: absolute; top: 5px; left: 57px; width: 52px; height: 52px; border-radius: 50%; background: var(--hueso); box-shadow: 0 2px 14px rgba(17, 17, 17, .5); }
+.rail.held { opacity: 1; border-color: var(--hueso); }
+.zone .hint { position: absolute; left: var(--sl); bottom: calc(var(--sb) + 86px); color: var(--hueso); opacity: .7; }
+.rail.held ~ .hint { visibility: hidden; }
+#drive.tilt .rail { display: none; }
+#drive.tilt .zone .hint { bottom: var(--sb); }
+
+/* La mano derecha: el nitro, grande y al alcance del pulgar; derrape y freno alrededor. */
+.keys { position: absolute; right: var(--sr); bottom: var(--sb); width: 236px; height: 190px; }
+.pad { position: absolute; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(241, 237, 230, .5); border-radius: 50%; background: rgba(17, 17, 17, .42); overflow: hidden; touch-action: none; }
+.pad b { position: relative; z-index: 1; font: 800 13px/1 'Archivo', system-ui, sans-serif; text-transform: uppercase; letter-spacing: .05em; }
+.pad.nitro { right: 0; bottom: 0; width: 112px; height: 112px; }
+.pad.nitro b { font-size: 17px; }
+.pad.nitro.ready { border-color: var(--cinta); box-shadow: inset 0 0 0 2px var(--cinta); }
+.pad.drift { right: 124px; bottom: 6px; width: 86px; height: 86px; }
+.pad.brake { right: 40px; bottom: 122px; width: 68px; height: 68px; }
+.pad.held { background: var(--hueso); color: var(--carbon); border-color: var(--hueso); }
+.pad.nitro.held { background: var(--cinta); border-color: var(--cinta); }

@@ -3,18 +3,18 @@ package ar.vale.projectorlauncher.remote
 import android.app.Instrumentation
 import android.content.Context
 import android.content.Intent
-import android.graphics.RectF
 import android.media.AudioManager
 import android.net.Uri
-import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.view.KeyEvent
+import ar.vale.projectorlauncher.carrera.CarreraFiles
 import ar.vale.projectorlauncher.ApkInstaller
 import ar.vale.projectorlauncher.AppRepository
 import ar.vale.projectorlauncher.FileKind
 import ar.vale.projectorlauncher.LauncherActivity
 import ar.vale.projectorlauncher.MediaTypes
+import ar.vale.projectorlauncher.Prefs
 import ar.vale.projectorlauncher.R
 import ar.vale.projectorlauncher.apps.Streaming
 import ar.vale.projectorlauncher.apps.StreamingLauncher
@@ -23,6 +23,9 @@ import ar.vale.projectorlauncher.claude.ClaudeRuntime
 import ar.vale.projectorlauncher.claude.ClaudeSettings
 import ar.vale.projectorlauncher.claude.KeyVault
 import ar.vale.projectorlauncher.device.BlackoutActivity
+import ar.vale.projectorlauncher.device.Casting
+import ar.vale.projectorlauncher.device.DeviceReport
+import ar.vale.projectorlauncher.juntada.JuntadaHub
 import ar.vale.projectorlauncher.media.CineActivity
 import ar.vale.projectorlauncher.media.Storage
 import ar.vale.projectorlauncher.ui.GdActivity
@@ -34,6 +37,7 @@ import org.json.JSONObject
 import java.io.File
 import java.io.IOException
 import java.io.InputStream
+import java.util.Locale
 
 /** Conecta los pedidos del celular con el equipo. */
 class AndroidRemote(private val context: Context) : RemoteDevice {
@@ -41,17 +45,11 @@ class AndroidRemote(private val context: Context) : RemoteDevice {
     private val main = Handler(Looper.getMainLooper())
     private val audio = context.getSystemService(AudioManager::class.java)
     private val instrumentation = Instrumentation()
-    private var pointerX = 0f
-    private var pointerY = 0f
-    private val hidePointer = Runnable {
-        GdActivity.current?.tape?.unpin()
-        RemoteAccessibility.instance?.hideCursor()
-    }
 
     override fun state(): JSONObject {
         val size = Screen.realSize(context)
         return JSONObject()
-            .put("name", Build.MODEL)
+            .put("name", DeviceName.of(context))
             .put("resolution", "${size.x} × ${size.y}")
             .put("full_control", RemoteAccessibility.instance != null)
             .put("claude_key", KeyVault.has(context))
@@ -153,6 +151,8 @@ class AndroidRemote(private val context: Context) : RemoteDevice {
      */
     private fun announce(file: File) {
         val activity = GdActivity.current ?: return
+        // Con alguien presentando, lo que llega se guarda en Cine sin aparecer encima de su pantalla.
+        if (JuntadaHub.get(context).staged) return
         val kind = MediaTypes.kindOf(file)
         val options = ArrayList<Sheet.Option>()
         when (kind) {
@@ -181,14 +181,20 @@ class AndroidRemote(private val context: Context) : RemoteDevice {
         // Con otra app delante, lo más probable es que el pedido sea sobre esa app: pausá, buscá,
         // poné el siguiente. Traer nuestra pantalla al frente se la sacaría de las manos a Claude,
         // así que trabaja ahí mismo y lo cuenta en un renglón encima.
-        if (GdActivity.current == null && RemoteAccessibility.instance != null) {
+        // El celular consulta el estado apenas recibe el OK, y el pedido recién arranca en el hilo
+        // principal o cuando abre la pantalla: hasta entonces el estado tiene que decir que ya está en curso.
+        if (KeyVault.has(context)) ClaudeRuntime.announce(text)
+        val result = if (GdActivity.current == null && RemoteAccessibility.instance != null) {
             main.post {
                 val asked = ClaudeRuntime.ask(context, text)
                 if (!asked) runCatching { context.startActivity(screen.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
             }
-            return RemoteDevice.Result.OK
+            RemoteDevice.Result.OK
+        } else {
+            start(screen)
         }
-        return start(screen)
+        if (result != RemoteDevice.Result.OK) main.post { ClaudeRuntime.unannounce() }
+        return result
     }
 
     override fun claudeState(): JSONObject {
@@ -197,40 +203,21 @@ class AndroidRemote(private val context: Context) : RemoteDevice {
             .put("busy", state.busy)
             .put("question", state.question)
             .put("status", ClaudeSettings.status(context, state) ?: JSONObject.NULL)
+            // Cómo terminó: el celular lee en voz alta una respuesta, y no un error.
+            .put("end", state.end?.name?.lowercase(Locale.ROOT) ?: JSONObject.NULL)
     }
 
     override fun stopClaude() {
         main.post { ClaudeRuntime.cancel() }
     }
 
-    /**
-     * En nuestras pantallas el puntero es la cinta: un bloque chico que sigue al dedo, y sigue
-     * habiendo una sola. Sobre otra app la cinta no existe, y lo dibuja el control total.
-     */
-    override fun pointer(x: Float, y: Float, visible: Boolean) {
-        main.post {
-            main.removeCallbacks(hidePointer)
-            if (!visible) {
-                hidePointer.run()
-                return@post
-            }
-            val activity = GdActivity.current
-            if (activity != null) pin(activity, x, y) else RemoteAccessibility.instance?.showCursor(x, y)
-            main.postDelayed(hidePointer, POINTER_TIMEOUT_MS)
-        }
+    override fun newClaude() {
+        main.post { ClaudeRuntime.reset() }
     }
 
-    private fun pin(activity: GdActivity, x: Float, y: Float) {
-        pointerX = x
-        pointerY = y
-        val half = activity.resources.displayMetrics.density * POINTER_DP / 2
-        val tape = activity.tape
-        tape.pin(knockout = false) {
-            val cx = pointerX * tape.width
-            val cy = pointerY * tape.height
-            RectF(cx - half, cy - half, cx + half, cy + half)
-        }
-    }
+    override fun report(): JSONObject = DeviceReport.json(context)
+
+    override fun pointer(x: Float, y: Float, visible: Boolean) = WallPointer.move(x, y, visible)
 
     override fun tap(x: Float, y: Float): RemoteDevice.Result = touching { it.tap(x, y) }
 
@@ -248,9 +235,17 @@ class AndroidRemote(private val context: Context) : RemoteDevice {
         AppRepository.names(context)
             .filter { (_, pkg) -> Streaming.byPackage(pkg) == null }
             .forEach { (name, pkg) -> others.put(JSONObject().put("name", name).put("package", pkg)) }
+        // Si el equipo recibe la pantalla de un celular, se dice con qué: el celular ofrece abrirlo.
+        val receiver = Casting.best(context)
         return JSONObject()
-            .put("services", Streaming.forPhone { StreamingLauncher.isInstalled(context, it) })
+            .put("services", Streaming.forPhone({ Prefs(context).serviceApp(it) }) { StreamingLauncher.isInstalled(context, it) })
             .put("apps", others)
+            .put("cast", receiver?.let { JSONObject().put("name", it.name) } ?: JSONObject.NULL)
+    }
+
+    override fun cast(): RemoteDevice.Result {
+        val receiver = Casting.best(context) ?: return RemoteDevice.Result.NOT_INSTALLED
+        return start(receiver.intent)
     }
 
     /** Un servicio que no está se busca en el proyector: la instalación la confirma una persona. */
@@ -263,8 +258,6 @@ class AndroidRemote(private val context: Context) : RemoteDevice {
 
     private companion object {
         const val SPACE_MARGIN = 150L * 1024 * 1024
-        const val POINTER_DP = 22
-        const val POINTER_TIMEOUT_MS = 2500L
 
         val NAVIGATION = mapOf(
             "up" to KeyEvent.KEYCODE_DPAD_UP,
@@ -295,7 +288,14 @@ class RemotePage(private val context: Context) : StaticFiles {
         "/fonts/sans.ttf" -> font(R.font.instrument_sans)
         "/fonts/sans-medium.ttf" -> font(R.font.instrument_sans_medium)
         "/fonts/mono.ttf" -> font(R.font.geist_mono_medium)
-        else -> null
+        else -> game(path)
+    }
+
+    /** La carrera: el volante que abre cada celular y, en una notebook, también la pared. */
+    private fun game(path: String): HttpResponse? {
+        if (!path.startsWith(GAME)) return null
+        val file = CarreraFiles(context).open(path.substring(GAME.length)) ?: return null
+        return HttpResponse(200, file.type, bytes = file.bytes, cacheSeconds = if (file.fixed) CACHE_SECONDS else 0, policy = HttpResponse.GAME_POLICY)
     }
 
     private fun asset(name: String, type: String, cacheSeconds: Int) =
@@ -309,5 +309,6 @@ class RemotePage(private val context: Context) : StaticFiles {
 
     private companion object {
         const val CACHE_SECONDS = 86400
+        const val GAME = "/carrera/"
     }
 }

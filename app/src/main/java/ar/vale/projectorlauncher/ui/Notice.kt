@@ -24,7 +24,8 @@ object Notice {
 
     private const val SHOW_MS = 3600L
 
-    fun show(activity: GdActivity, text: CharSequence, kind: Kind = Kind.INFO) {
+    /** [lift]: píxeles para subir el aviso del borde de abajo, p. ej. para no tapar una barra. */
+    fun show(activity: GdActivity, text: CharSequence, kind: Kind = Kind.INFO, lift: Int = 0) {
         val root = activity.rootFrame
         root.findViewWithTag<View>(TAG)?.let { root.removeView(it) }
         val view = LayoutInflater.from(activity).inflate(R.layout.view_notice, root, false)
@@ -38,7 +39,7 @@ object Notice {
             ViewGroup.LayoutParams.WRAP_CONTENT,
             ViewGroup.LayoutParams.WRAP_CONTENT,
             Gravity.BOTTOM or Gravity.START
-        )
+        ).apply { bottomMargin = lift }
         root.addView(view, root.indexOfChild(activity.tape), lp)
         view.alpha = 0f
         view.translationY = 14 * activity.resources.displayMetrics.density

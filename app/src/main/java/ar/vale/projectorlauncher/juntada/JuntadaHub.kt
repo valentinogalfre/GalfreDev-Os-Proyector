@@ -39,6 +39,12 @@ object JuntadaHub {
         val stored = runCatching { JSONObject(file.readText()) }.getOrNull()
         val created = Juntada(stored)
         saved = stored?.toString()
+        // Lo que quedó en el disco de una presentación que ya no está, o de una subida a medias, se va.
+        val store = files(app)
+        created.dropMissingDemoFiles(store::exists)
+        store.sweep(created.demoIds())
+        created.stage = AndroidStage(app, store)
+        created.onDemosGone = { ids -> ids.forEach(store::drop) }
         created.onReset = { AccessHub.get(app).clearGuests() }
         created.onChange = {
             save(created, file)
@@ -47,6 +53,17 @@ object JuntadaHub {
         instance = created
         return created
     }
+
+    private var store: DemoFiles? = null
+
+    /**
+     * Los archivos de la fila de presentaciones: en la carpeta de la app, que no pide ningún
+     * permiso. Es uno solo para todos: sabe qué archivo está entrando, y lo corta si esa
+     * presentación se va de la fila.
+     */
+    @Synchronized
+    fun files(context: Context): DemoFiles = store
+        ?: DemoFiles(File(context.getExternalFilesDir(null) ?: context.filesDir, "presentaciones")).also { store = it }
 
     /** La pantalla que quiere enterarse de los cambios. Se avisa en el hilo principal. */
     fun watch(value: Watcher?) {
@@ -68,15 +85,19 @@ object JuntadaHub {
     /** Claude si hay clave y responde; si no, las preguntas propias. La trivia nunca queda sin arrancar. */
     fun source(context: Context): TriviaSource {
         val app = context.applicationContext
-        return TriviaSource { topic, count ->
-            val key = KeyVault.load(app)
-            val fromClaude = key?.let {
-                runCatching {
-                    val model = Models.of(Prefs(app).claudeModel)
-                    TriviaMaker.make(HttpTransport(it, endpoint(app)), model, topic, count, random)
-                }.getOrNull()
+        return object : TriviaSource {
+            override fun make(topic: String, count: Int): Juntada.Quiz = make(topic, count, Juntada.Level.NORMAL)
+
+            override fun make(topic: String, count: Int, level: Juntada.Level): Juntada.Quiz {
+                val key = KeyVault.load(app)
+                val fromClaude = key?.let {
+                    runCatching {
+                        val model = Models.of(Prefs(app).claudeModel)
+                        TriviaMaker.make(HttpTransport(it, endpoint(app)), model, topic, count, random, level)
+                    }.getOrNull()
+                }
+                return fromClaude ?: TriviaBank.pick(count, random)
             }
-            fromClaude ?: TriviaBank.pick(count, random)
         }
     }
 

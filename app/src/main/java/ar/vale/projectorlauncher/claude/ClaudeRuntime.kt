@@ -69,6 +69,20 @@ object ClaudeRuntime {
         changed()
     }
 
+    /**
+     * Desde cualquier hilo: el equipo ya aceptó un pedido, aunque el hilo principal o la pantalla
+     * de Claude todavía no hayan arrancado. Sin esto, el celular que consulta el estado justo
+     * después de preguntar recibe el intercambio anterior, ya terminado, y deja de consultar.
+     */
+    fun announce(text: String) {
+        snapshot = Snapshot(text, "", null, true, null, null)
+    }
+
+    /** Solo en el hilo principal: el pedido anunciado no arrancó, y el estado vuelve a ser el de verdad. */
+    fun unannounce() {
+        snapshot = Snapshot(question, answer, activity, busy, end, error)
+    }
+
     fun observe(value: Observer?) {
         observer = value?.let { WeakReference(it) }
     }
@@ -85,7 +99,7 @@ object ClaudeRuntime {
         if (busy) return true
         val app = context.applicationContext
         appContext = app
-        val key = KeyVault.load(app) ?: return false
+        val key = KeyVault.load(app) ?: return false.also { unannounce() }
         val prefs = Prefs(app)
         val model = prefs.claudeModel
         val search = prefs.claudeWebSearch

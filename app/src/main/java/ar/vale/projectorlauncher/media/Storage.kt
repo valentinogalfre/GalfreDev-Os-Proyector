@@ -76,6 +76,25 @@ object Storage {
         return roots
     }
 
+    /** Título y dato de una carpeta. */
+    data class Place(val title: String, val where: String?)
+
+    /**
+     * La raíz se titula con su nombre visible y las carpetas de adentro dicen dónde están con ese mismo
+     * nombre: la ruta del sistema (`/storage/emulated/0`) no le dice nada a quien mira el proyector.
+     */
+    fun place(target: File, roots: List<FileItem>): Place {
+        for (root in roots) {
+            if (target == root.file) return Place(root.name, null)
+            val prefix = root.file.path.trimEnd('/') + "/"
+            val parent = target.parent ?: continue
+            if (!target.path.startsWith(prefix)) continue
+            val inside = parent.removePrefix(root.file.path.trimEnd('/')).trim('/')
+            return Place(target.name, if (inside.isEmpty()) root.name else "${root.name}/$inside")
+        }
+        return Place(target.name, target.parent)
+    }
+
     fun list(dir: File, apkOnly: Boolean): List<FileItem> {
         val items = ArrayList<FileItem>()
         dir.listFiles()?.forEach { file ->

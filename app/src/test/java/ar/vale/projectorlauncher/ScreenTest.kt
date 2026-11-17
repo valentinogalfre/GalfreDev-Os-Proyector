@@ -289,4 +289,28 @@ class ScreenTest {
         busy.tap(1)
         assertTrue("tope de espera", screen.slept in 500..3000)
     }
+
+    @Test
+    fun `contrato - hecho el gesto avisa que mira la pantalla antes de esperar a que se asiente`() {
+        val screen = FakeScreen(root(search))
+        val seen = ArrayList<String>()
+        val tools = ScreenTools(screen, onLooking = { seen.add("${screen.did} tras ${screen.slept} ms") })
+        tools.see()
+        assertTrue("ver_pantalla ya es mirar: no avisa", seen.isEmpty())
+        tools.tap(1)
+        assertEquals(listOf("[tap:Buscar] tras 0 ms"), seen)
+    }
+
+    @Test
+    fun `contrato - un gesto que falla no avisa que mira`() {
+        val screen = FakeScreen(root(search))
+        val seen = ArrayList<String>()
+        val failing = object : ScreenDriver by screen {
+            override fun tap(node: ScreenText.Node) = false
+        }
+        val tools = ScreenTools(failing, onLooking = { seen.add("mirando") })
+        tools.see()
+        assertTrue(tools.tap(1).isError)
+        assertTrue(seen.isEmpty())
+    }
 }

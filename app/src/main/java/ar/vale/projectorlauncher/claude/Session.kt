@@ -140,7 +140,7 @@ class Session(
                 continue
             }
             listener.onTool(name, input)
-            val outcome = runCatching { runner.run(name, input) }
+            val outcome = runCatching { runner.run(name, input, listener::onActivity) }
                 .getOrElse { ToolOutcome("No se pudo: ${it.message}", isError = true) }
             results.add(Request.toolResult(id, outcome.text, outcome.isError))
         }

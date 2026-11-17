@@ -28,7 +28,7 @@ import java.nio.file.Files
 import java.util.concurrent.CountDownLatch
 import kotlin.concurrent.thread
 
-private class FakeDevice : RemoteDevice {
+internal class FakeDevice : RemoteDevice {
     val calls = ArrayList<String>()
     var uploaded: ByteArray? = null
     var result = RemoteDevice.Result.OK
@@ -187,6 +187,37 @@ class RemoteSecurityTest {
     }
 
     @Test
+    fun `contrato - la pagina solo le habla a su proyector y a su propia version segura`() {
+        var port = 8696
+        val twin = Router(pairing, device, securePort = { port }) { path ->
+            if (path == "/") HttpResponse(200, "text/html", "<html>".toByteArray()) else null
+        }
+        fun page(head: String, secure: Boolean = false): String =
+            twin.handle(HttpParser.parse(ByteArrayInputStream("GET / HTTP/1.1\r\n$head\r\n\r\n".toByteArray()), secure = secure)!!).text()
+        // La página común puede consultarle a su versión segura si el navegador ya confía en ella.
+        val plain = page("Host: 10.0.0.2:8686")
+        assertTrue(plain, plain.contains("default-src 'self'; connect-src 'self' https://10.0.0.2:8696; style-src"))
+        // Ya en la segura, o sin ella, no hay ningún otro origen.
+        assertFalse(page("Host: 10.0.0.2:8696", secure = true).contains("connect-src"))
+        port = 0
+        assertFalse(page("Host: 10.0.0.2:8686").contains("connect-src"))
+        assertFalse(router.handle(request("GET", "/", token = null)).text().contains("connect-src"))
+        // Lo que diga el navegador en Host no llega a la política si no es un nombre o una dirección.
+        port = 8696
+        for (host in listOf("malo.com; script-src *", "malo.com https://otro.com", "[::1]:8686", "a b", "")) {
+            val forged = page("Host: $host")
+            assertFalse(host, forged.contains("connect-src"))
+            assertFalse(host, forged.contains("script-src *"))
+        }
+        // La del juego ya podía abrir su conexión con la sala: el origen seguro se suma a esa lista, no la pisa.
+        val game = Router(pairing, device, securePort = { 8696 }) {
+            HttpResponse(200, "text/html", "<html>".toByteArray(), policy = HttpResponse.GAME_POLICY)
+        }.handle(HttpParser.parse(ByteArrayInputStream("GET / HTTP/1.1\r\nHost: 10.0.0.2:8686\r\n\r\n".toByteArray()))!!).text()
+        assertTrue(game, game.contains("connect-src https://10.0.0.2:8696 'self' ws: wss:"))
+        assertEquals(game, 1, Regex("connect-src").findAll(game).count())
+    }
+
+    @Test
     fun `contrato - un nombre de archivo nunca decide la carpeta`() {
         assertEquals("passwd", Uploads.safeName("../../etc/passwd"))
         assertEquals("evil.apk", Uploads.safeName("C:\\windows\\evil.apk"))
@@ -253,6 +284,13 @@ class RemoteSecurityTest {
     fun `contrato - el puntero nunca sale de la pantalla`() {
         router.handle(request("POST", "/api/pointer", """{"x":3,"y":-2}"""))
         assertEquals("pointer:1.0:0.0:true", device.calls.single())
+    }
+
+    @Test
+    fun `contrato - un puntero que no es un numero se rechaza y no llega a la pared`() {
+        assertEquals(400, router.handle(request("POST", "/api/pointer", """{"x":"NaN","y":0.5}""")).status)
+        assertEquals(400, router.handle(request("POST", "/api/pointer", """{"x":0.5,"y":"NaN"}""")).status)
+        assertTrue(device.calls.isEmpty())
     }
 
     @Test

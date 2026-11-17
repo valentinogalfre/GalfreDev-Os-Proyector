@@ -15,8 +15,8 @@ android {
         // un ícono adaptativo 100% vectorial (sin PNGs por densidad).
         minSdk = 26
         targetSdk = 35
-        versionCode = 4
-        versionName = "1.2.0"
+        versionCode = 5
+        versionName = "1.3.0"
     }
 
     signingConfigs {
@@ -45,7 +45,11 @@ android {
     testOptions {
         unitTests.isReturnDefaultValues = true
         // Algunos contratos leen estos archivos: si cambian, los tests tienen que volver a correr.
-        unitTests.all { it.inputs.files("../docs/instalar.md", "src/main/res/values/strings.xml") }
+        unitTests.all {
+            it.inputs.files("../docs/instalar.md", "../README.md", "src/main/res/values/strings.xml", "src/main/res/layout/activity_player.xml")
+            // ReadmeTest cuenta los @Test de los propios tests: si se agrega o se saca uno, tiene que correr de nuevo.
+            it.inputs.dir("src/test/java")
+        }
     }
 
     lint {

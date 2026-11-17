@@ -67,7 +67,13 @@ class AndroidTools(private val context: Context) : ToolRunner {
     private val main = Handler(Looper.getMainLooper())
     private val prefs = Prefs(context)
     private val audio = context.getSystemService(AudioManager::class.java)
-    private val screen = ScreenTools(AndroidScreen(context)) { prefs.claudeHands }
+    private var phase: (String) -> Unit = {}
+    private val screen = ScreenTools(AndroidScreen(context), onLooking = { phase("ver_pantalla") }, enabled = { prefs.claudeHands })
+
+    override fun run(name: String, input: JSONObject, phase: (String) -> Unit): ToolOutcome {
+        this.phase = phase
+        return run(name, input)
+    }
 
     override fun run(name: String, input: JSONObject): ToolOutcome = when (name) {
         "ver_pantalla" -> screen.see()
@@ -130,7 +136,7 @@ class AndroidTools(private val context: Context) : ToolRunner {
     private fun inService(intent: Intent): String? {
         val pm = context.packageManager
         val service = Streaming.byHost(intent.data?.host) ?: return null
-        val pkg = Streaming.installed(service) { StreamingLauncher.isInstalled(context, it) } ?: return null
+        val pkg = StreamingLauncher.current(context, service) ?: return null
         intent.setPackage(pkg)
         if (intent.resolveActivity(pm) != null) return service.name
         intent.setPackage(null)

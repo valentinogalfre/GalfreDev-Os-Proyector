@@ -1,0 +1,23 @@
+{
+  "name": "galfredev-carrera",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "tsc --noEmit && vite build",
+    "check": "tsc --noEmit",
+    "test": "node --test \"src/**/*.test.ts\"",
+    "pack": "npm run build && node tools/pack.mjs"
+  },
+  "dependencies": {
+    "postprocessing": "6.39.5",
+    "three": "0.186.1"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.1",
+    "@types/three": "0.186.0",
+    "typescript": "5.9.3",
+    "vite": "7.3.8"
+  }
+}

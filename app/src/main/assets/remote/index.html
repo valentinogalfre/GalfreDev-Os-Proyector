@@ -59,8 +59,8 @@ body.limited nav [data-tab=files],body.limited nav [data-tab=claude],body.limite
 a.hint{color:var(--gris);font-size:15px;text-decoration:underline;text-underline-offset:3px}
 details summary{font:500 11.5px Geist,monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--gris);padding:8px 0;cursor:pointer}
 details>div{display:flex;flex-direction:column;gap:10px;padding-top:6px}
-.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:0}
-.seg button{min-height:44px;padding:10px 4px;font-size:15px;color:var(--gris)}
+.seg{display:grid;grid-template-columns:repeat(4,1fr);gap:0}
+.seg button{min-height:44px;padding:10px 2px;font-size:14px;color:var(--gris)}
 .seg button.main{color:var(--carbon)}
 .pane{display:none;flex-direction:column;gap:12px}
 .pane.on{display:flex}
@@ -82,6 +82,27 @@ details>div{display:flex;flex-direction:column;gap:10px;padding-top:6px}
 .checks{display:flex;flex-wrap:wrap;gap:6px}
 .checks button{min-height:0;padding:9px 12px;font-size:15px;color:var(--gris)}
 .checks button.main{color:var(--carbon)}
+.checks button:disabled,#d-choose:disabled,#d-start:disabled{opacity:.4}
+.chat{display:flex;flex-direction:column;gap:8px}
+.msg{border-left:2px solid var(--linea);padding:8px 12px;font-size:16px;overflow-wrap:anywhere;user-select:text;-webkit-user-select:text}
+.msg b{display:block;font:500 11.5px Geist,monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--gris);margin-bottom:3px}
+.msg span{white-space:pre-wrap}
+.msg.me{border-left-color:var(--hueso);background:var(--carbon2)}
+.msg.busy span{color:var(--gris)}
+.msg.bad{border-left-color:var(--error)}
+.send{display:grid;grid-template-columns:1fr auto;gap:8px}
+#mic-help{border-left:2px solid var(--error);padding:10px 14px;background:var(--carbon2);font-size:15px;display:flex;flex-direction:column;gap:8px}
+.code{font:500 11.5px Geist,monospace;color:var(--control);overflow-wrap:anywhere}
+.card{border:1px solid var(--linea);padding:14px;display:flex;flex-direction:column;gap:10px}
+.group{display:flex;flex-direction:column;gap:10px}
+.stars{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.stars button{min-height:44px;padding:8px 0;font:500 15px Geist,monospace;color:var(--gris)}
+.stars button.main{color:var(--carbon)}
+.entry{padding:9px 0;border-bottom:1px solid var(--linea);display:flex;flex-direction:column;gap:8px}
+.entry .line{padding:0;border:0}
+.entry .checks button{padding:7px 11px;font-size:13px}
+.clock{font:500 15px Geist,monospace;color:var(--gris)}
+#d-clap,#d-clap2{min-height:84px;font-size:20px}
 select{width:100%;font:400 18px Instrument,sans-serif;color:var(--hueso);background:var(--carbon2);border:1px solid var(--control);border-radius:0;padding:13px 12px;-webkit-appearance:none;appearance:none}
 .big{font:800 34px/1 Archivo,sans-serif;letter-spacing:-.034em}
 nav button.on{background:var(--cinta);color:var(--carbon)}
@@ -91,7 +112,8 @@ nav button.on{background:var(--cinta);color:var(--carbon)}
 #line{height:2px;background:var(--linea)}
 #line i{display:block;height:2px;width:0;background:var(--hueso)}
 #list{font:500 13px Geist,monospace;color:var(--gris);display:flex;flex-direction:column;gap:6px;overflow-wrap:anywhere}
-#touch,#track{flex:1;min-height:220px;border:1px solid var(--control);touch-action:none;display:flex;align-items:center;justify-content:center;color:var(--gris);text-align:center;padding:20px}
+#touch,#track,#d-touch{flex:1;min-height:220px;border:1px solid var(--control);touch-action:none;display:flex;align-items:center;justify-content:center;color:var(--gris);text-align:center;padding:20px}
+#d-touch{flex:none;min-height:150px}
 #pair{position:fixed;inset:0;background:var(--carbon);display:none;flex-direction:column;gap:16px;padding:calc(30px + env(safe-area-inset-top)) 20px 30px}
 #pair.on{display:flex}
 #pair img{height:22px;width:auto;align-self:flex-start;margin-bottom:26px}
@@ -123,8 +145,23 @@ nav button.on{background:var(--cinta);color:var(--carbon)}
     <p>Las que falten se buscan en el proyector, con Aurora Store. Algunas pueden verse en baja calidad o no abrir.</p>
     <div class="tag">Servicios</div>
     <div class="list" id="services"></div>
+    <div id="cast" class="group" hidden>
+      <div class="tag">Desde tu celular</div>
+      <div class="q">Transmití tu pantalla.</div>
+      <p id="cast-how"></p>
+      <button id="cast-open" class="main" hidden></button>
+      <p id="cast-note" hidden>YouTube, fotos, videos y la web se ven bien. Netflix, Disney+ y otros servicios pagos salen en negro al duplicar: lo bloquean ellos.</p>
+    </div>
     <div class="tag">Tus apps</div>
     <div class="list" id="others"></div>
+    <details id="report" class="full">
+      <summary>Diagnóstico del equipo</summary>
+      <div>
+        <p>Qué equipo es y por qué una app de video puede no andar o verse en baja calidad.</p>
+        <div id="report-body"></div>
+        <button id="report-copy" hidden>Copiar el informe</button>
+      </div>
+    </details>
   </section>
 
   <section id="write">
@@ -146,15 +183,23 @@ nav button.on{background:var(--cinta);color:var(--carbon)}
   </section>
 
   <section id="claude">
-    <h1>Hablale a la pared.</h1>
-    <p>Pedile que abra una app, que busque una película y le dé reproducir, que arme una trivia, o preguntale lo que quieras.</p>
-    <button id="mic" class="main" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg><span>Hablar</span></button>
+    <div id="c-intro" class="group">
+      <h1>Hablale a la pared.</h1>
+      <p>Pedile que abra una app, que busque una película y le dé reproducir, que arme una trivia, o charlá de lo que quieras.</p>
+    </div>
+    <div class="chat" id="chat"></div>
+    <div id="ideas" class="group"><div class="tag">Para empezar</div><div class="checks" id="idea-list"></div></div>
     <div id="said" hidden><b></b><span></span></div>
-    <button id="stop" hidden>Detener</button>
-    <a id="secure" class="hint" hidden>Para hablarle con un toque, abrí la versión segura. El navegador va a avisar que no conoce el certificado: es el del proyector. Aceptalo una vez.</a>
-    <div><label for="question">O escribilo</label><textarea id="question" autocomplete="off" enterkeyhint="send"></textarea></div>
-    <button id="ask">Preguntar</button>
-    <details>
+    <button id="mic" class="main" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg><span>Hablar</span></button>
+    <p id="mic-why" hidden>Falta un paso, una sola vez. El navegador solo presta el micrófono a una página segura, y va a avisar que no conoce el certificado: es el del proyector. <span id="mic-how"></span> Después queda a un toque.</p>
+    <div id="mic-help" hidden><span></span><div class="code"></div><button id="mic-copy" hidden>Copiar el enlace</button></div>
+    <div class="send"><input id="question" maxlength="4000" autocomplete="off" enterkeyhint="send" placeholder="O escribilo" aria-label="Tu pedido"><button id="ask">Enviar</button></div>
+    <div class="checks">
+      <button id="stop" hidden>Detener</button>
+      <button id="talk" aria-pressed="true" hidden>Respuesta en voz alta</button>
+      <button id="newchat" hidden>Charla nueva</button>
+    </div>
+    <details id="keybox">
       <summary>Clave de la API</summary>
       <div>
         <input id="apikey" type="password" autocomplete="off" placeholder="sk-ant-" aria-label="Clave de la API">
@@ -177,7 +222,7 @@ nav button.on{background:var(--cinta);color:var(--carbon)}
     </div>
     <div id="j-main" class="pane">
       <div class="seg">
-        <button data-pane="trivia" class="main">Trivia</button><button data-pane="poll">Votación</button><button data-pane="accounts">Cuentas</button>
+        <button data-pane="trivia" class="main">Trivia</button><button data-pane="poll">Votación</button><button data-pane="accounts">Cuentas</button><button data-pane="demos">Demos</button>
       </div>
       <div id="j-trivia" class="pane on"></div>
       <div id="j-poll" class="pane">
@@ -185,8 +230,12 @@ nav button.on{background:var(--cinta);color:var(--carbon)}
         <details>
           <summary>Armar una votación</summary>
           <div>
+            <div class="checks" id="p-presets"><button data-preset="yesno">Sí o no</button><button data-preset="scale">Del 1 al 5</button><button data-preset="demos" id="p-demos" hidden>La mejor demo</button></div>
             <input id="p-question" maxlength="120" autocomplete="off" placeholder="¿Qué comemos?" aria-label="Pregunta">
             <textarea id="p-options" autocomplete="off" placeholder="Una opción por renglón" aria-label="Opciones"></textarea>
+            <div><label for="p-seconds">Cierra sola</label><select id="p-seconds"><option value="0">Cuando la cierre quien la armó</option><option value="30">En 30 segundos</option><option value="60">En 1 minuto</option><option value="120">En 2 minutos</option><option value="300">En 5 minutos</option></select></div>
+            <div class="checks"><button id="p-secret" aria-pressed="false">Voto secreto</button></div>
+            <p>Con voto secreto, lo que eligió cada opción se ve recién al cerrar.</p>
             <button id="p-create" class="main">Abrir la votación</button>
           </div>
         </details>
@@ -204,6 +253,75 @@ nav button.on{background:var(--cinta);color:var(--carbon)}
           </div>
         </details>
       </div>
+      <div id="j-demos" class="pane">
+        <div id="d-stage" class="group" hidden>
+          <div class="tag" id="d-stage-tag">En escena</div>
+          <div class="q" id="d-stage-title"></div>
+          <div class="bar" id="d-stage-barbox"><i id="d-stage-bar"></i></div>
+          <div class="clock" id="d-stage-clock"></div>
+          <div id="d-remote" class="group" hidden>
+            <div class="row two" id="d-keys"><button data-demo="left" id="d-prev">Anterior</button><button data-demo="right" id="d-next" class="main">Siguiente</button></div>
+            <button data-demo="ok" id="d-ok" hidden>Pausar o seguir</button>
+            <div id="d-touch">Deslizá el dedo acá para señalar en la pared.</div>
+            <button data-demo="black" id="d-black">Imagen en negro</button>
+            <div id="d-own" class="group" hidden>
+              <p id="d-own-text"></p>
+              <div class="row two" id="d-sources" hidden><button data-source="cast" class="main">Sin cable</button><button data-source="hdmi">Por HDMI</button></div>
+            </div>
+            <button id="d-finish">Terminar mi turno</button>
+          </div>
+          <div id="d-watch" class="group" hidden>
+            <button id="d-clap" class="main">Aplaudir</button>
+            <p id="d-clap-count"></p>
+          </div>
+        </div>
+        <div id="d-thanks" class="group" hidden>
+          <div class="tag">Terminó</div>
+          <div class="q" id="d-thanks-title"></div>
+          <p id="d-thanks-claps"></p>
+          <div id="d-thanks-act" class="group">
+            <button id="d-clap2" class="main">Aplaudir</button>
+            <div class="tag">Tu voto, del 1 al 5</div>
+            <div class="stars" id="d-stars"></div>
+          </div>
+        </div>
+        <div id="d-turn" class="group" hidden>
+          <div class="tag">Sigue</div>
+          <div class="q" id="d-turn-title"></div>
+          <button id="d-start" class="main">Empezar</button>
+          <p id="d-turn-note" hidden>Todavía no llegó su archivo. Podés empezar otra desde la fila.</p>
+        </div>
+        <div id="d-mine" class="card" hidden>
+          <div class="tag" id="d-mine-tag"></div>
+          <div class="q" id="d-mine-title"></div>
+          <div id="d-file" class="group">
+            <p id="d-file-status"></p>
+            <div class="bar"><i id="d-up-bar"></i></div>
+            <input id="d-pick" type="file" accept="application/pdf,image/*,video/*" hidden>
+            <button id="d-choose" class="main">Elegir el archivo</button>
+          </div>
+          <p id="d-mine-own" hidden>Cuando te toque, conectá tu equipo por HDMI o duplicá su pantalla. La pared te guarda el turno y te mide el tiempo.</p>
+          <button id="d-leave">Bajarme de la fila</button>
+        </div>
+        <div id="d-signup" class="group" hidden>
+          <h1>¿Mostrás algo?</h1>
+          <p>Anotate en la fila. Mandá un PDF, una imagen o un video y manejalo desde acá cuando te toque, o mostrá tu propia pantalla.</p>
+          <input id="d-title" maxlength="60" autocomplete="off" enterkeyhint="done" placeholder="Qué vas a mostrar" aria-label="Qué vas a mostrar">
+          <div class="row two" id="d-kind"><button data-kind="file" class="main">Mando un archivo</button><button data-kind="screen">Muestro mi pantalla</button></div>
+          <button id="d-join" class="main">Anotarme</button>
+        </div>
+        <p id="d-closed" hidden>La fila está cerrada. Si querés presentar, pedile lugar a quien lleva el proyector.</p>
+        <div id="d-queue"></div>
+        <div id="d-done"></div>
+        <details id="d-host" hidden>
+          <summary>Ajustes de la fila</summary>
+          <div>
+            <div><label for="d-limit">Tiempo por presentación</label><select id="d-limit"><option value="0">Sin límite</option><option value="3">3 minutos</option><option value="5">5 minutos</option><option value="10">10 minutos</option><option value="15">15 minutos</option><option value="20">20 minutos</option><option value="30">30 minutos</option></select></div>
+            <button id="d-open">Cerrar la fila</button>
+            <p>Con alguien en escena, la pared es de quien presenta: los invitados con control esperan a que termine. Cumplido el tiempo, la pared avisa y no corta a nadie.</p>
+          </div>
+        </details>
+      </div>
     </div>
     <details id="guests" hidden>
       <summary>Invitados</summary>
@@ -215,6 +333,7 @@ nav button.on{background:var(--cinta);color:var(--carbon)}
     <div class="row two"><button data-key="left">Anterior</button><button data-key="right" class="main">Siguiente</button></div>
     <div id="touch">Deslizá el dedo acá para mover el puntero en la pared.</div>
     <button data-key="blackout">Imagen en negro</button>
+    <p>Para una muestra con varias personas, usá Juntada › Demos: cada uno se anota, manda su archivo y maneja su turno desde su celular.</p>
   </section>
 </main>
 <div id="note" role="status"></div>
@@ -248,6 +367,56 @@ const $$ = s => document.querySelectorAll(s);
 const STORE = 'gd.token';
 const load = key => { try { return localStorage.getItem(key); } catch (e) { return null; } };
 const save = (key, value) => { try { value ? localStorage.setItem(key, value) : localStorage.removeItem(key); } catch (e) {} };
+const el = (tag, cls, text) => {
+  const node = document.createElement(tag);
+  if (cls) node.className = cls;
+  if (text !== undefined) node.textContent = text;
+  return node;
+};
+// Cada parte se vuelve a armar solo si cambió lo suyo: no se pisa lo que alguien está tocando.
+let drawn = {};
+function once(key, value, build) {
+  const signature = JSON.stringify(value);
+  if (drawn[key] === signature) return;
+  drawn[key] = signature;
+  build();
+}
+// Lo que no tiene vuelta se confirma con un segundo toque: sin ventanas, que en el celular tapan todo.
+function twice(button, text, act) {
+  let label = '';
+  let armed = 0;
+  const rest = () => {
+    clearTimeout(armed);
+    armed = 0;
+    delete button.dataset.armed;
+    button.textContent = label;
+  };
+  button.onclick = () => {
+    if (armed) {
+      rest();
+      act();
+      return;
+    }
+    label = button.textContent;
+    // Mientras espera el segundo toque, quien redibuja la pantalla no le cambia el texto.
+    button.dataset.armed = '1';
+    button.textContent = text;
+    armed = setTimeout(rest, 3000);
+  };
+}
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); return true; } catch (e) {}
+  // Sin página segura no hay portapapeles moderno: queda el de siempre.
+  const area = el('textarea');
+  area.value = text;
+  area.style.cssText = 'position:fixed;opacity:0';
+  document.body.append(area);
+  area.select();
+  let done = false;
+  try { done = document.execCommand('copy'); } catch (e) {}
+  area.remove();
+  return done;
+}
 let token = load(STORE);
 // El código de la pared solo sirve para pedir permiso. El pase es propio de este celular y no
 // abre nada hasta que el dueño lo aprueba.
@@ -258,6 +427,11 @@ let pass = load('gd.pass');
 const fragment = new URLSearchParams(location.hash.slice(1));
 if (fragment.get('t')) { token = fragment.get('t'); save(STORE, token); }
 if (fragment.get('g')) { code = fragment.get('g'); save('gd.guest', code); }
+// Al pasar a la versión segura cambia el origen, y con él lo que guarda el navegador: lo que
+// hace falta para seguir donde se estaba viaja en el mismo #.
+if (fragment.get('j')) save('gd.jkey', fragment.get('j'));
+if (fragment.get('n')) save('gd.jname', fragment.get('n'));
+if (fragment.get('k')) save('gd.track', '1');
 const wanted = fragment.get('tab');
 if (location.hash) history.replaceState(null, '', '/');
 const isOwner = !!token;
@@ -303,7 +477,21 @@ const ERRORS = {
   amount: 'Ese monto no parece válido.',
   owner: 'Eso lo hace el dueño del proyector.',
   private: 'Esa pantalla la maneja el dueño. Salí con Atrás o Inicio.',
-  gone: 'Ese pedido ya no está.',
+  gone: 'Eso ya no está.',
+  stage: 'Hay alguien presentando. El control vuelve cuando termine.',
+  stage_away: 'La pared está en otra cosa. Avisale a quien lleva el proyector.',
+  stage_busy: 'Ya hay alguien en escena. Primero tiene que terminar.',
+  stage_fail: 'El proyector no pudo abrir esa presentación.',
+  no_source: 'Este proyector no tiene esa entrada.',
+  demo_closed: 'La fila está cerrada. Pedile lugar a quien lleva el proyector.',
+  demo_have: 'Ya tiene una presentación en la fila.',
+  demo_live: 'Ya está en escena: ahora no se puede cambiar.',
+  demo_none: 'No hay nadie esperando.',
+  demo_no_file: 'Todavía no llegó el archivo de esa presentación.',
+  demo_own: 'Es la tuya: aplauden y votan los demás.',
+  demo_type: 'La pared muestra PDF, imágenes y videos. Las diapositivas se exportan a PDF.',
+  demo_big: 'Ese archivo es muy grande: el máximo es 300 MB.',
+  length: 'Ese archivo está vacío.',
 };
 
 function showPair() { $('#pair').className = 'on'; $('#pin').focus(); }
@@ -350,6 +538,7 @@ function denied() {
 }
 
 let securePort = 0;
+let hasKey = true;
 async function loadState() {
   if (!hasControl()) return;
   const response = await fetch('/api/state', { headers: { Authorization: bearer() } }).catch(() => null);
@@ -359,6 +548,38 @@ async function loadState() {
   const state = await response.json();
   $('#device').textContent = state.name || '';
   securePort = state.secure_port || 0;
+  hasKey = state.claude_key !== false;
+}
+
+// --- La versión segura ---
+// El código de la pared abre la página común, sin avisos del navegador. El micrófono necesita la
+// segura. Si este navegador ya aceptó una vez el certificado del proyector, la página pasa sola
+// al entrar a Claude; si no, lo pide un botón. Siempre en la misma pestaña.
+const SECURE = location.protocol === 'https:';
+let secureReady = false;
+let sendingFiles = false;
+function secureUrl(name) {
+  const hash = new URLSearchParams({ t: token, tab: name });
+  const key = load('gd.jkey');
+  const who = load('gd.jname');
+  if (key) hash.set('j', key);
+  if (who) hash.set('n', who);
+  if (load('gd.track')) hash.set('k', '1');
+  return 'https://' + location.hostname + ':' + securePort + '/#' + hash;
+}
+function goSecure() {
+  // No se corta nada que esté en camino.
+  if (sendingFiles || uploading) return;
+  location.replace(secureUrl('claude'));
+}
+async function probeSecure() {
+  if (SECURE || !isOwner || !securePort || !Recognition) return;
+  try {
+    // Solo llega si el navegador ya confía en el certificado: si no, el pedido falla y no pasa nada.
+    await fetch('https://' + location.hostname + ':' + securePort + '/logo.svg', { mode: 'no-cors', cache: 'no-store' });
+    secureReady = true;
+  } catch (e) {}
+  if (secureReady && tab === 'claude') goSecure();
 }
 
 $('#connect').onclick = async () => {
@@ -391,7 +612,11 @@ function showTab(name) {
   $$('section').forEach(s => s.classList.toggle('on', s.id === name));
   if (isOwner) save('gd.tab', name);
   if (name === 'apps') loadApps();
-  if (name === 'claude') watchClaude();
+  if (name === 'claude') {
+    if (secureReady) goSecure();
+    drawChat();
+    watchClaude();
+  }
   if (name === 'juntada') watchParty();
 }
 $$('nav button').forEach(tab => { tab.onclick = () => showTab(tab.dataset.tab); });
@@ -404,9 +629,11 @@ function fill(host, items) {
     const name = document.createElement('span');
     name.textContent = app.name;
     row.append(name);
-    if (app.installed === false) {
+    // Lo que se ve sin pagar se dice: en un equipo donde lo pago anda a medias, es lo que más suma.
+    const tags = [app.free ? 'Gratis' : '', app.installed === false ? 'sin instalar' : ''].filter(Boolean);
+    if (tags.length) {
       const state = document.createElement('small');
-      state.textContent = 'Sin instalar';
+      state.textContent = tags.join(' · ');
       row.append(state);
     }
     row.onclick = async () => {
@@ -425,7 +652,68 @@ async function loadApps() {
   if (!data) return;
   fill($('#services'), data.services || []);
   fill($('#others'), data.apps || []);
+  drawCast(data.cast || null);
 }
+
+// --- Transmitir: la pared abre la app que recibe la pantalla, y el celular la duplica ---
+const mirrorHow = () => IOS
+  ? 'En tu iPhone: Centro de control, Duplicar pantalla, y elegí el proyector.'
+  : 'En tu celular: Transmitir, Smart View o Duplicar pantalla, y elegí el proyector.';
+function drawCast(receiver) {
+  $('#cast').hidden = false;
+  $('#cast-how').textContent = receiver
+    ? 'Con los dos en la misma red Wi-Fi. Primero abrí ' + receiver.name + ' en la pared. ' + mirrorHow()
+    : 'Este proyector no tiene una app que reciba la pantalla. Se instala desde su Tienda: CastBay recibe AirPlay y DLNA.';
+  $('#cast-open').hidden = $('#cast-note').hidden = !receiver;
+  if (receiver) $('#cast-open').textContent = 'Abrir ' + receiver.name + ' en la pared';
+}
+$('#cast-open').onclick = async () => {
+  if (await post('cast', {})) note('La pared ya recibe. Ahora duplicá tu pantalla.');
+};
+
+// --- Diagnóstico: qué equipo es, dicho de forma que explique por qué una app no anda ---
+let report = null;
+$('#report').addEventListener('toggle', async () => {
+  if (!$('#report').open || report) return;
+  const response = await fetch('/api/report', { headers: { Authorization: bearer() } }).catch(() => null);
+  report = response && response.ok ? await response.json().catch(() => null) : null;
+  if (!report) { $('#report-body').replaceChildren(el('p', '', 'No pudimos leer el equipo.')); return; }
+  const row = (name, value) => {
+    const line = el('div', 'line');
+    line.append(el('span', '', name), el('b', '', value));
+    return line;
+  };
+  const level = (report.widevine || {}).level;
+  const out = [
+    row('Equipo', report.model),
+    row('Android', report.android + ' · API ' + report.sdk),
+    row('Pantalla', report.screen),
+    row('Memoria', report.ram_mb + ' MB'),
+    row('Espacio libre', report.free_mb === null ? 'no se pudo leer' : report.free_mb.toLocaleString('es-AR') + ' MB'),
+    row('Video protegido', level ? 'Widevine ' + level : 'sin Widevine'),
+    row('Servicios de Google', report.play_services || 'no tiene'),
+    row('Se presenta como', report.tv ? 'televisor' : 'celular o tablet'),
+    el('p', '', level === 'L1'
+      ? 'Con Widevine L1 las apps pagas pueden verse en alta definición, si además reconocen el equipo.'
+      : level
+        ? 'Con Widevine ' + level + ' las apps pagas se ven, como mucho, en calidad estándar. Algunas ni siquiera abren: piden un equipo certificado.'
+        : 'Sin Widevine, las apps pagas no reproducen en este equipo.'),
+  ];
+  const names = (title, list, none) => {
+    out.push(el('div', 'tag', title));
+    out.push(el('p', '', list.length ? list.map(item => item.name).join(' · ') : none));
+  };
+  names('Reciben la pantalla del celular', report.casting || [], 'No encontramos ninguna app de fábrica para eso.');
+  names('Cambian de entrada', report.inputs || [], 'No encontramos ninguna.');
+  const installed = (report.services || []).filter(service => service.package);
+  names('Servicios instalados', installed.map(service => ({ name: service.name + (service.version ? ' ' + service.version : '') })), 'Ninguno.');
+  $('#report-body').replaceChildren(...out);
+  $('#report-copy').hidden = false;
+});
+$('#report-copy').onclick = async () => {
+  const done = await copyText(JSON.stringify(report, null, 1));
+  note(done ? 'Informe copiado.' : 'No se pudo copiar.', !done);
+};
 
 $$('[data-key]').forEach(button => {
   button.onclick = () => {
@@ -452,7 +740,9 @@ $('#sendurl').onclick = async () => {
 
 $('#choose').onclick = () => $('#pick').click();
 $('#pick').onchange = async () => {
+  sendingFiles = true;
   for (const file of $('#pick').files) await upload(file);
+  sendingFiles = false;
   $('#pick').value = '';
 };
 function upload(file) {
@@ -482,64 +772,250 @@ function upload(file) {
 }
 
 // --- Claude ---
-async function ask() {
-  const text = $('#question').value.trim();
+// La charla se ve entera en el celular, como un chat. El proyector guarda solo el último
+// intercambio: lo anterior vive en esta pestaña del navegador.
+const THINKING = 'pensando…';
+const IDEAS = ['Poné música de los 80 en YouTube', 'Armá una trivia de programación', '¿Qué podemos ver esta noche?', 'Contanos un dato curioso'];
+let chat = [];
+try { chat = JSON.parse(sessionStorage.getItem('gd.chat')) || []; } catch (e) {}
+const keepChat = () => { try { sessionStorage.setItem('gd.chat', JSON.stringify(chat.slice(-12))); } catch (e) {} };
+
+function drawChat() {
+  once('chat', chat, () => {
+    $('#chat').replaceChildren(...chat.slice(-6).flatMap(turn => {
+      const asked = el('div', 'msg me');
+      asked.append(el('b', '', 'Vos'), el('span', '', turn.q));
+      const reply = el('div', 'msg' + (turn.done ? '' : ' busy') + (turn.bad ? ' bad' : ''));
+      reply.append(el('b', '', 'Claude'), el('span', '', turn.a || (turn.done ? 'Sin respuesta.' : THINKING)));
+      return [asked, reply];
+    }));
+    $('#c-intro').hidden = $('#ideas').hidden = chat.length > 0;
+    $('#newchat').hidden = !chat.length;
+    // Lo último queda a la vista, con el micrófono a mano para seguir la charla.
+    if (chat.length && tab === 'claude') $('#mic').scrollIntoView({ block: 'nearest' });
+  });
+}
+$('#idea-list').replaceChildren(...IDEAS.map(text => {
+  const idea = el('button', '', text);
+  idea.onclick = () => ask(text);
+  return idea;
+}));
+
+// Lo que dice el proyector se acomoda en la charla: un pedido nuevo es un renglón nuevo.
+function syncChat(state) {
+  if (!state.question) {
+    // La pared empezó de cero: acá tampoco queda la charla anterior.
+    if (chat.length) { chat = []; keepChat(); }
+    drawChat();
+    return;
+  }
+  let last = chat[chat.length - 1];
+  if (!last || last.q !== state.question || (last.done && state.busy)) {
+    last = { q: state.question, a: '', done: false };
+    chat.push(last);
+  }
+  const was = last.done;
+  last.a = state.status || '';
+  last.done = !state.busy;
+  last.bad = last.done && state.end !== 'done' && state.end !== 'truncated';
+  if (!was && last.done && last.spoken && !last.bad) speak(last.a);
+  keepChat();
+  drawChat();
+}
+
+function needKey() {
+  note('Falta cargar la clave de la API. Está acá abajo.', true);
+  $('#keybox').open = true;
+  $('#keybox').scrollIntoView({ block: 'nearest' });
+}
+
+// Lo que Claude va haciendo se ve también acá: quien pidió algo no tiene que mirar la pared.
+let claudeTimer = 0;
+let claudeSeq = 0;
+async function watchClaude() {
+  clearTimeout(claudeTimer);
+  if (tab !== 'claude' || !isOwner || document.hidden) return;
+  const seq = ++claudeSeq;
+  const response = await fetch('/api/claude/state', { headers: { Authorization: bearer() } }).catch(() => null);
+  // Una respuesta que se cruzó con un pedido nuevo ya no cuenta lo que pasa.
+  if (seq !== claudeSeq) return;
+  const state = response && response.ok ? await response.json().catch(() => null) : null;
+  if (state) {
+    $('#stop').hidden = !state.busy;
+    syncChat(state);
+  }
+  // En reposo se sigue mirando, de a poco: el pedido pudo salir de la pared y no de este celular.
+  claudeTimer = setTimeout(watchClaude, state && state.busy ? 900 : 4000);
+}
+
+async function ask(text, spoken) {
+  text = (text === undefined ? $('#question').value : text).trim();
   if (!text) return;
-  if (!await post('claude/ask', { text })) return;
-  $('#question').value = '';
-  $('#question').blur();
-  said(text, 'pensando…');
+  if (!hasKey) { needKey(); return; }
+  clearTimeout(claudeTimer);
+  claudeSeq++;
+  if (await post('claude/ask', { text })) {
+    $('#question').value = '';
+    $('#question').blur();
+    chat.push({ q: text, a: '', done: false, spoken: !!spoken });
+    keepChat();
+    drawChat();
+  }
   watchClaude();
 }
-$('#ask').onclick = ask;
+$('#ask').onclick = () => ask();
+$('#question').onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); ask(); } };
+$('#stop').onclick = async () => {
+  if (synth) synth.cancel();
+  await post('claude/stop', {});
+  watchClaude();
+};
+$('#newchat').onclick = async () => {
+  clearTimeout(claudeTimer);
+  claudeSeq++;
+  if (synth) synth.cancel();
+  if (await post('claude/new', {})) {
+    chat = [];
+    keepChat();
+    drawChat();
+  }
+  // El proyector empieza de cero en un instante: se le da ese instante antes de volver a mirar.
+  claudeTimer = setTimeout(watchClaude, 500);
+};
+
+// La respuesta también se escucha, cuando el pedido fue hablado. Se apaga con un toque.
+const synth = window.speechSynthesis || null;
+let talkOn = load('gd.voice') !== '0';
+let talkReady = false;
+function drawTalk() {
+  $('#talk').hidden = !synth;
+  $('#talk').className = talkOn ? 'main' : '';
+  $('#talk').setAttribute('aria-pressed', String(talkOn));
+}
+function voiceFor() {
+  const order = ['es-AR', 'es-MX', 'es-US', 'es-419', 'es-ES'];
+  const rank = voice => { const at = order.indexOf(voice.lang.replace('_', '-')); return at < 0 ? order.length : at; };
+  return synth.getVoices().filter(voice => /^es([-_]|$)/i.test(voice.lang)).sort((a, b) => rank(a) - rank(b))[0] || null;
+}
+function speak(text) {
+  if (!synth || !talkOn || !text) return;
+  try {
+    synth.cancel();
+    const say = new SpeechSynthesisUtterance(text.slice(0, 700));
+    const voice = voiceFor();
+    if (voice) say.voice = voice;
+    say.lang = voice ? voice.lang.replace('_', '-') : 'es-MX';
+    synth.speak(say);
+  } catch (e) {}
+}
+// En iPhone la página solo puede hablar si antes habló dentro de un toque: se usa el del micrófono.
+function readyToTalk() {
+  if (!synth || !talkOn || talkReady) return;
+  talkReady = true;
+  try {
+    const hush = new SpeechSynthesisUtterance(' ');
+    hush.volume = 0;
+    synth.speak(hush);
+  } catch (e) {}
+}
+$('#talk').onclick = () => {
+  talkOn = !talkOn;
+  save('gd.voice', talkOn ? null : '0');
+  if (!talkOn && synth) synth.cancel();
+  drawTalk();
+};
+
+// --- La voz ---
+// El navegador solo presta el micrófono a una página segura, y cada uno reconoce el castellano a
+// su manera: el de Apple no conoce el de Argentina, y con ese idioma falla diciendo que el
+// servicio no está permitido. Por eso se prueba una lista y se recuerda el que anduvo.
+const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+const IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const APPLE = IOS || /Apple/.test(navigator.vendor || '');
+const LANGS = APPLE ? ['es-MX', 'es-419', 'es-US', 'es-ES'] : ['es-AR', 'es-419', 'es-MX', 'es-ES'];
+let langAt = Math.max(0, LANGS.indexOf(load('gd.lang')));
+// Algunos navegadores no avisan nunca que terminaron de escuchar, o no devuelven nada: por eso
+// el final lo decide esta página, con tiempos propios, y no espera ese aviso.
+const HEAR_START_MS = 8000;
+const HEAR_PAUSE_MS = 1800;
+const HEAR_CLOSE_MS = 900;
+// Un rechazo que llega antes de esto, sin una palabra, es del idioma y no de la persona.
+const LANG_FAIL_MS = 2500;
+let hearing = null;
+
+const PROBLEMS = {
+  'not-allowed': IOS
+    ? 'Safari no nos dejó usar el micrófono. Tocá «aA» en la barra de direcciones, entrá a Configuración del sitio web y permití el micrófono.'
+    : 'El navegador no nos dejó usar el micrófono. Tocá el candado de la barra de direcciones y permití el micrófono para esta página.',
+  'service-not-allowed': IOS
+    ? 'El dictado del iPhone está apagado. Activalo en Ajustes › General › Teclado › Activar Dictado y probá de nuevo.'
+    : 'Este navegador no tiene reconocimiento de voz en castellano. Probá con Chrome.',
+  'audio-capture': 'No pudimos usar el micrófono: puede estar ocupado por una llamada o por otra app.',
+  network: 'El reconocimiento de voz necesita internet en el celular.',
+  again: 'Tocá Hablar otra vez.',
+  silent: 'No te escuché. Acercá el celular y probá de nuevo.',
+};
+PROBLEMS['language-not-supported'] = PROBLEMS['service-not-allowed'];
 
 function said(label, text) {
   $('#said').hidden = !text;
   $('#said b').textContent = label || '';
   $('#said span').textContent = text || '';
 }
-
-// Lo que Claude va haciendo se ve también acá: quien pidió algo no tiene que mirar la pared.
-let claudeTimer = 0;
-async function watchClaude() {
-  clearTimeout(claudeTimer);
-  if (tab !== 'claude' || !isOwner) return;
-  const response = await fetch('/api/claude/state', { headers: { Authorization: bearer() } }).catch(() => null);
-  const state = response && response.ok ? await response.json().catch(() => null) : null;
-  if (!state) return;
-  $('#stop').hidden = !state.busy;
-  if (state.question) said(state.question, state.status);
-  if (state.busy) claudeTimer = setTimeout(watchClaude, 900);
+// La ayuda dice qué hacer y, en letra chica, qué pasó exactamente: sirve para avisar si sigue fallando.
+function micHelp(text, detail) {
+  $('#mic-help').hidden = !text;
+  $('#mic-help span').textContent = text || '';
+  $('#mic-help .code').textContent = detail || '';
+  // Queda debajo del botón: con la charla larga, sin esto el aviso aparecería fuera de la vista.
+  if (text && tab === 'claude') $('#mic-help').scrollIntoView({ block: 'nearest' });
 }
-$('#stop').onclick = async () => { await post('claude/stop', {}); watchClaude(); };
-
-// El navegador solo presta el micrófono a una página segura. Si no se puede, queda el del teclado.
-const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-// Algunos navegadores no avisan nunca que terminaron de escuchar, o no devuelven nada: por eso
-// el final lo decide esta página, con tiempos propios, y no espera ese aviso.
-const HEAR_START_MS = 8000;
-const HEAR_PAUSE_MS = 1800;
-const HEAR_CLOSE_MS = 900;
-let hearing = null;
-function micState(on, label) {
-  $('#mic').classList.toggle('live', on);
-  $('#mic').setAttribute('aria-pressed', String(on));
-  $('#mic span').textContent = label || (on ? 'Te escucho. Tocá para enviar.' : 'Hablar');
+const canHear = () => !!Recognition && window.isSecureContext;
+function micIdle() {
+  $('#mic').classList.remove('live');
+  $('#mic').setAttribute('aria-pressed', 'false');
+  $('#mic span').textContent = canHear() ? 'Hablar' : 'Activar el micrófono';
 }
-function dictate() {
-  $('#question').focus();
-  note('Tocá el micrófono del teclado, decí tu pedido y apretá Preguntar.');
-  if (securePort && location.protocol !== 'https:') {
-    $('#secure').href = 'https://' + location.hostname + ':' + securePort + '/#t=' + token + '&tab=claude';
-    $('#secure').hidden = false;
+function micLive(label) {
+  $('#mic').classList.add('live');
+  $('#mic').setAttribute('aria-pressed', 'true');
+  $('#mic span').textContent = label || 'Te escucho. Tocá para enviar.';
+}
+// Qué puede hacer este navegador con el micrófono, dicho de entrada y no después de un toque.
+function micSetup() {
+  drawTalk();
+  if (!isOwner) return;
+  if (!Recognition) {
+    $('#mic').hidden = true;
+    micHelp(IOS
+      ? 'En iPhone, el micrófono de esta página solo anda en Safari. Abrila ahí, o escribí acá abajo.'
+      : 'Este navegador no reconoce la voz. Abrí esta página en Chrome, o escribí acá abajo.', 'sin reconocimiento de voz');
+    $('#mic-copy').hidden = false;
+    return;
   }
+  if (!SECURE && !securePort) {
+    $('#mic').hidden = true;
+    micHelp('El proyector no pudo abrir la conexión segura que pide el micrófono. Escribí acá abajo, o dictá con el micrófono del teclado.', 'sin https');
+    return;
+  }
+  $('#mic-how').textContent = IOS
+    ? 'Cuando aparezca el aviso, tocá Mostrar detalles y después «visitar este sitio web».'
+    : 'Cuando aparezca el aviso, tocá Configuración avanzada y después el enlace para continuar.';
+  $('#mic-why').hidden = SECURE;
+  micIdle();
 }
-function listen() {
+$('#mic-copy').onclick = async () => {
+  const done = await copyText('http://' + location.host + '/#t=' + token + '&tab=claude');
+  note(done ? 'Enlace copiado. Pegalo en ' + (IOS ? 'Safari.' : 'Chrome.') : 'No se pudo copiar el enlace.', !done);
+};
+
+function listen(attempt) {
+  const lang = LANGS[langAt];
   const recognition = new Recognition();
-  recognition.lang = 'es-AR';
+  recognition.lang = lang;
   recognition.interimResults = true;
   recognition.continuous = false;
-  const session = { text: '', refused: false, done: false, timer: 0 };
+  const session = { text: '', error: '', done: false, timer: 0, at: performance.now() };
   // Termina una sola vez, venga de donde venga: el aviso del navegador, el silencio o el reloj.
   const finish = () => {
     if (session.done) return;
@@ -548,47 +1024,79 @@ function listen() {
     recognition.onresult = recognition.onerror = recognition.onend = null;
     try { recognition.abort(); } catch (e) {}
     hearing = null;
-    micState(false);
-    if (session.refused) { dictate(); return; }
-    if (session.text) { ask(); return; }
     said('', '');
-    dictate();
-    note('No te escuché. Probá de nuevo, o dictá con el micrófono del teclado.', true);
+    micIdle();
+    if (session.text) {
+      save('gd.lang', lang);
+      ask(session.text, true);
+      return;
+    }
+    unheard(session, lang, attempt);
   };
   // Cerrar: se le da un instante al navegador para entregar las últimas palabras, y se envía igual.
   session.close = () => {
     if (session.done) return;
     try { recognition.stop(); } catch (e) {}
-    micState(true, 'Enviando…');
+    micLive('Enviando…');
     clearTimeout(session.timer);
     session.timer = setTimeout(finish, HEAR_CLOSE_MS);
   };
   recognition.onresult = e => {
     session.text = Array.from(e.results).map(r => r[0].transcript).join(' ').trim();
-    $('#question').value = session.text;
     said('Te escucho', session.text);
     // Una pausa después de hablar es el final del pedido.
     clearTimeout(session.timer);
     session.timer = setTimeout(session.close, HEAR_PAUSE_MS);
   };
   recognition.onerror = e => {
-    session.refused = e.error === 'not-allowed' || e.error === 'service-not-allowed';
+    session.error = e.error;
     if (e.error !== 'no-speech') finish();
   };
   recognition.onend = finish;
+  hearing = session;
+  micLive();
   try {
     recognition.start();
-  } catch (e) { dictate(); return; }
-  hearing = session;
-  micState(true);
+  } catch (e) {
+    session.error = 'start';
+    finish();
+    return;
+  }
   // Si en unos segundos no llegó ni una palabra, no se queda escuchando para siempre.
   session.timer = setTimeout(finish, HEAR_START_MS);
   if (navigator.vibrate) navigator.vibrate(12);
 }
+
+// No llegó ni una palabra: se dice por qué, y si fue el idioma se prueba solo con el siguiente.
+function unheard(session, lang, attempt) {
+  const error = session.error;
+  const quick = performance.now() - session.at < LANG_FAIL_MS;
+  const language = error === 'service-not-allowed' || error === 'language-not-supported';
+  if (language && quick && attempt < LANGS.length - 1) {
+    langAt = (langAt + 1) % LANGS.length;
+    listen(attempt + 1);
+    return;
+  }
+  // Al reintentar con otro idioma ya no hay un toque de por medio, y el navegador puede negarse
+  // por eso: con tocar de nuevo alcanza, y se sigue desde el idioma que tocaba.
+  const retried = attempt > 0 && quick && (error === 'not-allowed' || error === 'start');
+  if (language) langAt = 0;
+  const text = retried ? PROBLEMS.again : PROBLEMS[error] || PROBLEMS.silent;
+  micHelp(text, (error || 'sin voz') + ' · ' + lang + ' · ' + (SECURE ? 'https' : 'http'));
+}
+
 $('#mic').onclick = () => {
   if (hearing) { hearing.close(); return; }
-  if (!Recognition || !window.isSecureContext) { dictate(); return; }
-  listen();
+  if (!canHear()) {
+    // Misma pestaña: al aceptar el certificado se vuelve acá, ya con el micrófono.
+    if (Recognition && securePort) location.href = secureUrl('claude');
+    return;
+  }
+  if (!hasKey) { needKey(); return; }
+  readyToTalk();
+  if (synth) synth.cancel();
+  micHelp();
+  listen(0);
 };
 $('#savekey').onclick = async () => {
   const key = $('#apikey').value.trim();
@@ -596,42 +1104,50 @@ $('#savekey').onclick = async () => {
   const data = await post('claude/key', { key });
   if (data) {
     $('#apikey').value = '';
+    hasKey = true;
     note(data.stored ? 'Clave guardada.' : 'Este equipo no pudo guardarla: vale hasta que lo apagues.');
   }
 };
 
 // Puntero: uno solo en camino. Si la red se atrasa se manda la última posición, no una fila.
-let target = null;
-let sending = false;
-function pump() {
-  if (sending || !target) return;
-  const body = target;
-  target = null;
-  sending = true;
-  post('pointer', body, true).finally(() => {
-    sending = false;
-    setTimeout(pump, 40);
-  });
+function pointerTo(send) {
+  let target = null;
+  let sending = false;
+  const pump = () => {
+    if (sending || !target) return;
+    const body = target;
+    target = null;
+    sending = true;
+    send(body).finally(() => {
+      sending = false;
+      setTimeout(pump, 40);
+    });
+  };
+  return {
+    move(x, y) { target = { x, y }; pump(); },
+    hide() { target = null; send({ x: 0, y: 0, visible: false }); },
+  };
 }
-function point(x, y) {
-  target = { x, y };
-  pump();
+// Una zona donde el dedo es el puntero: está donde se apoya, y se va al levantarlo.
+function pointerPad(node, pointer) {
+  const move = e => {
+    e.preventDefault();
+    const t = e.touches ? e.touches[0] : e;
+    const box = node.getBoundingClientRect();
+    pointer.move(clamp((t.clientX - box.left) / box.width), clamp((t.clientY - box.top) / box.height));
+  };
+  node.addEventListener('touchstart', move, { passive: false });
+  node.addEventListener('touchmove', move, { passive: false });
+  node.addEventListener('touchend', () => pointer.hide());
+  node.addEventListener('touchcancel', () => pointer.hide());
 }
-
-const touch = $('#touch');
-function move(e) {
-  e.preventDefault();
-  const t = e.touches ? e.touches[0] : e;
-  const box = touch.getBoundingClientRect();
-  point((t.clientX - box.left) / box.width, (t.clientY - box.top) / box.height);
-}
-function release() {
-  target = null;
-  post('pointer', { x: 0, y: 0, visible: false }, true);
-}
-touch.addEventListener('touchstart', move, { passive: false });
-touch.addEventListener('touchmove', move, { passive: false });
-touch.addEventListener('touchend', release);
+const clamp = v => Math.min(1, Math.max(0, v));
+const wallPointer = pointerTo(body => post('pointer', body, true));
+// Quien presenta señala en su propia presentación, sin tener el control del proyector.
+const stagePointer = pointerTo(body => post('juntada/demo/pointer', Object.assign({ key: me }, body), true));
+const point = (x, y) => wallPointer.move(x, y);
+pointerPad($('#touch'), wallPointer);
+pointerPad($('#d-touch'), stagePointer);
 
 // Trackpad: como el de una notebook. El puntero se mueve por diferencia, no por dónde se apoya
 // el dedo, y queda en su lugar para poder tocar. La pantalla del proyector es 16:9.
@@ -645,8 +1161,6 @@ const SWIPE_MOVE = 12;
 let cursorX = 0.5;
 let cursorY = 0.5;
 let stroke = null;
-
-const clamp = v => Math.min(1, Math.max(0, v));
 
 // Desplaza lo pedido aunque el puntero esté cerca de un borde: corre el punto de partida.
 function span(from, delta) {
@@ -726,15 +1240,9 @@ let me = load('gd.jkey');
 let party = null;
 let partyTimer = 0;
 let pane = 'trivia';
-let drawn = {};
 const excluded = new Set();
 const pesos = n => '$ ' + Number(n).toLocaleString('es-AR');
-const el = (tag, cls, text) => {
-  const node = document.createElement(tag);
-  if (cls) node.className = cls;
-  if (text !== undefined) node.textContent = text;
-  return node;
-};
+const plural = (n, one, many) => n + ' ' + (n === 1 ? one : many);
 const nameOf = id => ((party.people || []).find(p => p.id === id) || {}).name || '?';
 
 function partyPane(name) {
@@ -805,26 +1313,20 @@ async function watchParty() {
   const data = await post('juntada/state', { key: me }, true);
   if (data && !data.me) { leave(); return; }
   if (data) drawParty(data);
-  // Durante una pregunta se consulta más seguido: el tiempo corre.
-  const live = data && data.trivia.phase !== 'idle' && data.trivia.phase !== 'final';
-  if (!document.hidden) partyTimer = setTimeout(watchParty, live ? 700 : 1500);
+  // Durante una pregunta se consulta más seguido: el tiempo corre. Con alguien en escena, o con
+  // una votación que cierra sola, un poco más seguido que en reposo.
+  const asking = data && data.trivia.phase !== 'idle' && data.trivia.phase !== 'final';
+  const moving = data && (data.demos.live || data.demos.thanks !== null || uploading || (data.poll && data.poll.open && data.poll.of_ms));
+  if (!document.hidden) partyTimer = setTimeout(watchParty, asking ? 700 : moving ? 1100 : 1500);
 }
 document.addEventListener('visibilitychange', () => { if (!document.hidden) { watchParty(); watchClaude(); watchPass(); watchAsks(); } });
 
 function showPane(name) {
   pane = name;
   $$('.seg button').forEach(b => { b.className = b.dataset.pane === name ? 'main' : ''; });
-  ['trivia', 'poll', 'accounts'].forEach(p => $('#j-' + p).classList.toggle('on', p === name));
+  ['trivia', 'poll', 'accounts', 'demos'].forEach(p => $('#j-' + p).classList.toggle('on', p === name));
 }
 $$('.seg button').forEach(b => { b.onclick = () => showPane(b.dataset.pane); });
-
-// Cada parte se vuelve a armar solo si cambió lo suyo: no se pisa lo que alguien está tocando.
-function once(key, value, build) {
-  const signature = JSON.stringify(value);
-  if (drawn[key] === signature) return;
-  drawn[key] = signature;
-  build();
-}
 
 function drawParty(state) {
   const before = party;
@@ -834,11 +1336,22 @@ function drawParty(state) {
   const phase = state.trivia.phase;
   if (phase !== 'idle' && (!before || before.trivia.phase === 'idle')) showPane('trivia');
   if (state.poll && state.poll.open && (!before || !before.poll || before.poll.question !== state.poll.question)) showPane('poll');
+  const stage = state.demos.live;
+  if (stage && (!before || !before.demos.live || before.demos.live.id !== stage.id)) {
+    showPane('demos');
+    const mine = state.demos.list.find(x => x.id === stage.id && x.mine);
+    if (mine && before) {
+      if (navigator.vibrate) navigator.vibrate([30, 60, 30]);
+      // Quien muestra su pantalla todavía no tiene nada en la pared: le toca elegir por dónde entra.
+      note(mine.kind === 'file' ? 'Te toca. Tu presentación ya está en la pared.' : 'Te toca. La pared es tuya: mostrá tu pantalla.');
+    }
+  }
   const t = Object.assign({}, state.trivia, { left_ms: 0, answered: 0 });
   once('trivia', [t, state.me, state.owner], () => drawTrivia(state));
-  once('poll', [state.poll, state.me.id, state.owner], () => drawPoll(state));
+  once('poll', [state.poll && Object.assign({}, state.poll, { left_ms: 0 }), state.me.id, state.owner], () => drawPoll(state));
   once('accounts', [state.expenses, state.people, state.owner], () => drawAccounts(state));
   once('people', state.people, () => drawPeople(state));
+  drawDemos(state);
 }
 
 function drawTrivia(state) {
@@ -852,11 +1365,24 @@ function drawTrivia(state) {
       topic.maxLength = 80;
       topic.placeholder = 'Tema: programación, fútbol, los 90';
       topic.setAttribute('aria-label', 'Tema');
-      const count = el('select');
-      [5, 8, 10, 15].forEach(n => { const o = el('option', '', n + ' preguntas'); o.value = n; o.selected = n === 8; count.append(o); });
+      const choice = (label, options, picked) => {
+        const select = el('select');
+        select.setAttribute('aria-label', label);
+        options.forEach(([value, text]) => { const o = el('option', '', text); o.value = value; o.selected = value === picked; select.append(o); });
+        return select;
+      };
+      const count = choice('Cantidad', [5, 8, 10, 15].map(n => [n, n + ' preguntas']), 8);
+      const level = choice('Dificultad', [['easy', 'Fácil'], ['normal', 'Dificultad normal'], ['hard', 'Difícil']], 'normal');
+      const seconds = choice('Tiempo', [10, 15, 20, 30].map(n => [n, n + ' segundos por pregunta']), 20);
       const go = el('button', 'main', 'Armar la trivia');
-      go.onclick = () => partyPost('trivia/start', { topic: topic.value.trim() || 'Cultura general', count: Number(count.value) });
-      out.push(el('h1', '', '¿Jugamos una trivia?'), el('p', '', 'Elegí el tema y Claude escribe las preguntas.'), topic, count, go);
+      go.onclick = () => partyPost('trivia/start', {
+        topic: topic.value.trim() || 'Cultura general', count: Number(count.value), level: level.value, seconds: Number(seconds.value),
+      });
+      out.push(
+        el('h1', '', '¿Jugamos una trivia?'),
+        el('p', '', 'Elegí el tema y Claude escribe las preguntas. Acertar seguido suma un extra, y la última vale doble.'),
+        topic, count, level, seconds, go
+      );
     } else {
       out.push(el('h1', '', 'Todavía no hay trivia.'), el('p', '', 'La arma el dueño del proyector, o se la pide a Claude. Cuando empiece, aparece acá.'));
     }
@@ -874,7 +1400,7 @@ function drawTrivia(state) {
     });
   } else {
     const reveal = t.phase === 'reveal';
-    out.push(el('div', 'tag', 'Pregunta ' + (t.index + 1) + ' de ' + t.total));
+    out.push(el('div', 'tag', 'Pregunta ' + (t.index + 1) + ' de ' + t.total + (t.double ? ' · vale doble' : '')));
     const bar = el('div', 'bar');
     const fill = el('i');
     bar.append(fill);
@@ -896,7 +1422,8 @@ function drawTrivia(state) {
     });
     if (reveal) {
       const won = state.me.gained > 0;
-      out.push(el('p', '', state.me.answer === null ? 'No llegaste a responder.' : won ? 'Sumaste ' + state.me.gained + ' puntos.' : 'Esta no.'));
+      const streak = state.me.streak > 1 ? ' Llevás ' + state.me.streak + ' seguidas.' : '';
+      out.push(el('p', '', state.me.answer === null ? 'No llegaste a responder.' : won ? 'Sumaste ' + state.me.gained.toLocaleString('es-AR') + ' puntos.' + streak : 'Esta no.'));
       if (t.fact) out.push(el('p', '', t.fact));
     } else if (state.me.answer !== null) {
       out.push(el('p', '', 'Respuesta enviada. Mirá la pared.'));
@@ -920,27 +1447,80 @@ function drawPoll(state) {
   const poll = state.poll;
   const host = $('#j-poll-live');
   if (!poll) { host.replaceChildren(el('h1', '', '¿Qué votamos?'), el('p', '', 'Qué comemos, qué vemos, quién lava. Armá una acá abajo.')); return; }
-  const out = [el('div', 'tag', poll.open ? 'Votación' : 'Votación cerrada'), el('div', 'q', poll.question)];
+  // Con voto secreto, mientras está abierta se ve cuántos votaron y no a qué.
+  const hidden = poll.open && poll.secret;
+  const picked = poll.picked !== null;
+  const best = hidden ? 0 : Math.max(...poll.options.map(o => o.votes));
+  const top = poll.options.map((o, i) => i).filter(i => !poll.open && best > 0 && poll.options[i].votes === best);
+  const winner = picked ? poll.picked : top.length === 1 ? top[0] : -1;
+  const out = [el('div', 'tag', (poll.open ? 'Votación' : 'Votación cerrada') + (poll.secret ? ' · voto secreto' : ''))];
+  let fill = null;
+  if (poll.open && poll.of_ms) {
+    const bar = el('div', 'bar');
+    fill = el('i');
+    bar.append(fill);
+    out.push(bar);
+  }
+  out.push(el('div', 'q', poll.question));
   poll.options.forEach((option, i) => {
-    const button = el('button', 'opt' + (poll.mine === i ? ' mine' : ''));
-    button.append(el('i', '', 'ABCDEF'[i]), el('span', '', option.text), el('small', '', String(option.votes)));
+    const button = el('button', 'opt' + (poll.mine === i ? ' mine' : '') + (winner === i ? ' right' : ''));
+    button.append(el('i', '', 'ABCDEF'[i]), el('span', '', option.text));
+    if (!hidden) button.append(el('small', '', option.votes + (picked && winner === i ? ' · por sorteo' : '')));
     button.disabled = !poll.open;
     button.onclick = () => partyPost('vote', { option: i });
     out.push(button);
   });
-  out.push(el('p', '', poll.total === 1 ? '1 voto' : poll.total + ' votos'));
-  if (poll.open && (state.owner || poll.by === state.me.id)) {
+  const count = plural(poll.total, 'voto', 'votos');
+  const tied = !poll.open && !picked && poll.tied.length > 1;
+  out.push(el('p', '', hidden ? count + '. El resultado se ve cuando cierre.' : tied ? count + '. Hay empate.' : picked ? count + '. Hubo empate y lo decidió el azar.' : count));
+  const mine = state.owner || poll.by === state.me.id;
+  if (poll.open && mine) {
     const close = el('button', '', 'Cerrar la votación');
     close.onclick = () => partyPost('poll/close', {});
     out.push(close);
   }
+  if (tied && mine) {
+    const draw = el('button', 'main', 'Desempatar al azar');
+    draw.onclick = () => partyPost('poll/tiebreak', {});
+    out.push(draw);
+  }
   host.replaceChildren(...out);
+  // La barra baja sola hasta que cierra, sin esperar la próxima consulta.
+  if (fill) requestAnimationFrame(() => {
+    fill.style.width = (state.poll.left_ms / poll.of_ms * 100) + '%';
+    requestAnimationFrame(() => { fill.style.transition = 'width ' + state.poll.left_ms + 'ms linear'; fill.style.width = '0'; });
+  });
 }
+let pollSecret = false;
+function setSecret(on) {
+  pollSecret = on;
+  $('#p-secret').className = on ? 'main' : '';
+  $('#p-secret').setAttribute('aria-pressed', String(on));
+}
+$('#p-secret').onclick = () => setSecret(!pollSecret);
+// Las más pedidas, a un toque. La de la mejor demo arma las opciones con quienes ya presentaron.
+$$('#p-presets button').forEach(button => {
+  button.onclick = () => {
+    const kind = button.dataset.preset;
+    if (kind === 'yesno') $('#p-options').value = 'Sí\nNo';
+    if (kind === 'scale') $('#p-options').value = '1\n2\n3\n4\n5';
+    if (kind === 'demos') {
+      const done = party.demos.list.filter(x => x.state === 'done').slice(0, 6);
+      $('#p-question').value = '¿Cuál fue la mejor demo?';
+      $('#p-options').value = done.map(x => (x.name + ' · ' + x.title).slice(0, 60)).join('\n');
+      setSecret(true);
+    }
+    if (!$('#p-question').value) $('#p-question').focus();
+  };
+});
 $('#p-create').onclick = async () => {
   const options = $('#p-options').value.split('\n').map(o => o.trim()).filter(Boolean);
-  if (!await partyPost('poll', { question: $('#p-question').value.trim(), options })) return;
+  const body = { question: $('#p-question').value.trim(), options, secret: pollSecret, seconds: Number($('#p-seconds').value) };
+  if (!await partyPost('poll', body)) return;
   $('#p-question').value = '';
   $('#p-options').value = '';
+  $('#p-seconds').value = '0';
+  setSecret(false);
   $('#p-create').closest('details').open = false;
 };
 
@@ -983,7 +1563,16 @@ function drawPeople(state) {
     return button;
   }));
 }
-$('#e-add').onclick = async () => {
+// Un toque doble no manda dos veces lo mismo: el segundo se ignora hasta que vuelve el primero.
+function oneAtATime(button, action) {
+  let busy = false;
+  button.onclick = async () => {
+    if (busy) return;
+    busy = true;
+    try { await action(); } finally { busy = false; }
+  };
+}
+oneAtATime($('#e-add'), async () => {
   const amount = Number($('#e-amount').value.replace(/\D/g, ''));
   const body = { what: $('#e-what').value.trim(), amount, payer: $('#e-payer').value, among: party.people.map(p => p.id).filter(id => !excluded.has(id)) };
   if (!await partyPost('expense', body)) return;
@@ -991,7 +1580,331 @@ $('#e-add').onclick = async () => {
   $('#e-amount').value = '';
   $('#e-add').closest('details').open = false;
   note('Anotado.');
+});
+
+// --- Demos: la fila de presentaciones ---
+// Cada uno se anota, manda su archivo y, cuando le toca, lo maneja desde acá. Mientras alguien
+// presenta, los demás aplauden; cuando termina, lo votan.
+let myDemo = null;
+let uploading = null;
+let demoKind = 'file';
+let stageClock = null;
+let rating = 0;
+const KINDS = { pdf: 'PDF', image: 'Imagen', video: 'Video' };
+const clock = ms => {
+  const seconds = Math.max(0, Math.floor(ms / 1000));
+  return Math.floor(seconds / 60) + ':' + String(seconds % 60).padStart(2, '0');
 };
+const megas = bytes => bytes >= 1048576
+  ? (bytes / 1048576).toLocaleString('es-AR', { maximumFractionDigits: 1 }) + ' MB'
+  : Math.max(1, Math.round(bytes / 1024)) + ' KB';
+const demoTag = (x, receiving) => x.id === receiving ? 'Recibiendo…' : x.kind === 'screen' ? 'Su pantalla' : x.media ? KINDS[x.media] : 'Falta el archivo';
+
+function drawDemos(state) {
+  const d = state.demos;
+  const byId = {};
+  d.list.forEach(x => { byId[x.id] = x; });
+  const live = d.live ? byId[d.live.id] : null;
+  const waiting = d.list.filter(x => x.state === 'waiting');
+  const thanks = !live && d.thanks !== null ? byId[d.thanks] : null;
+  myDemo = d.list.find(x => x.mine && x.state !== 'done') || null;
+
+  // En escena: quien presenta, y el dueño, tienen el control. Los demás aplauden.
+  $('#d-stage').hidden = !live;
+  if (live) {
+    const file = live.kind === 'file';
+    const video = live.media === 'video';
+    $('#d-stage-tag').textContent = live.mine ? 'Estás en escena' : 'En escena';
+    $('#d-stage-title').textContent = live.mine ? live.title : live.name + ' · ' + live.title;
+    $('#d-remote').hidden = !d.live.control;
+    $('#d-keys').hidden = !file || live.media === 'image';
+    $('#d-prev').textContent = video ? '−10 s' : 'Anterior';
+    $('#d-next').textContent = video ? '+10 s' : 'Siguiente';
+    $('#d-ok').hidden = !video;
+    $('#d-touch').hidden = $('#d-black').hidden = !file;
+    $('#d-own').hidden = file;
+    // Quien muestra su pantalla elige por dónde entra, entre lo que este proyector tiene.
+    const sources = d.live.sources || [];
+    $('#d-sources').hidden = !sources.length;
+    $$('[data-source]').forEach(button => { button.hidden = !sources.includes(button.dataset.source); });
+    $('#d-own-text').textContent = sources.length
+      ? 'Mostrás tu propia pantalla. Elegí por dónde entra, y la pared se pone a recibirla.'
+      : 'Mostrás tu propia pantalla: conectá el HDMI o duplicala desde tu equipo. La pared te guarda el turno.';
+    if (!$('#d-finish').dataset.armed) $('#d-finish').textContent = live.mine ? 'Terminar mi turno' : 'Terminar el turno';
+    $('#d-watch').hidden = live.mine;
+    $('#d-stage-barbox').hidden = !d.live.limit_ms;
+    stageClock = { at: performance.now(), elapsed: d.live.elapsed_ms, limit: d.live.limit_ms };
+    tickStage();
+  }
+
+  // Recién terminó: medio minuto de aplausos, y el voto.
+  $('#d-thanks').hidden = !thanks;
+  if (thanks) {
+    $('#d-thanks-title').textContent = thanks.mine ? 'Gracias. Así te fue.' : thanks.name + ' · ' + thanks.title;
+    $('#d-thanks-act').hidden = thanks.mine;
+    if (!thanks.mine) once('d-stars', [thanks.id, thanks.my_stars], () => fillStars($('#d-stars'), thanks));
+  }
+  drawClaps();
+
+  // Lo mío: en qué lugar estoy y mi archivo. En escena, lo mío es el control de arriba.
+  $('#d-mine').hidden = !myDemo || myDemo.state === 'live';
+  if (myDemo) {
+    const place = waiting.findIndex(x => x.id === myDemo.id);
+    $('#d-mine-tag').textContent = 'Tu presentación · ' + (place === 0 ? 'seguís vos' : (place + 1) + '.º en la fila');
+    $('#d-mine-title').textContent = myDemo.title;
+    $('#d-file').hidden = myDemo.kind !== 'file';
+    $('#d-mine-own').hidden = myDemo.kind === 'file';
+    drawUpload();
+  }
+  $('#d-signup').hidden = !!myDemo || (!d.open && !state.owner);
+  $('#d-closed').hidden = !!myDemo || d.open || state.owner;
+
+  once('d-queue', [waiting.map(x => [x.id, x.name, x.title, x.kind, x.media]), state.owner, d.receiving, !!live], () => {
+    const out = [];
+    if (waiting.length) out.push(el('div', 'tag', 'Fila · ' + waiting.length));
+    waiting.forEach((x, i) => {
+      const row = el('div', 'entry');
+      const line = el('div', 'line');
+      line.append(el('span', '', (i + 1) + '. ' + x.name + ' · ' + x.title), el('b', '', demoTag(x, d.receiving)));
+      row.append(line);
+      if (state.owner) {
+        const tools = el('div', 'checks');
+        const go = el('button', '', 'Empezar');
+        go.disabled = !!live || (x.kind === 'file' && !x.media);
+        go.onclick = () => partyPost('demo/start', { id: x.id });
+        const up = el('button', '', 'Subir');
+        up.disabled = i === 0;
+        up.onclick = () => partyPost('demo/move', { id: x.id, up: true });
+        const down = el('button', '', 'Bajar');
+        down.disabled = i === waiting.length - 1;
+        down.onclick = () => partyPost('demo/move', { id: x.id, up: false });
+        const drop = el('button', '', 'Sacar');
+        twice(drop, '¿Sacar? Tocá de nuevo', () => partyPost('demo/leave', { id: x.id }));
+        tools.append(go, up, down, drop);
+        row.append(tools);
+      }
+      out.push(row);
+    });
+    $('#d-queue').replaceChildren(...out);
+  });
+
+  // El podio: promedio de los votos y, si empatan, los aplausos. Mientras se aplaude a la que
+  // recién terminó, su número cambia a cada rato y no hace falta rearmar la lista por eso.
+  const done = d.podium.map(id => byId[id]).filter(Boolean);
+  once('d-done', [done.map(x => [x.id, x.name, x.title, x.stars, x.votes, x.id === d.thanks ? 0 : x.claps, x.my_stars, x.mine]), rating, state.owner, thanks && thanks.id], () => {
+    const out = [];
+    if (done.length) out.push(el('div', 'tag', 'Ya presentaron'));
+    done.forEach((x, i) => {
+      const row = el('div', 'entry');
+      const line = el('div', 'line');
+      const score = x.stars === null ? 'sin votos' : x.stars.toLocaleString('es-AR', { minimumFractionDigits: 1 }) + ' · ' + plural(x.votes, 'voto', 'votos');
+      line.append(el('span', '', (i + 1) + '. ' + x.name + ' · ' + x.title), el('b', '', score));
+      row.append(line);
+      const tools = el('div', 'checks');
+      if (!x.mine && !(thanks && thanks.id === x.id)) {
+        const vote = el('button', '', x.my_stars ? 'Tu voto: ' + x.my_stars : 'Votar');
+        vote.onclick = () => { rating = rating === x.id ? 0 : x.id; drawDemos(party); };
+        tools.append(vote);
+      }
+      if (state.owner) {
+        const again = el('button', '', 'Otra vez');
+        again.onclick = () => partyPost('demo/again', { id: x.id });
+        tools.append(again);
+      }
+      if (tools.children.length) row.append(tools);
+      if (rating === x.id && !x.mine) {
+        const stars = el('div', 'stars');
+        fillStars(stars, x);
+        row.append(stars);
+      }
+      out.push(row);
+    });
+    $('#d-done').replaceChildren(...out);
+  });
+  $('#p-demos').hidden = d.list.filter(x => x.state === 'done').length < 2;
+
+  // Quien lleva el proyector da el turno: la que sigue, a un toque y con nombre.
+  const next = waiting[0];
+  const turn = state.owner && !live && !!next;
+  $('#d-turn').hidden = !turn;
+  if (turn) {
+    const missing = next.kind === 'file' && !next.media;
+    $('#d-turn-title').textContent = next.name + ' · ' + next.title;
+    $('#d-start').dataset.id = next.id;
+    $('#d-start').disabled = missing;
+    $('#d-turn-note').hidden = !missing;
+  }
+  $('#d-host').hidden = !state.owner;
+  if (state.owner) {
+    if (document.activeElement !== $('#d-limit')) $('#d-limit').value = String(d.limit_min);
+    $('#d-open').textContent = d.open ? 'Cerrar la fila' : 'Abrir la fila';
+  }
+}
+
+function fillStars(host, entry) {
+  host.replaceChildren(...[1, 2, 3, 4, 5].map(n => {
+    const star = el('button', entry.my_stars === n ? 'main' : '', String(n));
+    star.setAttribute('aria-label', n + ' de 5');
+    star.onclick = async () => {
+      if (await partyPost('demo/rate', { id: entry.id, stars: n })) { rating = 0; drawDemos(party); }
+    };
+    return star;
+  }));
+}
+
+// El reloj corre acá, sin esperar la próxima consulta. Cumplido el tiempo avisa, y no corta a nadie.
+function tickStage() {
+  if (!stageClock || $('#d-stage').hidden) return;
+  const elapsed = stageClock.elapsed + (performance.now() - stageClock.at);
+  const left = stageClock.limit - elapsed;
+  $('#d-stage-clock').textContent = !stageClock.limit ? clock(elapsed)
+    : left > 0 ? clock(elapsed) + ' de ' + clock(stageClock.limit)
+    : 'Se cumplió el tiempo · ' + clock(elapsed);
+  if (stageClock.limit) $('#d-stage-bar').style.width = Math.max(0, left / stageClock.limit * 100) + '%';
+}
+setInterval(tickStage, 500);
+
+// Los aplausos salen de a tandas: muchos toques seguidos son un solo pedido.
+let clapFor = 0;
+let clapPending = 0;
+let clapTimer = 0;
+function clap() {
+  const d = party.demos;
+  const id = d.live ? d.live.id : d.thanks;
+  if (id === null) return;
+  if (navigator.vibrate) navigator.vibrate(8);
+  if (clapFor !== id) { clapFor = id; clapPending = 0; }
+  clapPending++;
+  drawClaps();
+  if (!clapTimer) clapTimer = setTimeout(sendClaps, 500);
+}
+async function sendClaps() {
+  clapTimer = 0;
+  const count = Math.min(clapPending, 20);
+  clapPending -= count;
+  if (count) {
+    const data = await post('juntada/demo/clap', { key: me, id: clapFor, count }, true);
+    if (data) drawParty(data);
+  }
+  if (clapPending) clapTimer = setTimeout(sendClaps, 500);
+}
+function drawClaps() {
+  if (!party) return;
+  const d = party.demos;
+  const id = d.live ? d.live.id : d.thanks;
+  const entry = d.list.find(x => x.id === id);
+  if (!entry) return;
+  const text = plural(entry.claps + (clapFor === id ? clapPending : 0), 'aplauso', 'aplausos');
+  $('#d-clap-count').textContent = text;
+  $('#d-thanks-claps').textContent = text;
+}
+$('#d-clap').onclick = clap;
+$('#d-clap2').onclick = clap;
+
+// Mi archivo: cuál mandé, o cuánto falta. Si hay otro entrando, se dice que espera su turno.
+function drawUpload() {
+  const mine = myDemo;
+  if (!mine || mine.kind !== 'file') return;
+  const sending = uploading && uploading.id === mine.id ? uploading : null;
+  let text;
+  let width = 0;
+  if (sending) {
+    const receiving = party ? party.demos.receiving : null;
+    const queued = receiving !== null && receiving !== mine.id;
+    const percent = Math.round(sending.sent / sending.total * 100);
+    text = queued ? 'Esperando turno: está entrando el archivo de otra persona. Dejá esta página abierta.' : 'Subiendo ' + sending.name + ' · ' + percent + ' %. Dejá esta página abierta.';
+    width = queued ? 0 : percent;
+  } else {
+    text = mine.file ? 'Tu archivo: ' + mine.file + ' · ' + megas(mine.size) : 'Falta tu archivo: un PDF, una imagen o un video de hasta ' + party.demos.max_mb + ' MB.';
+  }
+  $('#d-file-status').textContent = text;
+  $('#d-up-bar').style.width = width + '%';
+  $('#d-choose').textContent = mine.file ? 'Cambiar el archivo' : 'Elegir el archivo';
+  $('#d-choose').className = mine.file ? '' : 'main';
+  $('#d-choose').disabled = !!sending;
+}
+$('#d-choose').onclick = () => $('#d-pick').click();
+$('#d-pick').onchange = async () => {
+  const file = $('#d-pick').files[0];
+  $('#d-pick').value = '';
+  if (!file || !myDemo || uploading) return;
+  const id = myDemo.id;
+  // Primero se pregunta si va a entrar: el aviso llega claro y al instante, no después de subir cien megas.
+  if (!await post('juntada/demo/check', { key: me, id, name: file.name, size: file.size })) return;
+  sendDemo(file, id);
+};
+function sendDemo(file, id) {
+  uploading = { id, name: file.name, sent: 0, total: file.size };
+  drawUpload();
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', '/api/juntada/demo/upload?id=' + id + '&name=' + encodeURIComponent(file.name));
+  xhr.setRequestHeader('Authorization', bearer());
+  // La clave de cada persona va en una cabecera: nunca en la dirección.
+  xhr.setRequestHeader('X-Gd-Key', me);
+  xhr.upload.onprogress = e => {
+    if (!e.lengthComputable || !uploading) return;
+    uploading.sent = e.loaded;
+    drawUpload();
+  };
+  xhr.onloadend = async () => {
+    uploading = null;
+    let data = null;
+    try { data = JSON.parse(xhr.responseText); } catch (e) {}
+    if (xhr.status === 200 && data) {
+      note('Tu archivo ya está en el proyector.');
+      drawParty(data);
+    } else {
+      let error = data && data.error;
+      // Si el proyector cortó antes de leer el archivo, el navegador no trae el motivo: se le pregunta.
+      if (!error) {
+        const response = await fetch('/api/juntada/demo/check', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: bearer() },
+          body: JSON.stringify({ key: me, id, name: file.name, size: file.size }),
+        }).catch(() => null);
+        const why = response && !response.ok ? await response.json().catch(() => null) : null;
+        error = why && why.error;
+      }
+      note(ERRORS[error] || 'El archivo no llegó. Probá de nuevo.', true);
+    }
+    drawUpload();
+    watchParty();
+  };
+  xhr.send(file);
+  watchParty();
+}
+
+$$('#d-kind button').forEach(button => {
+  button.onclick = () => {
+    demoKind = button.dataset.kind;
+    $$('#d-kind button').forEach(other => { other.className = other === button ? 'main' : ''; });
+  };
+});
+oneAtATime($('#d-join'), async () => {
+  const title = $('#d-title').value.trim();
+  if (!title) { note('Poné qué vas a mostrar.', true); return; }
+  if (!await partyPost('demo', { title, kind: demoKind })) return;
+  $('#d-title').value = '';
+  $('#d-title').blur();
+  note(demoKind === 'file' ? 'Anotado. Ahora mandá tu archivo.' : 'Anotado. Te avisamos cuando te toque.');
+});
+twice($('#d-leave'), '¿Te bajás? Tocá de nuevo', () => { if (myDemo) partyPost('demo/leave', { id: myDemo.id }); });
+twice($('#d-finish'), '¿Terminar? Tocá de nuevo', () => partyPost('demo/finish', {}));
+$$('[data-demo]').forEach(button => {
+  button.onclick = () => {
+    if (navigator.vibrate) navigator.vibrate(8);
+    partyPost('demo/key', { name: button.dataset.demo });
+  };
+});
+$$('[data-source]').forEach(button => {
+  button.onclick = async () => {
+    if (!await partyPost('demo/source', { name: button.dataset.source })) return;
+    note(button.dataset.source === 'hdmi' ? 'La pared pasó a la entrada HDMI. Enchufá el cable.' : 'La pared ya recibe. ' + mirrorHow());
+  };
+});
+$('#d-start').onclick = () => partyPost('demo/start', { id: Number($('#d-start').dataset.id) });
+$('#d-limit').onchange = () => partyPost('demo/limit', { minutes: Number($('#d-limit').value) });
+$('#d-open').onclick = () => partyPost('demo/open', { open: !party.demos.open });
 
 // --- Permisos: el dueño ve quién pide entrar y decide hasta dónde llega ---
 let askTimer = 0;
@@ -1037,9 +1950,11 @@ $$('#asks [data-level]').forEach(button => {
 });
 
 // La página vuelve a donde la dejaste. Un invitado arranca en la juntada: pide permiso o espera.
+drawChat();
 if (isOwner) {
   showTab(wanted || load('gd.tab') || 'control');
-  loadState();
+  // Con el estado se sabe si hay conexión segura: recién ahí se arma el micrófono.
+  loadState().then(() => { micSetup(); probeSecure(); });
   watchAsks();
 } else if (pass || code) {
   if (!pass) $('#j-hint').textContent = 'Poné tu nombre, como te van a ver en la pared. Entrás cuando el dueño del proyector te deje pasar.';

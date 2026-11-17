@@ -1,0 +1,15 @@
+{
+  "name": "galfredev-carrera-car",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs CarConcept.glb ../../src/assets/car.glb && node build.mjs CarConcept.glb ../../src/assets/car-cerca.glb 0.12 0.03 && node build.mjs CarConcept.glb ../../src/assets/car-lejos.glb 0.04 0.08 abierto"
+  },
+  "dependencies": {
+    "@gltf-transform/core": "4.2.1",
+    "@gltf-transform/extensions": "4.2.1",
+    "@gltf-transform/functions": "4.2.1",
+    "meshoptimizer": "0.25.0",
+    "sharp": "0.34.4"
+  }
+}

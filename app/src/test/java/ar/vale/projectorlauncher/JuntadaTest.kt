@@ -590,7 +590,7 @@ class JuntadaTest {
     fun `contrato - los errores de la juntada llegan con su codigo y no como falla del servidor`() {
         val guest = guest()
         call("/api/juntada/join", """{"name":"Ana"}""", guest)
-        val taken = call("/api/juntada/join", """{"name":"ana"}""", guest)
+        val taken = call("/api/juntada/join", """{"name":"ana"}""", guest("Otro"))
         assertEquals(409, taken.status)
         assertEquals("name_taken", taken.json().getString("error"))
         val stranger = call("/api/juntada/vote", """{"key":"nadie","option":0}""", guest)

@@ -63,6 +63,9 @@ class ClaudeSessionTest {
         val text = StringBuilder()
         var end: Session.End? = null
         var error: Throwable? = null
+        val events = ArrayList<String>()
+        override fun onStep() { events.add("paso") }
+        override fun onActivity(what: String) { events.add("actividad:$what") }
         override fun onText(text: String) { this.text.append(text) }
         override fun onEnd(end: Session.End, error: Throwable?) {
             this.end = end
@@ -107,6 +110,25 @@ class ClaudeSessionTest {
         assertEquals(2, content.length())
         assertEquals("a", content.getJSONObject(0).getString("tool_use_id"))
         assertEquals("b", content.getJSONObject(1).getString("tool_use_id"))
+    }
+
+    @Test
+    fun `contrato - lo que la herramienta cuenta mientras corre llega al renglon de estado`() {
+        val script = Script(
+            tool(0, "a", "tocar", """{"elemento":1}""") + stop("tool_use"),
+            text("listo") + stop("end_turn")
+        )
+        val looking = object : ToolRunner {
+            override fun run(name: String, input: JSONObject) = ToolOutcome("hecho $name")
+            override fun run(name: String, input: JSONObject, phase: (String) -> Unit): ToolOutcome {
+                phase("ver_pantalla")
+                return run(name, input)
+            }
+        }
+        val r = Recorder()
+        Session(script, Models.of("claude-opus-5-5"), false, "s", looking, r).ask("che")
+        // El toque ya está hecho cuando mira: el renglón no puede seguir diciendo «tocando…».
+        assertEquals(listOf("paso", "actividad:tocar", "actividad:ver_pantalla", "paso"), r.events)
     }
 
     @Test

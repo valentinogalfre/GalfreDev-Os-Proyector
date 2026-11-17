@@ -79,7 +79,7 @@ abstract class GdActivity : Activity() {
         )
         super.setContentView(rootFrame)
         if (intent.getBooleanExtra(EXTRA_TAPE, false) && Motion.full) {
-            tape.startCovered(intent.getStringExtra(EXTRA_TAPE_TITLE))
+            tape.startCovered(intent.getStringExtra(EXTRA_TAPE_TITLE), holdsCover())
         }
     }
 
@@ -108,8 +108,14 @@ abstract class GdActivity : Activity() {
             return
         }
         hideSystemBars()
-        if (::tape.isInitialized) tape.uncover()
+        if (::tape.isInitialized && !holdsCover()) tape.uncover()
     }
+
+    /**
+     * Una pantalla que todavía no tiene qué mostrar (un video sin su primer cuadro) pide que la cinta
+     * siga tapando al entrar, y la destapa ella misma con `tape.uncover()` cuando está lista.
+     */
+    protected open fun holdsCover(): Boolean = false
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
@@ -203,6 +209,9 @@ abstract class GdActivity : Activity() {
 
     /** El teclado en pantalla abierto, si lo hay. */
     val keyboard: Keyboard? get() = overlays.lastOrNull() as? Keyboard
+
+    /** True mientras la cinta tapa la pantalla o está por hacerlo: lo que se abra ahora no puede pasar por ella. */
+    val covering: Boolean get() = ::tape.isInitialized && tape.isBusy
 
     companion object {
         @Volatile private var foreground: WeakReference<GdActivity>? = null
