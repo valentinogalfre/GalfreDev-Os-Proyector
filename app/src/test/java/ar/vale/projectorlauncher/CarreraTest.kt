@@ -22,6 +22,7 @@ import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.DataInputStream
 import java.net.Socket
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
@@ -112,6 +113,27 @@ class CarreraTest {
         assertNull(socket.read())
         Thread.sleep(100)
         assertEquals(listOf(0x8A.toByte(), 1.toByte(), 'x'.code.toByte()), out.toByteArray().take(3))
+    }
+
+    @Test
+    fun `websocket - lo que se mando justo antes de cerrar sale antes del cierre`() {
+        // El que escribe queda trabado en el primer mensaje: el aviso de rechazo sigue en la cola cuando llega el cierre.
+        val gate = CountDownLatch(1)
+        val out = object : ByteArrayOutputStream() {
+            override fun write(bytes: ByteArray) {
+                gate.await()
+                super.write(bytes)
+            }
+        }
+        val socket = WebSocket(ByteArrayInputStream(ByteArray(0)), out)
+        socket.send("a")
+        Thread.sleep(50)
+        socket.send("no entra")
+        socket.close()
+        gate.countDown()
+        Thread.sleep(100)
+        val text = { t: String -> listOf(0x81.toByte(), t.length.toByte()) + t.toByteArray().toList() }
+        assertEquals(text("a") + text("no entra") + listOf(0x88.toByte(), 2.toByte(), 0x03.toByte(), 0xe8.toByte()), out.toByteArray().toList())
     }
 
     @Test
