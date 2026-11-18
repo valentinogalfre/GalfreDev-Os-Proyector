@@ -40,7 +40,7 @@ jobs:
         run: ./gradlew --no-daemon assembleRelease
       - name: Subir reportes
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: reportes
           path: |
@@ -48,7 +48,7 @@ jobs:
             app/build/reports/lint-results-debug.html
           if-no-files-found: warn
       - name: Subir APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: galfredev-os-apk
           path: app/build/outputs/apk/debug/app-debug.apk
@@ -82,7 +82,7 @@ jobs:
           script: bash scripts/emulator-smoke.sh apk/app-debug.apk capturas
       - name: Subir capturas y log
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: capturas-emulador
           path: capturas
