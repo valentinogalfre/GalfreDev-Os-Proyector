@@ -1,10 +1,29 @@
 # galfredev OS
 
-El sistema que hicimos para proyectores Android, como el Fika P8 y los tipo HY300. Se maneja
-entero con el control remoto y lleva la marca de punta a punta.
+[![CI](https://github.com/valentinogalfre/GalfreDev-Os-Proyector/actions/workflows/projector-os.yml/badge.svg)](https://github.com/valentinogalfre/GalfreDev-Os-Proyector/actions/workflows/projector-os.yml)
+[![Versión](https://img.shields.io/github/v/release/valentinogalfre/GalfreDev-Os-Proyector?label=versi%C3%B3n)](https://github.com/valentinogalfre/GalfreDev-Os-Proyector/releases/latest)
+[![Licencia MIT](https://img.shields.io/badge/licencia-MIT-e4a32b)](LICENSE)
+![Android 9 o más nuevo](https://img.shields.io/badge/Android-9%2B-3ddc84)
+[![PRs bienvenidos](https://img.shields.io/badge/PRs-bienvenidos-e4a32b)](CONTRIBUTING.md)
 
-No es una ROM y no toca el firmware. Es un solo APK de 1,5 MB que reemplaza la pantalla
+El sistema que hicimos para proyectores Android, como el Fika P8 y los tipo HY300. Se maneja
+entero con el control remoto, convierte la pared en una consola para jugar con amigos y trae a
+Claude adentro.
+
+<p align="center">
+  <img src="docs/media/carrera.gif" width="420" alt="La carrera: arriba la pared con la transmisión, abajo un celular manejando su auto">
+  <img src="docs/media/picadito.gif" width="420" alt="El picadito: arriba la cancha en la pared, abajo el celular con el trackpad y el botón de patear">
+</p>
+
+No es una ROM y no toca el firmware. Es un solo APK de unos 4 MB que reemplaza la pantalla
 de inicio del fabricante. Si algo falla, el inicio original sigue en el equipo.
+
+**Es open source y está abierto a que le sumes cosas**: un juego nuevo, una pantalla, un arreglo,
+soporte para otro proyector. Mirá [cómo sumarte](CONTRIBUTING.md) y
+[cómo hacer un juego](docs/juegos.md).
+
+> **Bajalo:** el APK de cada versión está en [Releases](https://github.com/valentinogalfre/GalfreDev-Os-Proyector/releases/latest).
+> Cómo instalarlo, más abajo.
 
 Corre en un Fika P8 desde noviembre de 2026. Cada versión se prueba antes en emulador, con
 Android 9 y 11, y con celulares simulados. No todo se vio todavía en el equipo: lo que falta
@@ -19,7 +38,7 @@ está en [`ROADMAP.md`](ROADMAP.md).
 | Cine | Netflix y compañía, servicios gratis, la pantalla del celular, y video, música, fotos y PDF desde la memoria, un pendrive o el celular. Retoma donde dejaste, con subtítulos |
 | Tienda | 21 apps elegidas para proyector, bajadas de su fuente oficial y comprobadas antes de instalar |
 | Claude | Hablale desde el celular y usa las apps por vos: abre, busca, escribe y le da reproducir. La respuesta sale en la pared |
-| Juntada | Todos se suman desde su celular con un código: una fila de presentaciones, trivia que escribe Claude, votaciones, un picadito estilo HaxBall y las cuentas de la casa |
+| Juntada | Todos se suman desde su celular con un código: carreras en 3D, un picadito estilo HaxBall, una fila de presentaciones, trivia que escribe Claude, votaciones y las cuentas de la casa |
 | Pared | La hora en palabras, la hora grande o una retícula. Arranca sola si dejás de usarlo |
 | Celular | Tu celular como control, trackpad y teclado de cualquier app, sin instalar nada |
 | Ajustes | Lo del sistema que este equipo de verdad tiene, más tema, animaciones y temporizador |
@@ -46,6 +65,32 @@ está en [`ROADMAP.md`](ROADMAP.md).
 - **Calibración.** Patrones de foco, geometría y niveles para dejar bien la imagen.
 - **Imagen en negro.** Apaga la imagen sin apagar el equipo. También se dispara con el
   temporizador o desde el celular.
+
+## Los juegos
+
+Cualquiera escanea el QR de la pared con el celular, pone su nombre y ya está jugando. No hay que
+bajar ninguna app ni crearse una cuenta: solo hace falta estar en el mismo wifi que el proyector.
+Juegan hasta ocho a la vez.
+
+<p align="center"><img src="docs/media/escanear.jpg" width="480" alt="Las salas de espera de la carrera y del picadito, con el QR para entrar"></p>
+
+**La carrera.** La pared es como la transmisión de la tele, con cámaras que van cambiando y la tabla
+de posiciones. En el celular cada uno ve la carrera en 3D desde su auto y maneja inclinando el
+teléfono o con la palanca, con nitro, freno y derrape. Tiene rebufo, saltos, tres autos para elegir,
+autos automáticos para completar la grilla, campeonato con puntos y récords por pista.
+
+**El picadito.** Fútbol de arriba, al estilo HaxBall. El celular es un trackpad que nace donde
+apoyás el dedo, más un botón para patear. Los detalles están en [La juntada](#la-juntada).
+
+Los dos son páginas web dentro del APK (TypeScript, three.js y Vite, en [`game/`](game)), y la sala
+que los conecta corre en el launcher. **Hacer un juego nuevo es, casi entero, escribir dos páginas**:
+el paso a paso está en [`docs/juegos.md`](docs/juegos.md). Para probarlos sin proyector, en el
+navegador de tu compu:
+
+```sh
+cd game && npm ci && npm run build && cd ..
+scripts/juegos-en-la-compu.sh
+```
 
 ## Con el control remoto
 
@@ -147,13 +192,21 @@ corta; al final hay aplausos, un voto del 1 al 5 y un podio.
 
 ## Compilar
 
-Hace falta JDK 17 y el Android SDK con la plataforma 35.
+Hace falta JDK 17 y el Android SDK con la plataforma 35 (Android Studio trae los dos). Para los
+juegos, además, Node 20 o más nuevo.
 
 ```sh
 ./gradlew assembleDebug        # el APK queda en app/build/outputs/apk/debug/
 ./gradlew testDebugUnitTest    # 474 tests de contrato
 ./gradlew lintDebug            # los errores frenan la compilación
+
+cd game
+npm test                       # los tests de los juegos
+npm run pack                   # compila los juegos y los copia adentro del APK
 ```
+
+Los juegos ya compilados viven en `app/src/main/assets/carrera/`, así que el APK se arma solo con
+Gradle, sin Node.
 
 El proyecto no usa AndroidX a propósito: solo el framework y Kotlin, para que arranque
 rápido en equipos con 1 GB de RAM.
@@ -163,6 +216,7 @@ rápido en equipos con 1 GB de RAM.
 | Qué | Cómo |
 |---|---|
 | Recorrido en emulador | `scripts/emulator-smoke.sh <apk> <carpeta>`. Falla si algo se cierra solo o si la cinta no está donde debe |
+| Los juegos sin proyector | `scripts/juegos-en-la-compu.sh`. La misma sala del launcher en tu compu; cada pestaña es un celular |
 | Claude sin gastar | `python3 scripts/fake_claude.py`, un servidor de mentira. Solo lo acepta la versión de depuración. Con «contactos» maneja otra app paso a paso, y con «trivia» arma una |
 | Catálogo de la Tienda | `python3 scripts/store/check_catalog.py --token "$(gh auth token)"` resuelve las 21 apps contra sus fuentes |
 
@@ -194,9 +248,11 @@ un estado, y arriba de la cinta solo va carbón.
 | `device/` | Lo del equipo: funciones del fabricante, temporizador, calibración |
 | `claude/` | Protocolo de la API, sesión, herramientas, clave, lectura y manejo de otras apps |
 | `juntada/` | Presentaciones, trivia, votación y cuentas; la pantalla de la pared y el banco de preguntas |
+| `carrera/` | La sala de los juegos y sus pantallas: la carrera y el picadito |
 | `remote/` | Servidor HTTP y HTTPS, emparejado, invitados, control por accesibilidad |
+| `game/` (fuera de `app/`) | Los juegos: TypeScript, three.js y Vite |
 
-Más detalle en el [diseño](docs/superpowers/specs/2026-11-06-galfredev-os-design.md), en
+Más detalle en el [diseño](docs/diseno.md), en [cómo hacer un juego](docs/juegos.md), en
 [qué apps conviene instalar](docs/apps.md) y en las
 [notas de firmware](docs/proyectores.md).
 
@@ -218,6 +274,38 @@ Más detalle en el [diseño](docs/superpowers/specs/2026-11-06-galfredev-os-desi
 - Netflix se cierra sola en los emuladores, así que ahí Claude se probó con otras apps. Que
   busque y reproduzca en el Netflix del proyector falta comprobarlo en el equipo.
 
+## Sumate
+
+Todo suma: un juego nuevo, una pantalla, probarlo en otro proyector y contar cómo anduvo, o
+arreglar un texto. Lo que queda por hacer está en [`ROADMAP.md`](ROADMAP.md) y en los
+[issues](https://github.com/valentinogalfre/GalfreDev-Os-Proyector/issues).
+
+- [Cómo sumarte](CONTRIBUTING.md): el entorno, las reglas de la casa y cómo mandar un pull request.
+- [Cómo hacer un juego](docs/juegos.md).
+- [Código de convivencia](CODE_OF_CONDUCT.md) y [seguridad](SECURITY.md).
+
+## Licencia
+
+[MIT](LICENSE): podés usarlo, cambiarlo y redistribuirlo, también en un producto, siempre que quede
+el aviso de copyright. Las tipografías (OFL), los modelos 3D y los sonidos (CC BY 4.0 y CC0) tienen
+su propia licencia, anotada en [`game/CREDITS.md`](game/CREDITS.md) y en
+`app/src/main/assets/licenses/`.
+
+## In English
+
+galfredev OS is an open-source home screen for cheap Android projectors (Fika P8, HY300 and similar).
+It is a single APK, not a ROM. It turns the wall into a party console: anyone on the same Wi-Fi
+scans a QR code with their phone and plays, with no app to install. There is a 3D racing game where
+the wall works as the TV broadcast and each phone shows your own car, and a top-down football game in
+the style of HaxBall. Up to eight people play at once. It also has a cinema hub, an app store tuned
+for projectors, the phone as a remote and keyboard, and Claude built in to operate other apps for
+you.
+
+The UI and docs are in Spanish, and contributions in English are welcome. Build it with
+`./gradlew assembleDebug` (JDK 17 and Android SDK 35). To write a new game, see
+[`docs/juegos.md`](docs/juegos.md): each game is a wall page plus a phone page in `game/`, talking
+through a small message relay that runs inside the launcher.
+
 ---
 
-[galfredev.com](https://galfredev.com) · Río Tercero, Córdoba
+Hecho por [Valentino Galfré](https://github.com/valentinogalfre) · [galfredev.com](https://galfredev.com) · Río Tercero, Córdoba

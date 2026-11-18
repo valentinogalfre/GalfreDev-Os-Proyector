@@ -1,0 +1,34 @@
+name: Algo no anda
+description: Un error, algo que se cierra solo o que no hace lo que dice.
+labels: [error]
+body:
+  - type: textarea
+    id: que
+    attributes:
+      label: Qué pasó
+      description: Qué hiciste, qué esperabas y qué pasó en cambio.
+    validations:
+      required: true
+  - type: input
+    id: equipo
+    attributes:
+      label: Proyector y versión de Android
+      placeholder: Fika P8, Android 9 · emulador de TV, Android 11
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Versión de galfredev OS
+      description: Está en Ajustes, abajo de todo.
+      placeholder: 1.3.0
+  - type: input
+    id: celular
+    attributes:
+      label: Celular y navegador (si tiene que ver con el celular o los juegos)
+      placeholder: iPhone 13 con Safari · Android con Chrome
+  - type: textarea
+    id: extra
+    attributes:
+      label: Capturas, video o log
+      description: Si podés, `adb logcat -d | grep -i projectorlauncher`. Revisá que no tenga claves ni datos personales.

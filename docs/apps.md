@@ -215,7 +215,7 @@ es conectar un Google TV Streamer o un Fire TV Stick al HDMI del proyector.
 La app oficial `com.anthropic.claude` no sirve acá: es de celular, necesita Google
 Play y no se usa con control remoto. Por eso armamos una pantalla propia que habla
 con la API de Anthropic. Hace falta una clave de API, y cada pregunta se cobra en esa
-cuenta. Los detalles están en el [diseño](superpowers/specs/2026-11-06-galfredev-os-design.md).
+cuenta. Los detalles están en el [diseño](diseno.md).
 
 ## Límite conocido
 

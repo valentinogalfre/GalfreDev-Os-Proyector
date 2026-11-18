@@ -5,8 +5,8 @@ name: galfredev OS (APK + emulador)
 # si la cinta no está donde corresponde.
 on:
   push:
-    paths:
-      - '**'
+    branches: [main]
+  pull_request:
   workflow_dispatch:
 
 concurrency:

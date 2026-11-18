@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Problema de seguridad
+    url: https://github.com/valentinogalfre/GalfreDev-Os-Proyector/security/advisories/new
+    about: Reportalo por privado, no en un issue público.
+  - name: Charla, dudas y fotos de tu proyector
+    url: https://github.com/valentinogalfre/GalfreDev-Os-Proyector/discussions
+    about: Para preguntar cómo instalarlo, mostrar tu equipo o tirar ideas sueltas.

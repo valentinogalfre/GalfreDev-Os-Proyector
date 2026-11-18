@@ -1,0 +1,33 @@
+name: Idea o juego nuevo
+description: Un juego para la juntada, una pantalla nueva o algo que le sumarías.
+labels: [idea]
+body:
+  - type: dropdown
+    id: tipo
+    attributes:
+      label: Qué es
+      options:
+        - Un juego nuevo
+        - Una mejora a un juego que ya está
+        - Una pantalla o función del launcher
+        - Soporte para otro proyector
+        - Otra cosa
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: La idea
+      description: Para un juego, contá cómo se juega, qué se ve en la pared, qué hace cada celular y cuántos juegan.
+    validations:
+      required: true
+  - type: dropdown
+    id: quien
+    attributes:
+      label: ¿Lo querés hacer vos?
+      options:
+        - Sí, lo hago yo
+        - Me sumo, pero necesito una mano
+        - No, la dejo para quien quiera
+    validations:
+      required: true

@@ -1,0 +1,17 @@
+// Lo usa scripts/juegos-en-la-compu.sh: escribe en $CPOUT el classpath de los tests de la app, que es
+// lo que necesita el servidor de los juegos para correr en una computadora.
+allprojects {
+  afterEvaluate { p ->
+    if (p.name == 'app') {
+      p.tasks.register('printTestClasspath') {
+        doLast {
+          def cfg = p.configurations.getByName('debugUnitTestRuntimeClasspath')
+          def type = org.gradle.api.attributes.Attribute.of('artifactType', String)
+          def classes = cfg.incoming.artifactView { attributes { attribute(type, 'android-classes-jar') }; lenient true }.files.files
+          def jars = cfg.incoming.artifactView { attributes { attribute(type, 'jar') }; lenient true }.files.files
+          new File(System.getenv('CPOUT')).text = (classes + jars).join(File.pathSeparator)
+        }
+      }
+    }
+  }
+}

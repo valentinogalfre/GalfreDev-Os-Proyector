@@ -1419,6 +1419,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) { wa
 // --- Carrera ---
 // Quien ya está conectado al proyector entra a la carrera desde acá, sin escanear el código de la pared.
 // El dueño lleva además el pase de mando: maneja la sala aunque no haya entrado primero.
+const RACE_PAGE = 'volante.html';
 const SOCCER_PAGE = 'jugador.html';
 let raceDoor = null;
 let raceTimer = 0;
@@ -1435,11 +1436,12 @@ async function watchRace() {
   if (!document.hidden) raceTimer = setTimeout(watchRace, open ? 6000 : 3000);
 }
 function enterRace() {
-  // La sala es una sola y la abre el juego que esté en la pared: al fútbol se entra con su control, no con el volante.
-  if (raceDoor.page === SOCCER_PAGE) {
+  // La sala es una sola y la abre el juego que esté en la pared: a cada juego se entra con su propio control.
+  // Solo el volante lleva además el mando y el nombre; cualquier otro juego recibe el código y el puerto.
+  if (raceDoor.page !== RACE_PAGE && /^[a-z0-9-]+\.html$/.test(raceDoor.page || '')) {
     const where = new URLSearchParams({ r: raceDoor.code });
     if (raceDoor.port) where.set('p', raceDoor.port);
-    location.href = '/carrera/' + SOCCER_PAGE + '#' + where.toString();
+    location.href = '/carrera/' + raceDoor.page + '#' + where.toString();
     return;
   }
   const hash = new URLSearchParams({ r: raceDoor.code, c: '1' });
