@@ -27,7 +27,7 @@ jobs:
       # un APK con otra firma no se puede instalar encima de los que ya están en los proyectores.
       CERT_SHA256: c2374fcfce258f9abd5448e0f664b12d4aba74f9bffa51fccdb4ec8c8cfa646d
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
