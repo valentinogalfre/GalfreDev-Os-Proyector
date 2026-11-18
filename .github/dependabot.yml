@@ -1,0 +1,7 @@
+# Mantiene al día las acciones de los workflows, que van fijadas a un commit.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
