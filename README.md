@@ -1,7 +1,7 @@
 # galfredev OS
 
-[![CI](https://github.com/valentinogalfre/GalfreDev-Os-Proyector/actions/workflows/projector-os.yml/badge.svg)](https://github.com/valentinogalfre/GalfreDev-Os-Proyector/actions/workflows/projector-os.yml)
-[![Versión](https://img.shields.io/github/v/release/valentinogalfre/GalfreDev-Os-Proyector?label=versi%C3%B3n)](https://github.com/valentinogalfre/GalfreDev-Os-Proyector/releases/latest)
+[![CI](https://github.com/valentinogalfre/galfredev-OS/actions/workflows/projector-os.yml/badge.svg)](https://github.com/valentinogalfre/galfredev-OS/actions/workflows/projector-os.yml)
+[![Versión](https://img.shields.io/github/v/release/valentinogalfre/galfredev-OS?label=versi%C3%B3n)](https://github.com/valentinogalfre/galfredev-OS/releases/latest)
 [![Licencia MIT](https://img.shields.io/badge/licencia-MIT-e4a32b)](LICENSE)
 ![Android 9 o más nuevo](https://img.shields.io/badge/Android-9%2B-3ddc84)
 [![PRs bienvenidos](https://img.shields.io/badge/PRs-bienvenidos-e4a32b)](CONTRIBUTING.md)
@@ -22,7 +22,7 @@ de inicio del fabricante. Si algo falla, el inicio original sigue en el equipo.
 soporte para otro proyector. Mirá [cómo sumarte](CONTRIBUTING.md) y
 [cómo hacer un juego](docs/juegos.md).
 
-> **Bajalo:** el APK de cada versión está en [Releases](https://github.com/valentinogalfre/GalfreDev-Os-Proyector/releases/latest).
+> **Bajalo:** el APK de cada versión está en [Releases](https://github.com/valentinogalfre/galfredev-OS/releases/latest).
 > Cómo instalarlo, más abajo.
 
 Corre en un Fika P8 desde noviembre de 2026. Cada versión se prueba antes en emulador, con
@@ -278,7 +278,7 @@ Más detalle en el [diseño](docs/diseno.md), en [cómo hacer un juego](docs/jue
 
 Todo suma: un juego nuevo, una pantalla, probarlo en otro proyector y contar cómo anduvo, o
 arreglar un texto. Lo que queda por hacer está en [`ROADMAP.md`](ROADMAP.md) y en los
-[issues](https://github.com/valentinogalfre/GalfreDev-Os-Proyector/issues).
+[issues](https://github.com/valentinogalfre/galfredev-OS/issues).
 
 - [Cómo sumarte](CONTRIBUTING.md): el entorno, las reglas de la casa y cómo mandar un pull request.
 - [Cómo hacer un juego](docs/juegos.md).

@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "GalfreDev-Os-Proyector"
+rootProject.name = "galfredev-OS"
 include(":app")

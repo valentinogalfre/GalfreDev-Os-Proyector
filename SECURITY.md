@@ -3,7 +3,7 @@
 ## Cómo reportar un problema
 
 Si encontrás una vulnerabilidad, **no abras un issue público**. Reportala por privado desde
-[Security Advisories](https://github.com/valentinogalfre/GalfreDev-Os-Proyector/security/advisories/new)
+[Security Advisories](https://github.com/valentinogalfre/galfredev-OS/security/advisories/new)
 de este repositorio.
 
 Contá qué encontraste, cómo se reproduce y qué podría hacer alguien con eso. Vas a tener una

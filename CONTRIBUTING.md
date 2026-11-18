@@ -21,8 +21,8 @@ Hace falta:
 - Python 3, solo para los scripts de `scripts/`.
 
 ```sh
-git clone https://github.com/valentinogalfre/GalfreDev-Os-Proyector.git
-cd GalfreDev-Os-Proyector
+git clone https://github.com/valentinogalfre/galfredev-OS.git
+cd galfredev-OS
 ./gradlew assembleDebug testDebugUnitTest lintDebug
 ```
 
