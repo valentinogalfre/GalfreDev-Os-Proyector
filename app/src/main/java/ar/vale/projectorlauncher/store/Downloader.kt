@@ -153,7 +153,8 @@ object Downloader {
         else -> PackageManager.GET_SIGNING_CERTIFICATES
     }
 
-    private fun signers(info: PackageInfo): List<String> {
+    /** SHA-256 de cada certificado que firmó el paquete, en hex. */
+    internal fun signers(info: PackageInfo): List<String> {
         @Suppress("DEPRECATION")
         val raw = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             info.signingInfo?.apkContentsSigners

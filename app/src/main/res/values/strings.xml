@@ -196,6 +196,22 @@
     <string name="store_err_too_new">Esta versión necesita un Android más nuevo.</string>
     <string name="store_err_unreadable">No pudimos leer el archivo descargado.</string>
 
+    <!-- Actualizar galfredev OS. El repo cambia en un fork: de ahí salen las versiones. -->
+    <string name="update_repo" translatable="false">valentinogalfre/galfredev-OS</string>
+    <string name="update_title">Actualizar galfredev OS</string>
+    <string name="update_label">Versiones oficiales · github.com/%1$s</string>
+    <string name="update_lead">Tenés la versión %1$s.</string>
+    <string name="update_body">Las versiones nuevas traen juegos, arreglos y funciones. Se instala encima: tus apps, ajustes y la clave de Claude quedan como están.</string>
+    <string name="update_offline">El proyector no tiene internet. Conectalo al wifi para buscar la versión nueva.</string>
+    <string name="update_up_to_date">Ya tenés la última versión (%1$s).</string>
+    <string name="update_now">Actualizar a la %1$s</string>
+    <string name="update_check_again">Buscar de nuevo</string>
+    <string name="update_installing">Confirmá la instalación en la pantalla del sistema.</string>
+    <string name="update_err_signer">Esta copia no está firmada como las versiones oficiales. Instalá la última a mano una vez y después se actualiza sola.</string>
+    <string name="update_available">Hay una versión nueva</string>
+    <string name="update_available_sub">galfredev OS %1$s · tocá para actualizar</string>
+    <string name="set_update">Buscar actualizaciones</string>
+
     <!-- Funciones del proyector -->
     <string name="fn_keystone">Trapecio</string>
     <string name="fn_focus">Foco</string>

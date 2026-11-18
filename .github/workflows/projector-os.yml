@@ -34,6 +34,10 @@ jobs:
         run: ./gradlew --no-daemon lintDebug
       - name: Compilar
         run: ./gradlew --no-daemon assembleDebug
+      # Lo que se publica es la release, con R8: si algo se rompe al achicar el código, que salte acá
+      # y no en los proyectores. Sin los secretos se firma con la clave de debug.
+      - name: Compilar como release
+        run: ./gradlew --no-daemon assembleRelease
       - name: Subir reportes
         if: failure()
         uses: actions/upload-artifact@v4

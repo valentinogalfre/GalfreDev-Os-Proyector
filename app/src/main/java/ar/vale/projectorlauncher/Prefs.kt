@@ -84,6 +84,18 @@ class Prefs(ctx: Context) {
         get() = sp.getInt(KEY_WALL_IDLE, 10)
         set(v) = sp.edit().putInt(KEY_WALL_IDLE, v).apply()
 
+    // --- Actualizaciones del launcher ---
+
+    /** Cuándo se consultó GitHub por última vez, para no hacerlo en cada vuelta al inicio. */
+    var updateCheckedAt: Long
+        get() = sp.getLong(KEY_UPDATE_CHECKED, 0L)
+        set(v) = sp.edit().putLong(KEY_UPDATE_CHECKED, v).apply()
+
+    /** La última versión publicada que se vio. El inicio la compara con la instalada. */
+    var updateLatest: String?
+        get() = sp.getString(KEY_UPDATE_LATEST, null)
+        set(v) = sp.edit().putString(KEY_UPDATE_LATEST, v).apply()
+
     // --- Celular ---
 
     /** Aurora se abre una vez por su portada: entrando directo a una ficha falla hasta configurarla. */
@@ -155,6 +167,8 @@ class Prefs(ctx: Context) {
         private const val KEY_HIDDEN_SERVICES = "hidden_services"
         private const val KEY_SERVICE_APP = "service_app_"
         private const val KEY_REMOTE = "remote_enabled"
+        private const val KEY_UPDATE_CHECKED = "update_checked_at"
+        private const val KEY_UPDATE_LATEST = "update_latest"
         private const val KEY_REMOTE_TOKEN = "remote_token"
         private const val KEY_CLAUDE_MODEL = "claude_model"
         private const val KEY_CLAUDE_WEB = "claude_web_search"

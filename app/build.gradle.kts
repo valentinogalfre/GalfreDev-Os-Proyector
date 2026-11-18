@@ -15,8 +15,12 @@ android {
         // un ícono adaptativo 100% vectorial (sin PNGs por densidad).
         minSdk = 26
         targetSdk = 35
-        versionCode = 5
-        versionName = "1.3.0"
+        versionName = "1.4.0"
+        // Sale de la versión: 1.4.0 es 10400. Nunca baja, así Android acepta cada actualización.
+        versionCode = versionName!!.split(".").map(String::toInt).let { (a, b, c) ->
+            require(b < 100 && c < 100) { "versionName $versionName: menor y parche tienen que ser menores que 100" }
+            a * 10_000 + b * 100 + c
+        }
     }
 
     signingConfigs {
@@ -24,6 +28,19 @@ android {
         getByName("debug") {
             enableV1Signing = true
             enableV2Signing = true
+        }
+        // La clave de las versiones oficiales vive solo en los secretos del repo. Un proyector acepta
+        // una actualización únicamente si viene firmada con la misma clave que la versión instalada.
+        val keystore = System.getenv("GDOS_KEYSTORE")
+        if (keystore != null) {
+            create("release") {
+                storeFile = file(keystore)
+                storePassword = System.getenv("GDOS_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("GDOS_KEY_ALIAS")
+                keyPassword = System.getenv("GDOS_KEYSTORE_PASSWORD")
+                enableV1Signing = true
+                enableV2Signing = true
+            }
         }
     }
 
@@ -34,6 +51,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // Sin la clave (un fork, una compu cualquiera) se firma con la de debug: compila igual,
+            // pero esa copia no se puede actualizar desde las versiones oficiales.
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
         }
     }
 

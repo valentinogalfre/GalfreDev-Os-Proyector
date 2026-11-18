@@ -37,6 +37,8 @@ import ar.vale.projectorlauncher.store.Catalog
 import ar.vale.projectorlauncher.store.Recommendations
 import ar.vale.projectorlauncher.store.StoreActivity
 import ar.vale.projectorlauncher.store.StoreDetailActivity
+import ar.vale.projectorlauncher.update.SelfUpdate
+import ar.vale.projectorlauncher.update.UpdateActivity
 import ar.vale.projectorlauncher.ui.BootView
 import ar.vale.projectorlauncher.ui.Device
 import ar.vale.projectorlauncher.ui.GdActivity
@@ -173,6 +175,13 @@ class LauncherActivity : GdActivity() {
         updateStatus()
         if (boot == null) refreshPanel()
         scheduleIdle()
+        SelfUpdate.checkInBackground(this) { version ->
+            runOnUiThread {
+                if (isDestroyed) return@runOnUiThread
+                Notice.show(this, getString(R.string.update_available_sub, version), Notice.Kind.INFO)
+                if (boot == null) refreshPanel()
+            }
+        }
     }
 
     override fun onPause() {
@@ -488,7 +497,16 @@ class LauncherActivity : GdActivity() {
         panelRow(host, getString(R.string.home_cine_browse), null, R.drawable.ic_folder) { open(Section.CINE) }
     }
 
+    /** Si ya se sabe que hay una versión nueva, va primera: en la Tienda y en los Ajustes. */
+    private fun updateRow(host: LinearLayout) {
+        val version = SelfUpdate.known(this) ?: return
+        panelRow(host, getString(R.string.update_available), getString(R.string.update_available_sub, version), R.drawable.ic_refresh) {
+            openScreen(Intent(this, UpdateActivity::class.java), getString(R.string.update_title))
+        }
+    }
+
     private fun bindStore(host: LinearLayout) {
+        updateRow(host)
         val catalog = Catalog.load(this)
         val installed = installedOf(catalog)
         val upgrades = Recommendations.upgrades(catalog, installed).take(PANEL_ROWS)
@@ -509,6 +527,7 @@ class LauncherActivity : GdActivity() {
     }
 
     private fun bindSettings(host: LinearLayout) {
+        updateRow(host)
         SystemScreens.wifi(this)?.let { wifi ->
             val state = getString(if (Device.isOnline(this)) R.string.net_other else R.string.net_off)
             panelRow(host, getString(R.string.set_wifi), state, R.drawable.ic_wifi) {

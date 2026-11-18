@@ -94,6 +94,7 @@
         <activity android:name=".media.PlayerActivity" android:exported="false" />
         <activity android:name=".store.StoreActivity" android:exported="false" />
         <activity android:name=".store.StoreDetailActivity" android:exported="false" />
+        <activity android:name=".update.UpdateActivity" android:exported="false" />
         <activity android:name=".SettingsActivity" android:exported="false" />
         <activity android:name=".wall.WallActivity" android:exported="false" />
         <activity android:name=".remote.RemoteActivity" android:exported="false" />

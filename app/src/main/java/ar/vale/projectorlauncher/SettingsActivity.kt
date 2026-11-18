@@ -1,6 +1,8 @@
 package ar.vale.projectorlauncher
 
 import android.content.Intent
+import ar.vale.projectorlauncher.update.SelfUpdate
+import ar.vale.projectorlauncher.update.UpdateActivity
 import android.media.AudioManager
 import android.os.Build
 import android.os.Bundle
@@ -167,6 +169,11 @@ class SettingsActivity : GdActivity() {
             value = BuildInfo.versionName(this),
             icon = R.drawable.ic_info
         ) { Sheet.show(this, getString(R.string.app_name), listOf(Sheet.Option(getString(R.string.back)) {}), getString(R.string.set_about_body)) })
+        rows.add(Row(
+            getString(R.string.set_update),
+            value = SelfUpdate.known(this)?.let { getString(R.string.update_available) },
+            icon = R.drawable.ic_refresh
+        ) { openScreen(Intent(this, UpdateActivity::class.java), getString(R.string.update_title)) })
         rows.add(Row(
             getString(R.string.set_device),
             subtitle = "${Build.MANUFACTURER} ${Build.MODEL}",

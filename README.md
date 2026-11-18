@@ -105,7 +105,7 @@ scripts/juegos-en-la-compu.sh
 El paso a paso completo está en [`docs/instalar.md`](docs/instalar.md). Lo corto, con ADB:
 
 ```sh
-adb install app-debug.apk
+adb install galfredev-os-1.4.0.apk
 adb shell cmd package set-home-activity ar.vale.projectorlauncher/.LauncherActivity
 ```
 
@@ -115,8 +115,24 @@ que no conviene tocar. Dejá habilitado el inicio del fabricante, es la salida s
 **En un Fika P8 o un Chowa P8, no reinicies con Depuración USB activada:** se queda sin Wi-Fi
 ni Bluetooth. La guía instala por pendrive y solo usa ADB si hace falta.
 
-Si instalás encima de un APK compilado en otra máquina o en el CI, la firma de depuración
-no coincide y hay que desinstalar antes.
+### Actualizar
+
+Se instala a mano una sola vez. Después, el proyector se actualiza desde el control remoto:
+
+1. Cuando sale una versión, el inicio avisa «Hay una versión nueva» en la Tienda y en Ajustes.
+   También se puede buscar en **Ajustes → Buscar actualizaciones**.
+2. Si el proyector no tiene internet, la misma pantalla lleva al wifi.
+3. **Actualizar** baja el APK de [Releases](https://github.com/valentinogalfre/galfredev-OS/releases),
+   comprueba su SHA-256 y que esté firmado con la misma clave que la copia instalada, y abre el
+   instalador de Android. Se instala encima: las apps, los ajustes y la clave de Claude quedan.
+
+No hace falta ADB ni Depuración USB, y el proyector no queda abierto a la red para recibir
+instalaciones.
+
+Las versiones oficiales se firman con una clave que solo está en los secretos del repo. Un APK
+compilado en tu compu se firma con tu clave de depuración: anda igual, pero no se puede actualizar
+encima de una versión oficial (ni al revés) sin desinstalar antes. La 1.3.0 es anterior a la clave
+oficial: quien la tenga instala la 1.4.0 a mano una vez.
 
 ### Para que el celular maneje otras apps
 
@@ -197,7 +213,7 @@ juegos, además, Node 20 o más nuevo.
 
 ```sh
 ./gradlew assembleDebug        # el APK queda en app/build/outputs/apk/debug/
-./gradlew testDebugUnitTest    # 474 tests de contrato
+./gradlew testDebugUnitTest    # 485 tests de contrato
 ./gradlew lintDebug            # los errores frenan la compilación
 
 cd game
@@ -281,6 +297,8 @@ arreglar un texto. Lo que queda por hacer está en [`ROADMAP.md`](ROADMAP.md) y 
 [issues](https://github.com/valentinogalfre/galfredev-OS/issues).
 
 - [Cómo sumarte](CONTRIBUTING.md): el entorno, las reglas de la casa y cómo mandar un pull request.
+  Lo que se mergea a `main` llega a los proyectores con la próxima versión, sin que nadie tenga que
+  reinstalar.
 - [Cómo hacer un juego](docs/juegos.md).
 - [Código de convivencia](CODE_OF_CONDUCT.md) y [seguridad](SECURITY.md).
 
@@ -301,7 +319,9 @@ the style of HaxBall. Up to eight people play at once. It also has a cinema hub,
 for projectors, the phone as a remote and keyboard, and Claude built in to operate other apps for
 you.
 
-The UI and docs are in Spanish, and contributions in English are welcome. Build it with
+After the first install it updates itself from this repo's releases (Settings → Buscar
+actualizaciones): it checks the SHA-256 and that the APK is signed with the same key as the
+installed copy. The UI and docs are in Spanish, and contributions in English are welcome. Build it with
 `./gradlew assembleDebug` (JDK 17 and Android SDK 35). To write a new game, see
 [`docs/juegos.md`](docs/juegos.md): each game is a wall page plus a phone page in `game/`, talking
 through a small message relay that runs inside the launcher.

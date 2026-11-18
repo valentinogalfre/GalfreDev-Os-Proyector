@@ -344,6 +344,20 @@ Para una muestra de demos, la juntada tiene una fila. Está en la pestaña Demos
 7. Cuando presentaron todos, la pared muestra el podio. Si empatan en votos, definen los
    aplausos.
 
+## Actualizar
+
+Esto se hace una sola vez. Las versiones siguientes se instalan desde el proyector:
+**Ajustes → Buscar actualizaciones**, o la fila «Hay una versión nueva» que aparece en la Tienda y
+en Ajustes cuando sale una. El proyector tiene que tener internet; si no lo tiene, esa pantalla
+ofrece abrir el wifi.
+
+Android pide confirmar la instalación y la app se reinicia sola. Las apps, los ajustes, los
+celulares emparejados y la clave de Claude quedan como estaban.
+
+Si dice que la firma no coincide, esa copia no es una versión oficial (o es la 1.3.0, anterior a la
+clave de firma). Instalá la última de [Releases](https://github.com/valentinogalfre/galfredev-OS/releases/latest)
+a mano una vez: desinstalá la anterior y seguí el paso 3.
+
 ## Camino con ADB, solo si hace falta
 
 Sirve para fijar el inicio o dar Control total si tu equipo no trae esas pantallas. Hace falta la

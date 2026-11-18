@@ -75,6 +75,29 @@ Son pocas y existen por algo:
 - Contá qué cambia para quien usa el proyector y cómo lo probaste. Si se ve, sumá una captura
   o un video corto.
 
+## Cómo sale una versión
+
+Esto lo hace quien mantiene el repo:
+
+1. Subí `versionName` en `app/build.gradle.kts` (el `versionCode` sale solo de ahí) y commiteá a `main`.
+2. Pusheá el tag con la misma versión:
+
+   ```sh
+   git tag v1.5.0 && git push origin v1.5.0
+   ```
+
+3. El workflow [`release.yml`](.github/workflows/release.yml) corre los tests, arma el APK de release
+   firmado con la clave oficial, comprueba la huella del certificado y publica la release con
+   `galfredev-os-1.5.0.apk`. Desde ese momento cada proyector la ve en «Buscar actualizaciones».
+
+La clave de firma está solo en los secretos del repo (`GDOS_KEYSTORE_BASE64`,
+`GDOS_KEYSTORE_PASSWORD`, `GDOS_KEY_ALIAS`). Si se pierde, los equipos que ya la tienen no se
+pueden actualizar más sin desinstalar.
+
+**Si mantenés un fork** con sus propias versiones: cambiá `update_repo` en
+`app/src/main/res/values/strings.xml` por tu repo y cargá tu clave en esos tres secretos. El
+control de la huella (`CERT_SHA256`) solo corre en el repo oficial.
+
 ## Si encontrás un problema de seguridad
 
 No abras un issue público. Seguí [`SECURITY.md`](SECURITY.md).
